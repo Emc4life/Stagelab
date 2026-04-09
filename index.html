@@ -621,6 +621,7 @@ function FeedScreen({ videos, setVideos, comments, setComments, show }) {
                 const mapped = data.map((p, i) => {
                     var _a, _b, _c, _d, _e;
                     return ({
+                        // Include ALL post types — video, audio, lyrics, poster
                         id: p.id,
                         creator: ((_a = p.profiles) === null || _a === void 0 ? void 0 : _a.name) || "Unknown",
                         handle: ((_b = p.profiles) === null || _b === void 0 ? void 0 : _b.handle) || "@user",
@@ -1080,27 +1081,28 @@ function VideoPostTab({ show, setTab }) {
                 });
             }
             if (user) {
-                const { data: newPost } = await supabase.from("posts").insert({
+                // Get user profile first for feed card
+                const { data: prof } = await supabase.from("profiles").select("name,handle,avatar_url,role").eq("id", user.id).single();
+                // Insert post
+                await supabase.from("posts").insert({
                     user_id: user.id, type: "video", title, caption,
                     category, tags, visibility, media_url: mediaUrl,
                     thumbnail_url: thumbnail, collab_open: collab,
                 });
-                // Immediately add to feed so user sees it
-                if (newPost === null || newPost === void 0 ? void 0 : newPost[0]) {
-                    const p = newPost[0];
-                    // Get user profile for display
-                    supabase.from("profiles").select("name,handle,avatar_url,role").eq("id", user.id).single().then(({ data: prof }) => {
-                        const feedPost = {
-                            id: p.id, creator: (prof === null || prof === void 0 ? void 0 : prof.name) || "You", handle: (prof === null || prof === void 0 ? void 0 : prof.handle) || "@you",
-                            role: (prof === null || prof === void 0 ? void 0 : prof.role) || "", avatar: ((prof === null || prof === void 0 ? void 0 : prof.name) || "Y").slice(0, 2).toUpperCase(),
-                            avatar_url: (prof === null || prof === void 0 ? void 0 : prof.avatar_url) || null, title, caption, type: "video",
-                            likes: 0, comments: 0, shares: 0, reposts: 0, gifts: 0,
-                            media_url: mediaUrl, thumbnail_url: thumbnail, collab_open: collab,
-                            accent: "#c9a84c", bg: "linear-gradient(160deg,#1a0a2e,#2d1040)", note: "♪", tier: "silver",
-                        };
-                        setVideos(prev => [feedPost, ...prev]);
-                    });
-                }
+                // Add to feed immediately
+                const feedPost = {
+                    id: "local-" + Date.now(),
+                    creator: (prof === null || prof === void 0 ? void 0 : prof.name) || "You",
+                    handle: (prof === null || prof === void 0 ? void 0 : prof.handle) || "@you",
+                    role: (prof === null || prof === void 0 ? void 0 : prof.role) || "",
+                    avatar: ((prof === null || prof === void 0 ? void 0 : prof.name) || "Y").slice(0, 2).toUpperCase(),
+                    avatar_url: (prof === null || prof === void 0 ? void 0 : prof.avatar_url) || null,
+                    title, caption, type: "video",
+                    likes: 0, comments: 0, shares: 0, reposts: 0, gifts: 0,
+                    media_url: mediaUrl, thumbnail_url: thumbnail, collab_open: collab,
+                    accent: "#c9a84c", bg: "linear-gradient(160deg,#1a0a2e,#2d1040)", note: "♪", tier: "silver",
+                };
+                setVideos(prev => [feedPost, ...prev]);
             }
             show("🚀 Video published to your feed!");
             setTimeout(() => setTab(0), 600);
@@ -1567,24 +1569,28 @@ function DiscoverScreen({ show }) {
     useEffect(() => {
         supabase.from("profiles")
             .select("id,name,handle,role,bio,location,avatar_url")
-            .not("role", "is", null)
             .order("created_at", { ascending: false })
             .limit(50)
             .then(({ data }) => {
             if (data && data.length > 0) {
-                const mapped = data.map((p, i) => ({
-                    id: p.id,
-                    name: p.name || "Unknown",
-                    handle: p.handle || "@user",
-                    role: p.role || "Theatre Maker",
-                    bio: p.bio || "",
-                    location: p.location || "Remote",
-                    avatar_url: p.avatar_url || null,
-                    avatar: (p.name || "U").slice(0, 2).toUpperCase(),
-                    skills: [],
-                    accent: ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#e8507c", "#50c8a8"][i % 6],
-                    following: false,
-                }));
+                const mapped = data
+                    .filter(p => p.id) // only valid rows
+                    .map((p, i) => {
+                    var _a;
+                    return ({
+                        id: p.id,
+                        name: p.name || ((_a = p.handle) === null || _a === void 0 ? void 0 : _a.replace("@", "")) || "StageLab User",
+                        handle: p.handle || "@user",
+                        role: p.role || "Theatre Maker",
+                        bio: p.bio || "StageLab member",
+                        location: p.location || "Remote",
+                        avatar_url: p.avatar_url || null,
+                        avatar: (p.name || p.handle || "U").slice(0, 2).toUpperCase().replace("@", ""),
+                        skills: [],
+                        accent: ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#e8507c", "#50c8a8"][i % 6],
+                        following: false,
+                    });
+                });
                 setRealUsers(mapped);
             }
             setLoadingUsers(false);
@@ -2279,25 +2285,49 @@ function ProfileScreen({ show }) {
                         const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
                         if (!f)
                             return;
-                        const r = new FileReader();
-                        r.onload = ev => {
-                            setProfile(p => (Object.assign(Object.assign({}, p), { banner: ev.target.result })));
-                            setDraft(p => (Object.assign(Object.assign({}, p), { banner: ev.target.result })));
-                        };
-                        r.readAsDataURL(f);
+                        // Show local preview immediately
+                        const localUrl = URL.createObjectURL(f);
+                        setProfile(p => (Object.assign(Object.assign({}, p), { banner: localUrl })));
+                        setDraft(p => (Object.assign(Object.assign({}, p), { banner: localUrl })));
+                        show("⬆️ Uploading cover photo…");
+                        // Upload to Supabase Storage
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) {
+                            show("⚠️ Sign in to save cover photo");
+                            return;
+                        }
+                        const storageUrl = await uploadToStorage(f, "media", user.id + "/banners");
+                        const finalUrl = storageUrl || localUrl;
+                        setProfile(p => (Object.assign(Object.assign({}, p), { banner: finalUrl })));
+                        setDraft(p => (Object.assign(Object.assign({}, p), { banner: finalUrl })));
+                        // Save to profiles table
+                        await supabase.from("profiles").update({ banner_url: finalUrl }).eq("id", user.id);
+                        show("✓ Cover photo saved!");
                     } }),
                 profile.banner
                     ? React.createElement("img", { src: profile.banner, style: { width: "100%", height: "100%", objectFit: "cover" } })
                     : React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.25)", letterSpacing: "0.08em" } }, "TAP TO ADD COVER PHOTO")),
             React.createElement("label", { style: { position: "absolute", bottom: -36, left: 20, cursor: "pointer" } },
-                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => {
+                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: async (e) => {
                         var _a;
                         const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
                         if (!f)
                             return;
-                        const r = new FileReader();
-                        r.onload = ev => { setProfile(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result }))); setDraft(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result }))); };
-                        r.readAsDataURL(f);
+                        const localUrl = URL.createObjectURL(f);
+                        setProfile(p => (Object.assign(Object.assign({}, p), { avatar: localUrl })));
+                        setDraft(p => (Object.assign(Object.assign({}, p), { avatar: localUrl })));
+                        show("⬆️ Uploading profile photo…");
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) {
+                            show("⚠️ Sign in to save profile photo");
+                            return;
+                        }
+                        const storageUrl = await uploadToStorage(f, "avatars", user.id);
+                        const finalUrl = storageUrl || localUrl;
+                        setProfile(p => (Object.assign(Object.assign({}, p), { avatar: finalUrl })));
+                        setDraft(p => (Object.assign(Object.assign({}, p), { avatar: finalUrl })));
+                        await supabase.from("profiles").update({ avatar_url: finalUrl }).eq("id", user.id);
+                        show("✓ Profile photo saved!");
                     } }),
                 React.createElement("div", { style: { width: 76, height: 76, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 26 } }, profile.avatar
                     ? React.createElement("img", { src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
