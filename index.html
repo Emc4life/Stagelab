@@ -9,18 +9,14 @@
 <title>StageLab</title>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#08080f;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;color:#fff}
-#err{display:none;position:fixed;inset:0;background:#0a0005;color:#f87171;font:13px/1.6 monospace;padding:20px;z-index:9999;overflow:auto;white-space:pre-wrap}
-</style>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#08080f;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;color:#fff}#err{display:none;position:fixed;inset:0;background:#0a0005;color:#f87171;font:13px/1.6 monospace;padding:20px;z-index:9999;overflow:auto;white-space:pre-wrap}</style>
 </head>
 <body>
 <div id="err"></div>
 <div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080f"><div style="text-align:center"><svg width="64" height="64" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="20" y1="80" x2="80" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f5c518"/><stop offset="50%" stop-color="#f07020"/><stop offset="100%" stop-color="#e040a0"/></linearGradient></defs><rect width="100" height="100" rx="20" fill="#4a006e"/><path d="M64 18C80 18 84 28 80 36C76 44 62 48 50 52C36 57 24 63 24 74C24 84 34 88 46 86C54 84 62 80 66 74" stroke="url(#g)" stroke-width="14" stroke-linecap="round" fill="none"/></svg><p style="color:#c9a84c;font-family:sans-serif;margin-top:16px;letter-spacing:.1em;font-size:13px">LOADING STAGELAB...</p></div></div></div>
 <script>
 window.onerror=function(m,s,l,c,e){var b=document.getElementById('err');b.style.display='block';b.textContent='Error line '+l+':\n'+m+'\n\n'+(e&&e.stack?e.stack:'');return true;};
-window.addEventListener('unhandledrejection',function(e){var b=document.getElementById('err');b.style.display='block';b.textContent='Promise error:\n'+(e.reason&&e.reason.stack?e.reason.stack:String(e.reason));});
+window.addEventListener('unhandledrejection',function(e){var b=document.getElementById('err');b.style.display='block';b.textContent='Promise:\n'+(e.reason&&e.reason.stack?e.reason.stack:String(e.reason));});
 </script>
 <script>
 "use strict";
@@ -312,34 +308,24 @@ function StageLab() {
     const [page, setPage] = (0, react_1.useState)("loading");
     const [tab, setTab] = (0, react_1.useState)(0);
     const [session, setSession] = (0, react_1.useState)(null);
-    const [isNewUser, setIsNewUser] = (0, react_1.useState)(false);
     (0, react_1.useEffect)(() => {
+        // Check for existing session on load
         supabase.auth.getSession().then(({ data }) => {
-            setSession(data.session);
-            setPage(data.session ? "app" : "auth");
-        });
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-            setSession(s);
-            if (s) {
-                // Check if this is a brand new signup — profile will have no role set
-                if (event === "SIGNED_IN") {
-                    const { data: prof } = await supabase.from("profiles").select("role,bio").eq("id", s.user.id).single();
-                    // New user = profile exists but role/bio are empty
-                    if (prof && !prof.role && !prof.bio) {
-                        setIsNewUser(true);
-                        setPage("onboard");
-                    }
-                    else {
-                        setPage("app");
-                    }
-                }
-                else {
-                    setPage("app");
-                }
+            if (data.session) {
+                setSession(data.session);
+                setPage("app");
             }
             else {
                 setPage("auth");
             }
+        });
+        // Listen for auth state changes (sign in / sign out)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+            if (event === "SIGNED_OUT" || !s) {
+                setSession(null);
+                setPage("auth");
+            }
+            // SIGNED_IN handled by AuthScreen directly to avoid race conditions
         });
         return () => subscription.unsubscribe();
     }, []);
@@ -348,13 +334,13 @@ function StageLab() {
             React.createElement("style", null, CSS),
             React.createElement(SLogo, { size: 60 })));
     if (page === "auth")
-        return React.createElement(AuthScreen, { onEnter: () => setPage("app"), onNewUser: () => setPage("onboard") });
+        return React.createElement(AuthScreen, { onEnter: (s) => { setSession(s); setPage("app"); }, onOnboard: (s) => { setSession(s); setPage("onboard"); } });
     if (page === "onboard")
         return React.createElement(OnboardScreen, { onDone: () => setPage("app"), session: session });
     return React.createElement(MainApp, { tab: tab, setTab: setTab, session: session });
 }
 // ════════════════════════════════ AUTH ══════════════════════════════
-function AuthScreen({ onEnter, onNewUser }) {
+function AuthScreen({ onEnter, onOnboard }) {
     const [mode, setMode] = (0, react_1.useState)(0); // 0=signin 1=signup
     const [name, setName] = (0, react_1.useState)("");
     const [email, setEmail] = (0, react_1.useState)("");
@@ -376,23 +362,24 @@ function AuthScreen({ onEnter, onNewUser }) {
         setLoading(true);
         try {
             if (mode === 0) {
-                // Sign in
-                const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+                // ── Sign In ──
+                const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
                 if (err)
                     throw err;
                 showToast("Welcome back! 🎭");
-                setTimeout(onEnter, 700);
+                setTimeout(() => onEnter(data.session), 700);
             }
             else {
-                // Sign up
-                const { error: err } = await supabase.auth.signUp({
+                // ── Sign Up ──
+                const { data, error: err } = await supabase.auth.signUp({
                     email, password,
                     options: { data: { name } }
                 });
                 if (err)
                     throw err;
-                showToast("Account created! Setting up your profile… 🎉");
-                setTimeout(() => onNewUser ? onNewUser() : onEnter(), 1200);
+                // Wait a moment for the DB trigger to create the profile row
+                showToast("Account created! Let's set up your profile 🎭");
+                setTimeout(() => onOnboard(data.session), 1000);
             }
         }
         catch (e) {
@@ -414,7 +401,7 @@ function AuthScreen({ onEnter, onNewUser }) {
                 React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
             error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
             React.createElement("button", { onClick: submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: 20 } }, loading ? "…" : mode === 0 ? "Sign In" : "Create Account"),
-            React.createElement("button", { onClick: onEnter, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 12, cursor: "pointer", letterSpacing: "0.05em" } }, "Skip for now \u2022 Demo mode")),
+            React.createElement("button", { onClick: () => onEnter(null), style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 12, cursor: "pointer", letterSpacing: "0.05em" } }, "Skip for now \u2022 Demo mode")),
         toast && React.createElement(Toast, { msg: toast })));
 }
 const AInput = ({ placeholder, type = "text" }) => (React.createElement("input", { type: type, placeholder: placeholder, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }));
@@ -422,7 +409,7 @@ const AInput = ({ placeholder, type = "text" }) => (React.createElement("input",
 const ROLES = ["Actor", "Singer", "Dancer", "Composer", "Lyricist", "Musical Director", "Director", "Choreographer", "Playwright", "Producer", "Stage Manager", "Designer", "Pit Musician", "Other"];
 const SKILLS_LIST = ["Soprano", "Mezzo", "Alto", "Tenor", "Baritone", "Bass", "Jazz", "Classical", "Contemporary", "Hip-Hop", "Tap", "Ballet", "Character", "Improv", "Piano", "Guitar", "Violin", "Conducting"];
 function OnboardScreen({ onDone, session }) {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const [step, setStep] = (0, react_1.useState)(0); // 0=role 1=bio 2=photo
     const [role, setRole] = (0, react_1.useState)("");
     const [bio, setBio] = (0, react_1.useState)("");
@@ -431,30 +418,58 @@ function OnboardScreen({ onDone, session }) {
     const [skills, setSkills] = (0, react_1.useState)([]);
     const [avatar, setAvatar] = (0, react_1.useState)(null);
     const [saving, setSaving] = (0, react_1.useState)(false);
-    const [name, setName] = (0, react_1.useState)(((_b = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.user_metadata) === null || _b === void 0 ? void 0 : _b.name) || "");
+    const [name, setName] = (0, react_1.useState)(((_b = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.user_metadata) === null || _b === void 0 ? void 0 : _b.name) ||
+        ((_d = (_c = session === null || session === void 0 ? void 0 : session.user) === null || _c === void 0 ? void 0 : _c.email) === null || _d === void 0 ? void 0 : _d.split("@")[0]) || "");
     const toggleSkill = (s) => setSkills(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
     const saveAndContinue = async () => {
         var _a;
+        // Validate step 0 requires a role
+        if (step === 0 && !role) {
+            return;
+        }
         if (step < 2) {
             setStep(s => s + 1);
             return;
         }
-        // Final save to Supabase
+        // Step 2 — final save
         setSaving(true);
         const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
+        const token = localStorage.getItem("sb_token");
         if (uid) {
             let avatarUrl = null;
-            if (avatar) {
-                // Upload avatar
-                const res = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/avatars/" + uid + "/avatar.jpg", { method: "POST", headers: { "Authorization": "Bearer " + localStorage.getItem("sb_token"), "Content-Type": "image/jpeg", "x-upsert": "true" }, body: await (await fetch(avatar)).blob() });
-                if (res.ok)
-                    avatarUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/avatars/" + uid + "/avatar.jpg";
+            // Upload avatar if chosen
+            if (avatar && token) {
+                try {
+                    // Convert data URI to blob
+                    const res = await fetch(avatar);
+                    const blob = await res.blob();
+                    const ext = blob.type.includes("png") ? "png" : "jpg";
+                    const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/avatars/" + uid + "/avatar." + ext, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": blob.type, "x-upsert": "true" }, body: blob });
+                    if (uploadRes.ok) {
+                        avatarUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/avatars/" + uid + "/avatar." + ext;
+                    }
+                }
+                catch (e) {
+                    console.warn("Avatar upload failed:", e);
+                }
             }
-            await supabase.from("profiles").update({
-                name, handle: handle || ("@" + (name || "user").toLowerCase().replace(/\s+/g, "_")),
-                role, bio, location,
+            // Build clean handle
+            const cleanHandle = handle
+                ? (handle.startsWith("@") ? handle : "@" + handle)
+                : "@" + (name || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_");
+            const { error } = await supabase.from("profiles").update({
+                name: name.trim(),
+                handle: cleanHandle,
+                role,
+                bio: bio.trim(),
+                location: location.trim(),
                 avatar_url: avatarUrl,
             }).eq("id", uid);
+            if (error) {
+                console.error("Profile save error:", error);
+                setSaving(false);
+                // Still proceed — don't block the user
+            }
         }
         setSaving(false);
         onDone();
@@ -554,9 +569,9 @@ function MainApp({ tab, setTab, session }) {
     const [liveRoom, setLiveRoom] = (0, react_1.useState)(null);
     const [showInbox, setShowInbox] = (0, react_1.useState)(false);
     // FIX 1: persisted state survives refresh
-    const [videos, setVideos] = usePersistedState("sl_videos", INIT_VIDEOS);
-    const [comments, setComments] = usePersistedState("sl_comments", INIT_COMMENTS);
-    const [messages, setMessages] = usePersistedState("sl_messages", INIT_MESSAGES);
+    const [videos, setVideos] = (0, react_1.useState)(INIT_VIDEOS); // seeded + DB loaded
+    const [comments, setComments] = (0, react_1.useState)(INIT_COMMENTS); // seeded + DB loaded
+    const [messages, setMessages] = (0, react_1.useState)(INIT_MESSAGES); // loaded from DB
     const show = (m) => { setToast(m); setTimeout(() => setToast(""), 2600); };
     // FIX 2: totalUnread is derived live so badge always matches stored unread counts
     const totalUnread = messages.reduce((a, m) => a + m.unread, 0);
@@ -1893,35 +1908,46 @@ const INIT_PROFILE_TAPES = [
 function ProfileScreen({ show }) {
     const [subPage, setSubPage] = (0, react_1.useState)("main");
     const [bioTab, setBioTab] = (0, react_1.useState)("media");
-    const [profile, setProfile] = usePersistedState("sl_profile", {
-        name: "Alex Rivera", handle: "@alexrivera",
-        bio: "Broadway composer & lyricist. San Diego based. Creating new musical theatre.",
-        location: "San Diego, CA", website: "alexrivera.stage", role: "Composer / Lyricist",
-        avatar: null,
-    });
-    const [draft, setDraft] = (0, react_1.useState)(Object.assign({}, profile));
-    // Load real profile + media + tapes from Supabase on mount
+    const PROFILE_DEFAULT = {
+        name: "", handle: "", bio: "", location: "", website: "", role: "", avatar: null, banner: null,
+    };
+    const [profile, setProfile] = (0, react_1.useState)(PROFILE_DEFAULT);
+    const [draft, setDraft] = (0, react_1.useState)(PROFILE_DEFAULT);
+    // Load everything from Supabase — it is the single source of truth
     (0, react_1.useEffect)(() => {
         supabase.auth.getUser().then(async ({ data: authData }) => {
             if (!authData.user)
                 return;
             const uid = authData.user.id;
-            // Profile
+            // Profile — always use DB values, never stale localStorage
             const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).single();
             if (prof) {
-                const merged = { name: prof.name || profile.name, handle: prof.handle || profile.handle, bio: prof.bio || profile.bio, location: prof.location || profile.location, website: prof.website || profile.website, role: prof.role || profile.role, avatar: prof.avatar_url || profile.avatar, banner: prof.banner_url || profile.banner };
-                setProfile(merged);
-                setDraft(merged);
+                const p = {
+                    name: prof.name || "",
+                    handle: prof.handle || "",
+                    bio: prof.bio || "",
+                    location: prof.location || "",
+                    website: prof.website || "",
+                    role: prof.role || "",
+                    avatar: prof.avatar_url || null,
+                    banner: prof.banner_url || null,
+                };
+                setProfile(p);
+                setDraft(p);
             }
-            // Media grid
+            // Media grid — always fresh from DB
             const { data: mediaRows } = await supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (mediaRows && mediaRows.length > 0) {
-                setMedia(mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption })));
+            if (mediaRows) {
+                setMedia(mediaRows.length > 0
+                    ? mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption }))
+                    : []);
             }
-            // Self tapes
+            // Self tapes — always fresh from DB
             const { data: tapeRows } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (tapeRows && tapeRows.length > 0) {
-                setTapes(tapeRows.map(t => { var _a; return ({ id: t.id, title: t.title, date: (_a = t.created_at) === null || _a === void 0 ? void 0 : _a.slice(0, 10), status: t.status, duration: "0:00" }); }));
+            if (tapeRows) {
+                setTapes(tapeRows.length > 0
+                    ? tapeRows.map(t => { var _a; return ({ id: t.id, title: t.title, date: ((_a = t.created_at) === null || _a === void 0 ? void 0 : _a.slice(0, 10)) || "", status: t.status || "pending", duration: "0:00" }); })
+                    : []);
             }
         });
     }, []);
@@ -1939,21 +1965,32 @@ function ProfileScreen({ show }) {
         return "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/" + bucket + "/" + path;
     };
     const saveEdit = async () => {
-        setProfile(draft);
+        // Optimistically update UI immediately
+        setProfile(Object.assign({}, draft));
         setSubPage("main");
+        show("Saving…");
         const { data } = await supabase.auth.getUser();
         if (data.user) {
-            await supabase.from("profiles").update({
-                name: draft.name, handle: draft.handle, bio: draft.bio,
-                location: draft.location, website: draft.website, role: draft.role,
-                avatar_url: draft.avatar, banner_url: draft.banner,
+            const { error } = await supabase.from("profiles").update({
+                name: draft.name,
+                handle: draft.handle,
+                bio: draft.bio,
+                location: draft.location,
+                website: draft.website,
+                role: draft.role,
+                avatar_url: draft.avatar,
+                banner_url: draft.banner,
             }).eq("id", data.user.id);
+            if (error) {
+                show("❌ Save failed — try again");
+                return;
+            }
         }
         show("Profile updated ✓");
     };
     const [privacy, setPrivacy] = (0, react_1.useState)({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
-    const [media, setMedia] = usePersistedState("sl_profile_media", INIT_PROFILE_MEDIA);
-    const [tapes, setTapes] = usePersistedState("sl_profile_tapes", INIT_PROFILE_TAPES);
+    const [media, setMedia] = (0, react_1.useState)([]); // loaded from Supabase
+    const [tapes, setTapes] = (0, react_1.useState)([]); // loaded from Supabase
     const [lightbox, setLightbox] = (0, react_1.useState)(null); // item to fullscreen
     // Upload photo/video to Supabase Storage
     const handleMediaUpload = async (e) => {
@@ -1994,9 +2031,21 @@ function ProfileScreen({ show }) {
             show("🎬 Self tape saved!");
         }
     };
-    const removeMedia = (id) => { setMedia(p => p.filter(m => m.id !== id)); show("Removed."); };
-    const removeTape = (id) => { setTapes(p => p.filter(t => t.id !== id)); show("Removed."); };
-    const markTapeSent = (id) => { setTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: "submitted" }) : t)); show("Marked as submitted ✓"); };
+    const removeMedia = async (id) => {
+        setMedia(p => p.filter(m => m.id !== id));
+        supabase.from("media").delete().eq("id", id);
+        show("Removed.");
+    };
+    const removeTape = async (id) => {
+        setTapes(p => p.filter(t => t.id !== id));
+        supabase.from("self_tapes").delete().eq("id", id);
+        show("Removed.");
+    };
+    const markTapeSent = async (id) => {
+        setTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: "submitted" }) : t));
+        supabase.from("self_tapes").update({ status: "submitted" }).eq("id", id);
+        show("Marked as submitted ✓");
+    };
     if (subPage === "edit")
         return React.createElement(EditProfile, { draft: draft, setDraft: setDraft, onSave: saveEdit, onBack: () => setSubPage("main"), show: show, profile: profile, setProfile: setProfile });
     if (subPage === "settings")
@@ -2006,13 +2055,16 @@ function ProfileScreen({ show }) {
     return (React.createElement("div", { style: { height: "calc(100vh - 72px)", overflowY: "auto", position: "relative" } },
         React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 160, position: "relative" } },
             React.createElement("label", { style: { position: "absolute", inset: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } },
-                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => {
+                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: async (e) => {
                         var _a;
                         const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
                         if (!f)
                             return;
                         const r = new FileReader();
-                        r.onload = ev => setProfile(p => (Object.assign(Object.assign({}, p), { banner: ev.target.result })));
+                        r.onload = ev => {
+                            setProfile(p => (Object.assign(Object.assign({}, p), { banner: ev.target.result })));
+                            setDraft(p => (Object.assign(Object.assign({}, p), { banner: ev.target.result })));
+                        };
                         r.readAsDataURL(f);
                     } }),
                 profile.banner
@@ -2136,7 +2188,10 @@ function EditProfile({ draft, setDraft, onSave, onBack, show, profile, setProfil
                         if (!f)
                             return;
                         const r = new FileReader();
-                        r.onload = ev => { setDraft(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result }))); setProfile(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result }))); };
+                        r.onload = ev => {
+                            setDraft(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result })));
+                            setProfile(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result })));
+                        };
                         r.readAsDataURL(f);
                     } }),
                 React.createElement("div", { style: { width: 82, height: 82, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28 } }, (draft.avatar || profile.avatar)
@@ -2457,10 +2512,23 @@ function InboxOverlay({ messages, setMessages, onClose, show }) {
 function CastingScreen({ show }) {
     const [sub, setSub] = (0, react_1.useState)("calls");
     // FIX 1: persisted casting data
-    const [castingCalls, setCastingCalls] = usePersistedState("sl_casting_calls", INIT_CASTING_CALLS);
-    const [auditions, setAuditions] = usePersistedState("sl_auditions", INIT_AUDITIONS);
-    const [selfTapes, setSelfTapes] = usePersistedState("sl_selftapes", INIT_SELFTAPES);
-    const [credits, setCredits] = usePersistedState("sl_credits", INIT_CREDITS);
+    const [castingCalls, setCastingCalls] = (0, react_1.useState)(INIT_CASTING_CALLS);
+    const [auditions, setAuditions] = (0, react_1.useState)(INIT_AUDITIONS);
+    const [selfTapes, setSelfTapes] = (0, react_1.useState)(INIT_SELFTAPES);
+    const [credits, setCredits] = (0, react_1.useState)(INIT_CREDITS);
+    // Load casting data from Supabase on mount
+    (0, react_1.useEffect)(() => {
+        supabase.auth.getUser().then(async ({ data }) => {
+            if (!data.user)
+                return;
+            const uid = data.user.id;
+            // Load self tapes from DB
+            const { data: tapes } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+            if (tapes && tapes.length > 0) {
+                setSelfTapes(tapes.map(t => ({ id: t.id, show: t.title, scene: t.scene || "", deadline: t.deadline || "", submitTo: t.submit_to || "", status: t.status || "pending", emoji: "📹" })));
+            }
+        });
+    }, []);
     const [callFilter, setCallFilter] = (0, react_1.useState)("all");
     const [audFilter, setAudFilter] = (0, react_1.useState)("upcoming");
     const [modal, setModal] = (0, react_1.useState)(null);
