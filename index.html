@@ -1201,7 +1201,7 @@ function AudioPostTab({ show, setTab }) {
         clearInterval(recTimer.current);
         cancelAnimationFrame(animRef.current);
     }, []);
-    const publish = (saveToProfile = false) => {
+    const publish = async (saveToProfile = false) => {
         if (!title.trim()) {
             show("⚠️ Add a title first");
             return;
