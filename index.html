@@ -968,16 +968,29 @@ function VideoPostTab({ show, setTab }) {
         }
         const { data: { user } } = await supabase.auth.getUser();
         let mediaUrl = null;
-        // Upload video to Supabase Storage if we have a file/blob
-        if ((videoFile || recBlob) && user) {
-            const blob = recBlob || videoFile;
-            const ext = recBlob ? "webm" : (videoFile.name.split(".").pop() || "mp4");
+        // Upload video/audio to Supabase Storage
+        const fileOrBlob = recBlob || videoFile;
+        if (fileOrBlob && user) {
+            show("⬆️ Uploading…");
+            const ext = recBlob ? "webm" : ((videoFile.name || "video").split(".").pop() || "mp4");
             const path = user.id + "/" + Date.now() + "." + ext;
-            const { data: up } = await supabase.from("_noop").select().limit(0); // warm up
-            const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + path, { method: "POST", headers: { "Authorization": "Bearer " + localStorage.getItem("sb_token"), "Content-Type": blob.type || "video/webm", "x-upsert": "true" },
-                body: blob });
+            const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + path, {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + localStorage.getItem("sb_token"),
+                    "Content-Type": fileOrBlob.type || "video/webm",
+                    "x-upsert": "true",
+                    "Cache-Control": "3600",
+                },
+                body: fileOrBlob,
+            });
             if (uploadRes.ok) {
                 mediaUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/media/" + path;
+            }
+            else {
+                const errText = await uploadRes.text().catch(() => "");
+                console.error("Video upload failed:", uploadRes.status, errText);
+                show("⚠️ Upload failed — your post will save without the video file");
             }
         }
         if (saveToProfile) {
@@ -1949,17 +1962,50 @@ function ProfileScreen({ show }) {
         });
     }, []);
     // Upload file to Supabase Storage and return public URL
-    const uploadToStorage = async (file, bucket, folder) => {
-        var _a;
+    const uploadToStorage = async (file, bucket, folder, onProgress) => {
         const token = localStorage.getItem("sb_token");
-        if (!token || !file)
+        if (!token) {
+            console.warn("No auth token for upload");
             return null;
-        const ext = ((_a = file.name) === null || _a === void 0 ? void 0 : _a.split(".").pop()) || "bin";
-        const path = folder + "/" + Date.now() + "." + ext;
-        const res = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/" + bucket + "/" + path, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": file.type || "application/octet-stream", "x-upsert": "true" }, body: file });
-        if (!res.ok)
+        }
+        if (!file) {
+            console.warn("No file to upload");
             return null;
-        return "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/" + bucket + "/" + path;
+        }
+        // Sanitise filename
+        const rawExt = (file.name || "file").split(".").pop().toLowerCase() || "bin";
+        const ext = rawExt.length > 5 ? "bin" : rawExt;
+        const safeName = Date.now() + "." + ext;
+        const path = folder + "/" + safeName;
+        const url = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/" + bucket + "/" + path;
+        try {
+            if (onProgress)
+                onProgress(10);
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + token,
+                    "Content-Type": file.type || "application/octet-stream",
+                    "x-upsert": "true",
+                    "Cache-Control": "3600",
+                },
+                body: file,
+            });
+            if (onProgress)
+                onProgress(90);
+            if (!res.ok) {
+                const errText = await res.text().catch(() => res.status);
+                console.error("Storage upload failed:", res.status, errText);
+                return null;
+            }
+            if (onProgress)
+                onProgress(100);
+            return "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/" + bucket + "/" + path;
+        }
+        catch (e) {
+            console.error("Storage upload error:", e);
+            return null;
+        }
     };
     const saveEdit = async () => {
         // Optimistically update UI immediately
@@ -1992,40 +2038,87 @@ function ProfileScreen({ show }) {
     // Upload photo/video to Supabase Storage
     const handleMediaUpload = async (e) => {
         var _a;
-        const file = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
-        if (!file)
+        const files = Array.from(e.target.files || []);
+        if (!files.length)
             return;
-        const isVideo = file.type.startsWith("video/");
-        // Show local preview immediately
-        const localUrl = URL.createObjectURL(file);
-        const newItem = { id: Date.now(), type: isVideo ? "video" : "photo", url: localUrl, caption: file.name.replace(/\.[^.]+$/, "") };
-        setMedia(p => [newItem, ...p]);
-        show(isVideo ? "🎬 Uploading video…" : "📸 Uploading photo…");
-        // Upload to storage
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            const storageUrl = await uploadToStorage(file, "media", user.id);
-            const finalUrl = storageUrl || localUrl;
-            setMedia(p => p.map(m => m.id === newItem.id ? Object.assign(Object.assign({}, m), { url: finalUrl }) : m));
-            supabase.from("media").insert({ user_id: user.id, type: isVideo ? "video" : "photo", url: finalUrl, caption: newItem.caption });
-            show(isVideo ? "🎬 Video saved to profile!" : "📸 Photo saved to profile!");
+        for (const file of files) {
+            const isVideo = file.type.startsWith("video/");
+            const localUrl = URL.createObjectURL(file);
+            const tempId = Date.now() + Math.random();
+            const caption = file.name.replace(/\.[^.]+$/, "");
+            // Show immediately with local preview
+            setMedia(p => [{ id: tempId, type: isVideo ? "video" : "photo", url: localUrl, caption, uploading: true }, ...p]);
+            show(isVideo ? "🎬 Uploading video…" : "📸 Uploading photo…");
+            if (!user) {
+                // Not logged in — keep local only
+                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
+                show("⚠️ Sign in to save media permanently");
+                continue;
+            }
+            const storageUrl = await uploadToStorage(file, "media", user.id, (pct) => {
+                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { progress: pct }) : m));
+            });
+            if (storageUrl) {
+                // Replace temp local URL with permanent storage URL
+                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { url: storageUrl, uploading: false, progress: null }) : m));
+                // Save to database
+                const { data: row } = await supabase.from("media").insert({
+                    user_id: user.id,
+                    type: isVideo ? "video" : "photo",
+                    url: storageUrl,
+                    caption,
+                });
+                // Update id to the real DB id
+                if ((_a = row === null || row === void 0 ? void 0 : row[0]) === null || _a === void 0 ? void 0 : _a.id) {
+                    setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { id: row[0].id }) : m));
+                }
+                show(isVideo ? "🎬 Video saved!" : "📸 Photo saved!");
+            }
+            else {
+                // Upload failed — keep local preview but warn
+                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
+                show("⚠️ Upload failed — check your connection");
+            }
         }
     };
     // Upload self tape to Supabase Storage
     const handleTapeUpload = async (e) => {
-        var _a;
+        var _a, _b;
         const file = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
         if (!file)
             return;
         const localUrl = URL.createObjectURL(file);
-        const newTape = { id: Date.now(), title: file.name.replace(/\.[^.]+$/, ""), date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }), status: "pending", duration: "0:00", url: localUrl };
+        const tempId = Date.now();
+        const title = file.name.replace(/\.[^.]+$/, "");
+        const newTape = { id: tempId, title, date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }), status: "pending", duration: "0:00", url: localUrl, uploading: true };
         setTapes(p => [newTape, ...p]);
         show("🎬 Uploading self tape…");
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            const storageUrl = await uploadToStorage(file, "media", user.id + "/tapes");
-            supabase.from("self_tapes").insert({ user_id: user.id, title: newTape.title, status: "pending", media_url: storageUrl || localUrl });
+        if (!user) {
+            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
+            show("⚠️ Sign in to save self tapes permanently");
+            return;
+        }
+        const storageUrl = await uploadToStorage(file, "media", user.id + "/tapes", (pct) => {
+            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { progress: pct }) : t));
+        });
+        if (storageUrl) {
+            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false, progress: null, url: storageUrl }) : t));
+            const { data: row } = await supabase.from("self_tapes").insert({
+                user_id: user.id,
+                title,
+                status: "pending",
+                media_url: storageUrl,
+            });
+            if ((_b = row === null || row === void 0 ? void 0 : row[0]) === null || _b === void 0 ? void 0 : _b.id) {
+                setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { id: row[0].id }) : t));
+            }
             show("🎬 Self tape saved!");
+        }
+        else {
+            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
+            show("⚠️ Upload failed — check your connection");
         }
     };
     const removeMedia = async (id) => {
