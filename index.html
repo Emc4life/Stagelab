@@ -17,31 +17,17 @@ body{background:#08080f;overscroll-behavior:none;-webkit-tap-highlight-color:tra
 </head>
 <body>
 <div id="err"></div>
-<div id="root">
-<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080f">
-<div style="text-align:center">
-<svg width="64" height="64" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="20" y1="80" x2="80" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f5c518"/><stop offset="50%" stop-color="#f07020"/><stop offset="100%" stop-color="#e040a0"/></linearGradient></defs><rect width="100" height="100" rx="20" fill="#4a006e"/><path d="M64 18C80 18 84 28 80 36C76 44 62 48 50 52C36 57 24 63 24 74C24 84 34 88 46 86C54 84 62 80 66 74" stroke="url(#g)" stroke-width="14" stroke-linecap="round" fill="none"/></svg>
-<p style="color:#c9a84c;font-family:sans-serif;margin-top:16px;letter-spacing:.1em;font-size:13px">LOADING...</p>
-</div></div></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080f"><div style="text-align:center"><svg width="64" height="64" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="20" y1="80" x2="80" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#f5c518"/><stop offset="50%" stop-color="#f07020"/><stop offset="100%" stop-color="#e040a0"/></linearGradient></defs><rect width="100" height="100" rx="20" fill="#4a006e"/><path d="M64 18C80 18 84 28 80 36C76 44 62 48 50 52C36 57 24 63 24 74C24 84 34 88 46 86C54 84 62 80 66 74" stroke="url(#g)" stroke-width="14" stroke-linecap="round" fill="none"/></svg><p style="color:#c9a84c;font-family:sans-serif;margin-top:16px;letter-spacing:.1em;font-size:13px">LOADING STAGELAB...</p></div></div></div>
 <script>
-window.onerror=function(m,s,l,c,e){
-  document.getElementById('err').style.display='block';
-  document.getElementById('err').textContent='Error on line '+l+':
-'+m+'
-
-’+(e&&e.stack?e.stack:‘no stack’);
-return true;
-};
-window.addEventListener(‘unhandledrejection’,function(e){
-document.getElementById(‘err’).style.display=‘block’;
-document.getElementById(‘err’).textContent=’Promise error:
-’+(e.reason&&e.reason.stack?e.reason.stack:String(e.reason));
-});
+window.onerror=function(m,s,l,c,e){var b=document.getElementById('err');b.style.display='block';b.textContent='Error line '+l+':\n'+m+'\n\n'+(e&&e.stack?e.stack:'');return true;};
+window.addEventListener('unhandledrejection',function(e){var b=document.getElementById('err');b.style.display='block';b.textContent='Promise error:\n'+(e.reason&&e.reason.stack?e.reason.stack:String(e.reason));});
 </script>
-
 <script>
 "use strict";
 const { useState, useRef, useEffect, useCallback } = React;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = StageLab;
+const react_1 = require("react");
 // ── Supabase client ──────────────────────────────────────────────────
 const SUPA_URL = "https://dsegdddquztgkdwyzbai.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZWdkZGRxdXp0Z2tkd3l6YmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTMxODUsImV4cCI6MjA5MTE4OTE4NX0.vF76Ptppf7-Z_oNzyr3XEtlwc6xp_3H78Foktx0-En0";
@@ -267,7 +253,7 @@ const INIT_CREDITS = [
 const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 // ══════════════════════ PERSISTENCE HELPERS ══════════════════════════
 function usePersistedState(key, init) {
-    const [val, setVal] = useState(() => {
+    const [val, setVal] = (0, react_1.useState)(() => {
         try {
             const raw = localStorage.getItem(key);
             return raw ? JSON.parse(raw) : init;
@@ -323,19 +309,37 @@ const SLogo = ({ size = 32, showText = false, textSize = 17 }) => (React.createE
     showText && (React.createElement("span", { style: { fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: textSize, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1 } }, "StageLab"))));
 // ══════════════════════════════ ROOT ════════════════════════════════
 function StageLab() {
-    const [page, setPage] = useState("loading");
-    const [tab, setTab] = useState(0);
-    const [session, setSession] = useState(null);
-    useEffect(() => {
-        // Check for existing session
+    const [page, setPage] = (0, react_1.useState)("loading");
+    const [tab, setTab] = (0, react_1.useState)(0);
+    const [session, setSession] = (0, react_1.useState)(null);
+    const [isNewUser, setIsNewUser] = (0, react_1.useState)(false);
+    (0, react_1.useEffect)(() => {
         supabase.auth.getSession().then(({ data }) => {
             setSession(data.session);
             setPage(data.session ? "app" : "auth");
         });
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
             setSession(s);
-            setPage(s ? "app" : "auth");
+            if (s) {
+                // Check if this is a brand new signup — profile will have no role set
+                if (event === "SIGNED_IN") {
+                    const { data: prof } = await supabase.from("profiles").select("role,bio").eq("id", s.user.id).single();
+                    // New user = profile exists but role/bio are empty
+                    if (prof && !prof.role && !prof.bio) {
+                        setIsNewUser(true);
+                        setPage("onboard");
+                    }
+                    else {
+                        setPage("app");
+                    }
+                }
+                else {
+                    setPage("app");
+                }
+            }
+            else {
+                setPage("auth");
+            }
         });
         return () => subscription.unsubscribe();
     }, []);
@@ -344,18 +348,20 @@ function StageLab() {
             React.createElement("style", null, CSS),
             React.createElement(SLogo, { size: 60 })));
     if (page === "auth")
-        return React.createElement(AuthScreen, { onEnter: () => setPage("app") });
+        return React.createElement(AuthScreen, { onEnter: () => setPage("app"), onNewUser: () => setPage("onboard") });
+    if (page === "onboard")
+        return React.createElement(OnboardScreen, { onDone: () => setPage("app"), session: session });
     return React.createElement(MainApp, { tab: tab, setTab: setTab, session: session });
 }
 // ════════════════════════════════ AUTH ══════════════════════════════
-function AuthScreen({ onEnter }) {
-    const [mode, setMode] = useState(0); // 0=signin 1=signup
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [toast, setToast] = useState("");
+function AuthScreen({ onEnter, onNewUser }) {
+    const [mode, setMode] = (0, react_1.useState)(0); // 0=signin 1=signup
+    const [name, setName] = (0, react_1.useState)("");
+    const [email, setEmail] = (0, react_1.useState)("");
+    const [password, setPassword] = (0, react_1.useState)("");
+    const [loading, setLoading] = (0, react_1.useState)(false);
+    const [error, setError] = (0, react_1.useState)("");
+    const [toast, setToast] = (0, react_1.useState)("");
     const showToast = (m) => { setToast(m); setTimeout(() => setToast(""), 2600); };
     const submit = async () => {
         if (!email.trim() || !password.trim()) {
@@ -385,8 +391,8 @@ function AuthScreen({ onEnter }) {
                 });
                 if (err)
                     throw err;
-                showToast("Account created! Check your email to confirm. 🎉");
-                setTimeout(onEnter, 1200);
+                showToast("Account created! Setting up your profile… 🎉");
+                setTimeout(() => onNewUser ? onNewUser() : onEnter(), 1200);
             }
         }
         catch (e) {
@@ -412,6 +418,128 @@ function AuthScreen({ onEnter }) {
         toast && React.createElement(Toast, { msg: toast })));
 }
 const AInput = ({ placeholder, type = "text" }) => (React.createElement("input", { type: type, placeholder: placeholder, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }));
+// ═══════════════════════════ ONBOARD ═══════════════════════════════
+const ROLES = ["Actor", "Singer", "Dancer", "Composer", "Lyricist", "Musical Director", "Director", "Choreographer", "Playwright", "Producer", "Stage Manager", "Designer", "Pit Musician", "Other"];
+const SKILLS_LIST = ["Soprano", "Mezzo", "Alto", "Tenor", "Baritone", "Bass", "Jazz", "Classical", "Contemporary", "Hip-Hop", "Tap", "Ballet", "Character", "Improv", "Piano", "Guitar", "Violin", "Conducting"];
+function OnboardScreen({ onDone, session }) {
+    var _a, _b;
+    const [step, setStep] = (0, react_1.useState)(0); // 0=role 1=bio 2=photo
+    const [role, setRole] = (0, react_1.useState)("");
+    const [bio, setBio] = (0, react_1.useState)("");
+    const [location, setLocation] = (0, react_1.useState)("");
+    const [handle, setHandle] = (0, react_1.useState)("");
+    const [skills, setSkills] = (0, react_1.useState)([]);
+    const [avatar, setAvatar] = (0, react_1.useState)(null);
+    const [saving, setSaving] = (0, react_1.useState)(false);
+    const [name, setName] = (0, react_1.useState)(((_b = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.user_metadata) === null || _b === void 0 ? void 0 : _b.name) || "");
+    const toggleSkill = (s) => setSkills(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
+    const saveAndContinue = async () => {
+        var _a;
+        if (step < 2) {
+            setStep(s => s + 1);
+            return;
+        }
+        // Final save to Supabase
+        setSaving(true);
+        const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
+        if (uid) {
+            let avatarUrl = null;
+            if (avatar) {
+                // Upload avatar
+                const res = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/avatars/" + uid + "/avatar.jpg", { method: "POST", headers: { "Authorization": "Bearer " + localStorage.getItem("sb_token"), "Content-Type": "image/jpeg", "x-upsert": "true" }, body: await (await fetch(avatar)).blob() });
+                if (res.ok)
+                    avatarUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/avatars/" + uid + "/avatar.jpg";
+            }
+            await supabase.from("profiles").update({
+                name, handle: handle || ("@" + (name || "user").toLowerCase().replace(/\s+/g, "_")),
+                role, bio, location,
+                avatar_url: avatarUrl,
+            }).eq("id", uid);
+        }
+        setSaving(false);
+        onDone();
+    };
+    const STEPS = ["Your Role", "About You", "Profile Photo"];
+    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#08040e)", minHeight: "100vh", display: "flex", flexDirection: "column", color: "#fff" } },
+        React.createElement("style", null, CSS),
+        React.createElement("div", { style: { padding: "20px 24px 0" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+                React.createElement(SLogo, { size: 28, showText: true, textSize: 14 }),
+                React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)" } },
+                    "Step ",
+                    step + 1,
+                    " of 3")),
+            React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2 } },
+                React.createElement("div", { style: { width: `${((step + 1) / 3) * 100}%`, height: "100%", background: "linear-gradient(90deg,#c9a84c,#e8a87c)", borderRadius: 2, transition: "width 0.4s ease" } }))),
+        React.createElement("div", { style: { flex: 1, padding: "32px 24px 40px", overflowY: "auto" } },
+            step === 0 && (React.createElement("div", { className: "fade-in" },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "What's your role?"),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 } }, "Tell the community what you do in musical theatre"),
+                React.createElement("div", { style: { marginBottom: 20 } },
+                    React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "YOUR NAME"),
+                    React.createElement("input", { value: name, onChange: e => setName(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", marginBottom: 14 }, placeholder: "Your stage name" }),
+                    React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "HANDLE"),
+                    React.createElement("div", { style: { position: "relative" } },
+                        React.createElement("span", { style: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.4)", fontSize: 15 } }, "@"),
+                        React.createElement("input", { value: handle, onChange: e => setHandle(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase()), style: { width: "100%", padding: "13px 16px 13px 28px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none" }, placeholder: "yourhandle" }))),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "PRIMARY ROLE"),
+                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 } }, ROLES.map(r => (React.createElement("button", { key: r, onClick: () => setRole(r), style: { padding: "10px 16px", background: role === r ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: `1px solid ${role === r ? "transparent" : "rgba(255,255,255,0.12)"}`, borderRadius: 24, color: role === r ? "#1a0a2e" : "rgba(255,255,255,0.7)", fontWeight: role === r ? 700 : 400, fontSize: 13, cursor: "pointer", transition: "all 0.15s" } }, r)))),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } },
+                    "SKILLS & VOICE TYPE ",
+                    React.createElement("span", { style: { color: "rgba(255,255,255,0.3)", fontWeight: 400 } }, "(pick all that apply)")),
+                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 } }, SKILLS_LIST.map(s => (React.createElement("button", { key: s, onClick: () => toggleSkill(s), style: { padding: "7px 14px", background: skills.includes(s) ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.04)", border: `1px solid ${skills.includes(s) ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: skills.includes(s) ? "#c9a84c" : "rgba(255,255,255,0.55)", fontWeight: skills.includes(s) ? 700 : 400, fontSize: 12, cursor: "pointer" } }, s)))))),
+            step === 1 && (React.createElement("div", { className: "fade-in" },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "About you"),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 } }, "Help collaborators find and connect with you"),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 } }, "BIO"),
+                React.createElement("textarea", { value: bio, onChange: e => setBio(e.target.value), rows: 5, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", resize: "none", marginBottom: 20, lineHeight: 1.6 }, placeholder: "Tell your story \u2014 your training, credits, what you're working on, what you're looking for\u2026" }),
+                React.createElement("div", { style: { textAlign: "right", fontSize: 11, color: bio.length > 300 ? "#f87171" : "rgba(255,255,255,0.3)", marginTop: -16, marginBottom: 20 } },
+                    bio.length,
+                    "/300"),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 } }, "LOCATION"),
+                React.createElement("input", { value: location, onChange: e => setLocation(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", marginBottom: 24 }, placeholder: "City, State (e.g. San Diego, CA)" }),
+                (bio || location) && (React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px", marginBottom: 8 } },
+                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 8 } }, "PROFILE PREVIEW"),
+                    React.createElement("div", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, name || "Your Name"),
+                    React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8 } }, role || "Your Role"),
+                    bio && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 } }, bio),
+                    location && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 8 } },
+                        "\uD83D\uDCCD ",
+                        location))))),
+            step === 2 && (React.createElement("div", { className: "fade-in" },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "Add a photo"),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 32 } }, "Help people recognise you in the community"),
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 32 } },
+                    React.createElement("div", { style: { width: 120, height: 120, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, position: "relative" } }, avatar
+                        ? React.createElement("img", { src: avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : React.createElement("span", { style: { fontSize: 48, color: "rgba(255,255,255,0.3)" } }, "\uD83D\uDC64")),
+                    React.createElement("label", { style: { cursor: "pointer" } },
+                        React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => {
+                                var _a;
+                                const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
+                                if (!f)
+                                    return;
+                                const r = new FileReader();
+                                r.onload = ev => setAvatar(ev.target.result);
+                                r.readAsDataURL(f);
+                            } }),
+                        React.createElement("div", { style: { padding: "12px 28px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 24, color: "#c9a84c", fontWeight: 700, fontSize: 14, cursor: "pointer" } }, avatar ? "Change Photo" : "📷 Choose Photo")),
+                    !avatar && (React.createElement("button", { onClick: () => onDone(), style: { marginTop: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "Skip for now"))),
+                React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px" } },
+                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 12 } }, "YOUR PROFILE SUMMARY"),
+                    React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center" } },
+                        React.createElement("div", { style: { width: 52, height: 52, borderRadius: "50%", border: "2px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.15)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, avatar ? React.createElement("img", { src: avatar, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 22 } }, "\uD83D\uDC64")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif" } }, name || "Your Name"),
+                            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, role || "Your Role"),
+                            location && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 2 } },
+                                "\uD83D\uDCCD ",
+                                location))),
+                    skills.length > 0 && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 } }, skills.slice(0, 6).map(s => (React.createElement("span", { key: s, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 20, padding: "3px 10px", fontSize: 11, color: "#c9a84c" } }, s))))))))),
+        React.createElement("div", { style: { padding: "16px 24px 40px", background: "linear-gradient(0deg,rgba(8,4,14,0.98),transparent)", flexShrink: 0 } },
+            React.createElement("button", { onClick: saveAndContinue, disabled: saving || (step === 0 && !role), style: { width: "100%", padding: "16px", background: (saving || (step === 0 && !role)) ? "rgba(255,255,255,0.08)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: (saving || (step === 0 && !role)) ? "rgba(255,255,255,0.3)" : "#1a0a2e", fontWeight: 700, fontSize: 16, cursor: (saving || (step === 0 && !role)) ? "not-allowed" : "pointer" } }, saving ? "Creating your profile…" : step < 2 ? "Continue →" : "🎭 Enter StageLab"),
+            step > 0 && (React.createElement("button", { onClick: () => setStep(s => s - 1), style: { width: "100%", marginTop: 10, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "\u2190 Back")))));
+}
 // ═══════════════════════════ MAIN APP ═══════════════════════════════
 // 5-tab bottom nav — Feed | Create | Discover | Studio | Me
 const NAV = [
@@ -422,9 +550,9 @@ const NAV = [
     { icon: "◉", label: "Me" },
 ];
 function MainApp({ tab, setTab, session }) {
-    const [toast, setToast] = useState("");
-    const [liveRoom, setLiveRoom] = useState(null);
-    const [showInbox, setShowInbox] = useState(false);
+    const [toast, setToast] = (0, react_1.useState)("");
+    const [liveRoom, setLiveRoom] = (0, react_1.useState)(null);
+    const [showInbox, setShowInbox] = (0, react_1.useState)(false);
     // FIX 1: persisted state survives refresh
     const [videos, setVideos] = usePersistedState("sl_videos", INIT_VIDEOS);
     const [comments, setComments] = usePersistedState("sl_comments", INIT_COMMENTS);
@@ -459,21 +587,52 @@ function MainApp({ tab, setTab, session }) {
 }
 // ═══════════════════════════ FEED ═══════════════════════════════════
 function FeedScreen({ videos, setVideos, comments, setComments, show }) {
-    const [cur, setCur] = useState(0);
-    const [liked, setLiked] = useState({});
-    const [reposted, setReposted] = useState({});
-    const [modal, setModal] = useState(null);
-    const touchY = useRef(null);
+    const [cur, setCur] = (0, react_1.useState)(0);
+    const [liked, setLiked] = (0, react_1.useState)({});
+    const [reposted, setReposted] = (0, react_1.useState)({});
+    const [modal, setModal] = (0, react_1.useState)(null);
+    const touchY = (0, react_1.useRef)(null);
+    // Load real posts from Supabase on mount
+    (0, react_1.useEffect)(() => {
+        supabase.from("posts").select("*, profiles(name,handle,avatar_url)").eq("visibility", "public").order("created_at", { ascending: false }).limit(20).then(({ data }) => {
+            if (data && data.length > 0) {
+                const mapped = data.map((p, i) => {
+                    var _a, _b, _c;
+                    return ({
+                        id: p.id, creator: ((_a = p.profiles) === null || _a === void 0 ? void 0 : _a.name) || "Unknown",
+                        handle: ((_b = p.profiles) === null || _b === void 0 ? void 0 : _b.handle) || "@user",
+                        avatar: (((_c = p.profiles) === null || _c === void 0 ? void 0 : _c.name) || "U").slice(0, 2).toUpperCase(),
+                        title: p.title, type: p.type || "video",
+                        likes: p.likes || 0, comments: 0, shares: p.shares || 0,
+                        reposts: 0, gifts: 0, media_url: p.media_url,
+                        accent: ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8"][i % 4],
+                        bg: "linear-gradient(160deg,#1a0a2e,#2d1040)",
+                        note: "♪", tier: "silver",
+                    });
+                });
+                setVideos(p => [...mapped, ...p]);
+            }
+        });
+    }, []);
     const swipe = (d) => {
         if (d === "up")
             setCur(p => Math.min(p + 1, videos.length - 1));
         if (d === "down")
             setCur(p => Math.max(p - 1, 0));
     };
-    const toggleLike = (vid) => {
+    const toggleLike = async (vid) => {
         const was = liked[vid.id];
         setLiked(p => (Object.assign(Object.assign({}, p), { [vid.id]: !p[vid.id] })));
         setVideos(p => p.map(v => v.id === vid.id ? Object.assign(Object.assign({}, v), { likes: v.likes + (was ? -1 : 1) }) : v));
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user)
+            return;
+        if (was) {
+            supabase.from("likes").delete().eq("post_id", vid.id).eq("user_id", user.id);
+        }
+        else {
+            supabase.from("likes").insert({ post_id: vid.id, user_id: user.id });
+        }
     };
     const doRepost = (vid) => {
         if (reposted[vid.id])
@@ -495,10 +654,13 @@ function FeedScreen({ videos, setVideos, comments, setComments, show }) {
         setVideos(p => p.map(v => v.id === videoId ? Object.assign(Object.assign({}, v), { subscribed: true }) : v));
         setTimeout(() => setModal(null), 2200);
     };
-    const addComment = (vidId, text) => {
+    const addComment = async (vidId, text) => {
         const nc = { id: Date.now(), user: "Alex Rivera", avatar: "AR", text, time: "now", likes: 0, liked: false };
         setComments(p => (Object.assign(Object.assign({}, p), { [vidId]: [...(p[vidId] || []), nc] })));
         setVideos(p => p.map(v => v.id === vidId ? Object.assign(Object.assign({}, v), { comments: v.comments + 1 }) : v));
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user)
+            supabase.from("comments").insert({ post_id: vidId, user_id: user.id, text });
     };
     return (React.createElement("div", { style: { height: "calc(100vh - 72px)", position: "relative", overflow: "hidden" }, onWheel: e => { if (e.deltaY > 28)
             swipe("up"); if (e.deltaY < -28)
@@ -546,10 +708,10 @@ const Btn = ({ icon, label, onClick, accent, active }) => (React.createElement("
     React.createElement("span", { style: { fontSize: 9, color: "rgba(255,255,255,0.48)", letterSpacing: "0.04em" } }, label)));
 // ── Comments Modal ──────────────────────────────────────────────────
 function CommentsModal({ vid, comments, onAdd, onClose }) {
-    const [text, setText] = useState("");
-    const [localComments, setLocalComments] = useState(comments);
-    const endRef = useRef(null);
-    useEffect(() => { var _a; (_a = endRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" }); }, [localComments]);
+    const [text, setText] = (0, react_1.useState)("");
+    const [localComments, setLocalComments] = (0, react_1.useState)(comments);
+    const endRef = (0, react_1.useRef)(null);
+    (0, react_1.useEffect)(() => { var _a; (_a = endRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" }); }, [localComments]);
     const submit = () => {
         if (!text.trim())
             return;
@@ -584,7 +746,7 @@ function CommentsModal({ vid, comments, onAdd, onClose }) {
 }
 // ── Gift Modal ──────────────────────────────────────────────────────
 function GiftModal({ vid, onGift, onClose }) {
-    const [sent, setSent] = useState(null);
+    const [sent, setSent] = (0, react_1.useState)(null);
     const handleGift = (g) => { setSent(g); setTimeout(() => onGift(g), 900); };
     return (React.createElement(Sheet, { onClose: onClose, height: "auto" }, sent ? (React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 0" } },
         React.createElement("div", { style: { fontSize: 56, marginBottom: 12 } }, sent.emoji),
@@ -607,7 +769,7 @@ function GiftModal({ vid, onGift, onClose }) {
 }
 // ── Subscribe Modal ─────────────────────────────────────────────────
 function SubscribeModal({ vid, onSubscribe, onClose }) {
-    const [done, setDone] = useState(null);
+    const [done, setDone] = (0, react_1.useState)(null);
     const handle = (tier) => { setDone(tier); onSubscribe(vid.id, tier); };
     return (React.createElement(Sheet, { onClose: onClose, height: "88vh" }, done ? (React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", padding: "28px 0" } },
         React.createElement("div", { style: { fontSize: 54 } }, "\u2726"),
@@ -664,7 +826,7 @@ function CreatorModal({ vid, onSubscribe, onClose }) {
 }
 // ═══════════════════════════ CREATE ═════════════════════════════════
 function CreateScreen({ show, setTab }) {
-    const [sub, setSub] = useState(0);
+    const [sub, setSub] = (0, react_1.useState)(0);
     const TABS = ["🎬 Video", "🎵 Audio", "🎨 Poster", "✍️ Lyrics"];
     return (React.createElement("div", { style: { height: "calc(100vh - 72px)", display: "flex", flexDirection: "column" } },
         React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 } }, TABS.map((t, i) => (React.createElement("button", { key: t, onClick: () => setSub(i), style: { flex: 1, padding: "13px 4px", background: "none", border: "none",
@@ -695,31 +857,31 @@ function StepBar({ step, steps }) {
 }
 // ─── Video Post Tab ───────────────────────────────────────────────────
 function VideoPostTab({ show, setTab }) {
-    const [mode, setMode] = useState("upload"); // upload | record
-    const [videoFile, setVideoFile] = useState(null);
-    const [videoURL, setVideoURL] = useState(null);
-    const [thumbnail, setThumbnail] = useState(null);
-    const [title, setTitle] = useState("");
-    const [caption, setCaption] = useState("");
-    const [category, setCategory] = useState("Performance");
-    const [visibility, setVisibility] = useState("public");
-    const [collab, setCollab] = useState(false);
-    const [allowComments, setAllowComments] = useState(true);
-    const [tags, setTags] = useState([]);
-    const [tagIn, setTagIn] = useState("");
-    const [filters, setFilters] = useState({ brightness: 100, contrast: 100, saturation: 100 });
-    const [trim, setTrim] = useState({ start: 0, end: 60 });
-    const [speed, setSpeed] = useState(1);
-    const [volume, setVolume] = useState(80);
-    const [step, setStep] = useState(0);
+    const [mode, setMode] = (0, react_1.useState)("upload"); // upload | record
+    const [videoFile, setVideoFile] = (0, react_1.useState)(null);
+    const [videoURL, setVideoURL] = (0, react_1.useState)(null);
+    const [thumbnail, setThumbnail] = (0, react_1.useState)(null);
+    const [title, setTitle] = (0, react_1.useState)("");
+    const [caption, setCaption] = (0, react_1.useState)("");
+    const [category, setCategory] = (0, react_1.useState)("Performance");
+    const [visibility, setVisibility] = (0, react_1.useState)("public");
+    const [collab, setCollab] = (0, react_1.useState)(false);
+    const [allowComments, setAllowComments] = (0, react_1.useState)(true);
+    const [tags, setTags] = (0, react_1.useState)([]);
+    const [tagIn, setTagIn] = (0, react_1.useState)("");
+    const [filters, setFilters] = (0, react_1.useState)({ brightness: 100, contrast: 100, saturation: 100 });
+    const [trim, setTrim] = (0, react_1.useState)({ start: 0, end: 60 });
+    const [speed, setSpeed] = (0, react_1.useState)(1);
+    const [volume, setVolume] = (0, react_1.useState)(80);
+    const [step, setStep] = (0, react_1.useState)(0);
     // Recording state
-    const [recording, setRecording] = useState(false);
-    const [recTime, setRecTime] = useState(0);
-    const [recBlob, setRecBlob] = useState(null);
-    const videoRef = useRef(null);
-    const mediaRecRef = useRef(null);
-    const streamRef = useRef(null);
-    const recTimer = useRef(null);
+    const [recording, setRecording] = (0, react_1.useState)(false);
+    const [recTime, setRecTime] = (0, react_1.useState)(0);
+    const [recBlob, setRecBlob] = (0, react_1.useState)(null);
+    const videoRef = (0, react_1.useRef)(null);
+    const mediaRecRef = (0, react_1.useRef)(null);
+    const streamRef = (0, react_1.useRef)(null);
+    const recTimer = (0, react_1.useRef)(null);
     const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
     const CATS = ["Performance", "Rehearsal", "Workshop", "Behind the Scenes", "Original Work", "Cover", "Tutorial"];
     const addTag = () => { if (tagIn.trim() && !tags.includes(tagIn.trim())) {
@@ -782,20 +944,44 @@ function VideoPostTab({ show, setTab }) {
         setRecording(false);
     };
     // Cleanup on unmount
-    useEffect(() => () => {
+    (0, react_1.useEffect)(() => () => {
         var _a;
         (_a = streamRef.current) === null || _a === void 0 ? void 0 : _a.getTracks().forEach(t => t.stop());
         clearInterval(recTimer.current);
     }, []);
-    const publish = (saveToProfile = false) => {
+    const publish = async (saveToProfile = false) => {
         if (!title.trim()) {
             show("⚠️ Please add a title before publishing.");
             return;
         }
+        const { data: { user } } = await supabase.auth.getUser();
+        let mediaUrl = null;
+        // Upload video to Supabase Storage if we have a file/blob
+        if ((videoFile || recBlob) && user) {
+            const blob = recBlob || videoFile;
+            const ext = recBlob ? "webm" : (videoFile.name.split(".").pop() || "mp4");
+            const path = user.id + "/" + Date.now() + "." + ext;
+            const { data: up } = await supabase.from("_noop").select().limit(0); // warm up
+            const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + path, { method: "POST", headers: { "Authorization": "Bearer " + localStorage.getItem("sb_token"), "Content-Type": blob.type || "video/webm", "x-upsert": "true" },
+                body: blob });
+            if (uploadRes.ok) {
+                mediaUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/media/" + path;
+            }
+        }
         if (saveToProfile) {
+            if (user && mediaUrl) {
+                supabase.from("media").insert({ user_id: user.id, type: "video", url: mediaUrl, caption: title });
+            }
             show("💾 Saved to your profile media!");
         }
         else {
+            if (user) {
+                supabase.from("posts").insert({
+                    user_id: user.id, type: "video", title, caption,
+                    category, tags, visibility, media_url: mediaUrl,
+                    thumbnail_url: thumbnail, collab_open: collab,
+                });
+            }
             show("🚀 Video published to your feed!");
             setTimeout(() => setTab(0), 600);
         }
@@ -912,29 +1098,29 @@ function VideoPostTab({ show, setTab }) {
 }
 // ─── Audio Post Tab ───────────────────────────────────────────────────
 function AudioPostTab({ show, setTab }) {
-    const [mode, setMode] = useState("upload"); // upload | record
-    const [audioFile, setAudioFile] = useState(null);
-    const [audioURL, setAudioURL] = useState(null);
-    const [title, setTitle] = useState("");
-    const [caption, setCaption] = useState("");
-    const [type, setType] = useState("Recording");
-    const [tags, setTags] = useState([]);
-    const [tagIn, setTagIn] = useState("");
-    const [playing, setPlaying] = useState(false);
-    const [volume, setVolume] = useState(80);
-    const [collab, setCollab] = useState(false);
-    const [visibility, setVisibility] = useState("public");
+    const [mode, setMode] = (0, react_1.useState)("upload"); // upload | record
+    const [audioFile, setAudioFile] = (0, react_1.useState)(null);
+    const [audioURL, setAudioURL] = (0, react_1.useState)(null);
+    const [title, setTitle] = (0, react_1.useState)("");
+    const [caption, setCaption] = (0, react_1.useState)("");
+    const [type, setType] = (0, react_1.useState)("Recording");
+    const [tags, setTags] = (0, react_1.useState)([]);
+    const [tagIn, setTagIn] = (0, react_1.useState)("");
+    const [playing, setPlaying] = (0, react_1.useState)(false);
+    const [volume, setVolume] = (0, react_1.useState)(80);
+    const [collab, setCollab] = (0, react_1.useState)(false);
+    const [visibility, setVisibility] = (0, react_1.useState)("public");
     // Recording
-    const [recording, setRecording] = useState(false);
-    const [recTime, setRecTime] = useState(0);
-    const [recBlob, setRecBlob] = useState(null);
-    const [waveData, setWaveData] = useState(Array.from({ length: 48 }, () => 30 + Math.random() * 50));
-    const mediaRecRef = useRef(null);
-    const streamRef = useRef(null);
-    const recTimer = useRef(null);
-    const audioRef = useRef(null);
-    const analyserRef = useRef(null);
-    const animRef = useRef(null);
+    const [recording, setRecording] = (0, react_1.useState)(false);
+    const [recTime, setRecTime] = (0, react_1.useState)(0);
+    const [recBlob, setRecBlob] = (0, react_1.useState)(null);
+    const [waveData, setWaveData] = (0, react_1.useState)(Array.from({ length: 48 }, () => 30 + Math.random() * 50));
+    const mediaRecRef = (0, react_1.useRef)(null);
+    const streamRef = (0, react_1.useRef)(null);
+    const recTimer = (0, react_1.useRef)(null);
+    const audioRef = (0, react_1.useRef)(null);
+    const analyserRef = (0, react_1.useRef)(null);
+    const animRef = (0, react_1.useRef)(null);
     const TYPES = ["Recording", "Demo", "Live Take", "Rehearsal Audio", "Composition", "Voice Memo"];
     const addTag = () => { if (tagIn.trim()) {
         setTags(p => [...p, tagIn.trim()]);
@@ -994,7 +1180,7 @@ function AudioPostTab({ show, setTab }) {
         audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause();
         setPlaying(p => !p);
     };
-    useEffect(() => () => {
+    (0, react_1.useEffect)(() => () => {
         var _a;
         (_a = streamRef.current) === null || _a === void 0 ? void 0 : _a.getTracks().forEach(t => t.stop());
         clearInterval(recTimer.current);
@@ -1009,6 +1195,11 @@ function AudioPostTab({ show, setTab }) {
             show("💾 Saved to your profile media!");
         }
         else {
+            // Save audio post to Supabase
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                supabase.from("posts").insert({ user_id: user.id, type: "audio", title, caption, tags, visibility, collab_open: collab });
+            }
             show("🎵 Audio posted to your feed!");
             setTimeout(() => setTab(0), 600);
         }
@@ -1083,16 +1274,16 @@ function AudioPostTab({ show, setTab }) {
 }
 // ─── Poster Maker Tab ─────────────────────────────────────────────────
 function PosterMakerTab({ show, setTab }) {
-    const [pTheme, setPTheme] = useState(0);
-    const [pTitle, setPTitle] = useState("The Midnight Serenade");
-    const [pSub, setPSub] = useState("An Original Musical");
-    const [pDate, setPDate] = useState("April 19, 2026");
-    const [pVenue, setPVenue] = useState("The Grand Stage Theatre");
-    const [pTag, setPTag] = useState("WORLD PREMIERE");
-    const [pCast, setPCast] = useState("");
-    const [pDirector, setPDirector] = useState("");
-    const [bgImg, setBgImg] = useState(null);
-    const [logoImg, setLogoImg] = useState(null);
+    const [pTheme, setPTheme] = (0, react_1.useState)(0);
+    const [pTitle, setPTitle] = (0, react_1.useState)("The Midnight Serenade");
+    const [pSub, setPSub] = (0, react_1.useState)("An Original Musical");
+    const [pDate, setPDate] = (0, react_1.useState)("April 19, 2026");
+    const [pVenue, setPVenue] = (0, react_1.useState)("The Grand Stage Theatre");
+    const [pTag, setPTag] = (0, react_1.useState)("WORLD PREMIERE");
+    const [pCast, setPCast] = (0, react_1.useState)("");
+    const [pDirector, setPDirector] = (0, react_1.useState)("");
+    const [bgImg, setBgImg] = (0, react_1.useState)(null);
+    const [logoImg, setLogoImg] = (0, react_1.useState)(null);
     const pt = POSTER_THEMES[pTheme];
     const handleBgImg = (e) => { var _a; const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0]; if (!f)
         return; const r = new FileReader(); r.onload = ev => setBgImg(ev.target.result); r.readAsDataURL(f); };
@@ -1137,15 +1328,15 @@ function PosterMakerTab({ show, setTab }) {
 }
 // ─── Lyrics Post Tab ──────────────────────────────────────────────────
 function LyricsPostTab({ show, setTab }) {
-    const [title, setTitle] = useState("");
-    const [lyrics, setLyrics] = useState("");
-    const [mood, setMood] = useState("Original");
-    const [collab, setCollab] = useState(false);
-    const [tags, setTags] = useState([]);
-    const [tagIn, setTagIn] = useState("");
-    const [theme, setTheme] = useState(0);
-    const [accentCol, setAccentCol] = useState("#c9a84c");
-    const [showPrev, setShowPrev] = useState(true);
+    const [title, setTitle] = (0, react_1.useState)("");
+    const [lyrics, setLyrics] = (0, react_1.useState)("");
+    const [mood, setMood] = (0, react_1.useState)("Original");
+    const [collab, setCollab] = (0, react_1.useState)(false);
+    const [tags, setTags] = (0, react_1.useState)([]);
+    const [tagIn, setTagIn] = (0, react_1.useState)("");
+    const [theme, setTheme] = (0, react_1.useState)(0);
+    const [accentCol, setAccentCol] = (0, react_1.useState)("#c9a84c");
+    const [showPrev, setShowPrev] = (0, react_1.useState)(true);
     const MOODS = ["Original", "Ballad", "Up-Tempo", "Jazz", "Rock", "Contemporary", "Folk", "Cabaret"];
     const ACCENTS = ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#ef4444", "#4ade80"];
     const STRUCTURES = ["Verse", "Pre-Chorus", "Chorus", "Bridge", "Outro", "Tag"];
@@ -1240,10 +1431,10 @@ const DISCOVER_CALLS = [
     { id: 4, title: "Lead Vocalist — Static", company: "New Works Festival", deadline: "May 15", type: "Collab Call", paid: true, remote: true, accent: "#e8a87c", desc: "Self-tape accepted. Contemporary sound. Strong actor-singer." },
 ];
 function DiscoverScreen({ show }) {
-    const [tab, setTab] = useState("people");
-    const [query, setQuery] = useState("");
-    const [followed, setFollowed] = useState({});
-    const [saved, setSaved] = useState({});
+    const [tab, setTab] = (0, react_1.useState)("people");
+    const [query, setQuery] = (0, react_1.useState)("");
+    const [followed, setFollowed] = (0, react_1.useState)({});
+    const [saved, setSaved] = (0, react_1.useState)({});
     const tabs = [
         { key: "people", label: "👥 People" },
         { key: "projects", label: "🎭 Projects" },
@@ -1262,9 +1453,20 @@ function DiscoverScreen({ show }) {
     const filteredCalls = DISCOVER_CALLS.filter(c => !q || c.title.toLowerCase().includes(q) ||
         c.company.toLowerCase().includes(q) ||
         c.type.toLowerCase().includes(q));
-    const toggleFollow = (id) => {
-        setFollowed(p => (Object.assign(Object.assign({}, p), { [id]: !p[id] })));
-        show(followed[id] ? "Unfollowed" : "Following! ✓");
+    const toggleFollow = async (id) => {
+        var _a;
+        const wasFollowing = followed[id] || ((_a = DISCOVER_PEOPLE.find(p => p.id === id)) === null || _a === void 0 ? void 0 : _a.following);
+        setFollowed(p => (Object.assign(Object.assign({}, p), { [id]: !wasFollowing })));
+        show(wasFollowing ? "Unfollowed" : "Following! ✓");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user)
+            return;
+        if (wasFollowing) {
+            supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", String(id));
+        }
+        else {
+            supabase.from("follows").insert({ follower_id: user.id, following_id: String(id) });
+        }
     };
     const toggleSave = (id) => {
         setSaved(p => (Object.assign(Object.assign({}, p), { [id]: !p[id] })));
@@ -1346,12 +1548,12 @@ function DiscoverScreen({ show }) {
 // ── Local Shows Panel ────────────────────────────────────────────────
 const ZIP_REGEX = /^\d{5}$/;
 function LocalShowsPanel({ show }) {
-    const [zip, setZip] = useState("");
-    const [radius, setRadius] = useState("25");
-    const [results, setResults] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [saved, setSaved] = useState({});
+    const [zip, setZip] = (0, react_1.useState)("");
+    const [radius, setRadius] = (0, react_1.useState)("25");
+    const [results, setResults] = (0, react_1.useState)(null);
+    const [loading, setLoading] = (0, react_1.useState)(false);
+    const [error, setError] = (0, react_1.useState)("");
+    const [saved, setSaved] = (0, react_1.useState)({});
     const ACCENTS = ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#e8507c", "#50c8a8"];
     const searchShows = async () => {
         const trimmed = zip.trim();
@@ -1563,12 +1765,12 @@ const EmptyState = ({ query, type }) => (React.createElement("div", { style: { t
     React.createElement("div", { style: { fontSize: 13 } }, "Try a different search term")));
 // ════════════════════════════ AI ════════════════════════════════════
 function AIScreen({ show }) {
-    const [lyricIn, setLyricIn] = useState("");
-    const [lyricOut, setLyricOut] = useState("");
-    const [sceneIn, setSceneIn] = useState("");
-    const [sceneOut, setSceneOut] = useState("");
-    const [loadL, setLoadL] = useState(false);
-    const [loadS, setLoadS] = useState(false);
+    const [lyricIn, setLyricIn] = (0, react_1.useState)("");
+    const [lyricOut, setLyricOut] = (0, react_1.useState)("");
+    const [sceneIn, setSceneIn] = (0, react_1.useState)("");
+    const [sceneOut, setSceneOut] = (0, react_1.useState)("");
+    const [loadL, setLoadL] = (0, react_1.useState)(false);
+    const [loadS, setLoadS] = (0, react_1.useState)(false);
     // Streaming SSE call
     const callAI = async (prompt, setOut, setLoad) => {
         var _a;
@@ -1652,7 +1854,7 @@ function AIScreen({ show }) {
 // ════════════════════════════ STUDIO ════════════════════════════════
 // Studio bundles AI, Casting, and Live into one tab with sub-navigation
 function StudioScreen({ show, onJoin, setLiveRoom }) {
-    const [sub, setSub] = useState("ai");
+    const [sub, setSub] = (0, react_1.useState)("ai");
     const STUDIO_SUBS = [
         { key: "ai", label: "✦ AI Studio" },
         { key: "casting", label: "🎭 Casting" },
@@ -1689,87 +1891,108 @@ const INIT_PROFILE_TAPES = [
     { id: 3, title: "Sweeney Todd — Mrs. Lovett", date: "Feb 2026", status: "submitted", duration: "2:58" },
 ];
 function ProfileScreen({ show }) {
-    const [subPage, setSubPage] = useState("main");
-    const [bioTab, setBioTab] = useState("media");
+    const [subPage, setSubPage] = (0, react_1.useState)("main");
+    const [bioTab, setBioTab] = (0, react_1.useState)("media");
     const [profile, setProfile] = usePersistedState("sl_profile", {
         name: "Alex Rivera", handle: "@alexrivera",
         bio: "Broadway composer & lyricist. San Diego based. Creating new musical theatre.",
         location: "San Diego, CA", website: "alexrivera.stage", role: "Composer / Lyricist",
         avatar: null,
     });
-    const [draft, setDraft] = useState(Object.assign({}, profile));
-    // Load real profile from Supabase on mount
-    useEffect(() => {
-        supabase.auth.getUser().then(async ({ data }) => {
-            if (!data.user)
+    const [draft, setDraft] = (0, react_1.useState)(Object.assign({}, profile));
+    // Load real profile + media + tapes from Supabase on mount
+    (0, react_1.useEffect)(() => {
+        supabase.auth.getUser().then(async ({ data: authData }) => {
+            if (!authData.user)
                 return;
-            const { data: prof } = await supabase.from("profiles").select("*").eq("id", data.user.id).single();
+            const uid = authData.user.id;
+            // Profile
+            const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).single();
             if (prof) {
-                const merged = { name: prof.name || profile.name, handle: prof.handle || profile.handle, bio: prof.bio || profile.bio, location: prof.location || profile.location, website: prof.website || profile.website, role: prof.role || profile.role, avatar: prof.avatar_url || profile.avatar };
+                const merged = { name: prof.name || profile.name, handle: prof.handle || profile.handle, bio: prof.bio || profile.bio, location: prof.location || profile.location, website: prof.website || profile.website, role: prof.role || profile.role, avatar: prof.avatar_url || profile.avatar, banner: prof.banner_url || profile.banner };
                 setProfile(merged);
                 setDraft(merged);
             }
+            // Media grid
+            const { data: mediaRows } = await supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+            if (mediaRows && mediaRows.length > 0) {
+                setMedia(mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption })));
+            }
+            // Self tapes
+            const { data: tapeRows } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+            if (tapeRows && tapeRows.length > 0) {
+                setTapes(tapeRows.map(t => { var _a; return ({ id: t.id, title: t.title, date: (_a = t.created_at) === null || _a === void 0 ? void 0 : _a.slice(0, 10), status: t.status, duration: "0:00" }); }));
+            }
         });
     }, []);
+    // Upload file to Supabase Storage and return public URL
+    const uploadToStorage = async (file, bucket, folder) => {
+        var _a;
+        const token = localStorage.getItem("sb_token");
+        if (!token || !file)
+            return null;
+        const ext = ((_a = file.name) === null || _a === void 0 ? void 0 : _a.split(".").pop()) || "bin";
+        const path = folder + "/" + Date.now() + "." + ext;
+        const res = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/" + bucket + "/" + path, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": file.type || "application/octet-stream", "x-upsert": "true" }, body: file });
+        if (!res.ok)
+            return null;
+        return "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/" + bucket + "/" + path;
+    };
     const saveEdit = async () => {
         setProfile(draft);
         setSubPage("main");
-        // Save to Supabase
         const { data } = await supabase.auth.getUser();
         if (data.user) {
             await supabase.from("profiles").update({
                 name: draft.name, handle: draft.handle, bio: draft.bio,
                 location: draft.location, website: draft.website, role: draft.role,
-                avatar_url: draft.avatar,
+                avatar_url: draft.avatar, banner_url: draft.banner,
             }).eq("id", data.user.id);
         }
         show("Profile updated ✓");
     };
-    const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
+    const [privacy, setPrivacy] = (0, react_1.useState)({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
     const [media, setMedia] = usePersistedState("sl_profile_media", INIT_PROFILE_MEDIA);
     const [tapes, setTapes] = usePersistedState("sl_profile_tapes", INIT_PROFILE_TAPES);
-    const [lightbox, setLightbox] = useState(null); // item to fullscreen
-    // Upload photo from device (FileReader → data URI stored in media)
-    const handleMediaUpload = (e) => {
+    const [lightbox, setLightbox] = (0, react_1.useState)(null); // item to fullscreen
+    // Upload photo/video to Supabase Storage
+    const handleMediaUpload = async (e) => {
         var _a;
         const file = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
         if (!file)
             return;
         const isVideo = file.type.startsWith("video/");
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const newItem = {
-                id: Date.now(),
-                type: isVideo ? "video" : "photo",
-                url: ev.target.result,
-                caption: file.name.replace(/\.[^.]+$/, ""),
-                duration: isVideo ? "0:00" : undefined,
-            };
-            setMedia(p => [newItem, ...p]);
-            show(isVideo ? "🎬 Video added to your profile!" : "📸 Photo added to your profile!");
-        };
-        reader.readAsDataURL(file);
+        // Show local preview immediately
+        const localUrl = URL.createObjectURL(file);
+        const newItem = { id: Date.now(), type: isVideo ? "video" : "photo", url: localUrl, caption: file.name.replace(/\.[^.]+$/, "") };
+        setMedia(p => [newItem, ...p]);
+        show(isVideo ? "🎬 Uploading video…" : "📸 Uploading photo…");
+        // Upload to storage
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const storageUrl = await uploadToStorage(file, "media", user.id);
+            const finalUrl = storageUrl || localUrl;
+            setMedia(p => p.map(m => m.id === newItem.id ? Object.assign(Object.assign({}, m), { url: finalUrl }) : m));
+            supabase.from("media").insert({ user_id: user.id, type: isVideo ? "video" : "photo", url: finalUrl, caption: newItem.caption });
+            show(isVideo ? "🎬 Video saved to profile!" : "📸 Photo saved to profile!");
+        }
     };
-    // Upload self tape
-    const handleTapeUpload = (e) => {
+    // Upload self tape to Supabase Storage
+    const handleTapeUpload = async (e) => {
         var _a;
         const file = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
         if (!file)
             return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            const newTape = {
-                id: Date.now(),
-                title: file.name.replace(/\.[^.]+$/, ""),
-                date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-                status: "pending",
-                duration: "0:00",
-                url: URL.createObjectURL(file),
-            };
-            setTapes(p => [newTape, ...p]);
-            show("🎬 Self tape added!");
-        };
-        reader.readAsDataURL(file);
+        const localUrl = URL.createObjectURL(file);
+        const newTape = { id: Date.now(), title: file.name.replace(/\.[^.]+$/, ""), date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }), status: "pending", duration: "0:00", url: localUrl };
+        setTapes(p => [newTape, ...p]);
+        show("🎬 Uploading self tape…");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const storageUrl = await uploadToStorage(file, "media", user.id + "/tapes");
+            supabase.from("self_tapes").insert({ user_id: user.id, title: newTape.title, status: "pending", media_url: storageUrl || localUrl });
+            show("🎬 Self tape saved!");
+        }
     };
     const removeMedia = (id) => { setMedia(p => p.filter(m => m.id !== id)); show("Removed."); };
     const removeTape = (id) => { setTapes(p => p.filter(t => t.id !== id)); show("Removed."); };
@@ -1952,9 +2175,9 @@ function PrivacyPage({ privacy, setPrivacy, onBack, show }) {
             React.createElement("button", { onClick: () => show("Account deletion requires email confirmation"), style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Delete Account"))));
 }
 function SettingsPage({ onBack, show }) {
-    const [notifs, setNotifs] = useState({ likes: true, comments: true, gifts: true, follows: true, collab: true });
-    const [theme, setTheme] = useState("dark");
-    const [quality, setQuality] = useState("auto");
+    const [notifs, setNotifs] = (0, react_1.useState)({ likes: true, comments: true, gifts: true, follows: true, collab: true });
+    const [theme, setTheme] = (0, react_1.useState)("dark");
+    const [quality, setQuality] = (0, react_1.useState)("auto");
     const toggle = (key) => { setNotifs(p => (Object.assign(Object.assign({}, p), { [key]: !p[key] }))); show("Notification setting updated"); };
     return (React.createElement(SubPage, { title: "Settings", onBack: onBack },
         React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "NOTIFICATIONS"),
@@ -2010,28 +2233,29 @@ function LiveScreen({ show, onJoin }) {
             React.createElement("button", { style: { width: "100%", padding: "10px", background: room.accent + "22", border: `1px solid ${room.accent}44`, borderRadius: 10, color: room.accent, fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Join Room \u2192"))))));
 }
 function LiveRoomOverlay({ room, onLeave, show }) {
-    const [micOn, setMicOn] = useState(true);
-    const [camOn, setCamOn] = useState(false);
-    const [raised, setRaised] = useState(false);
-    const [viewers, setViewers] = useState(room.listeners);
-    const [chatInput, setChatInput] = useState("");
-    const [chatMsgs, setChatMsgs] = useState([
+    const [micOn, setMicOn] = (0, react_1.useState)(true);
+    const [camOn, setCamOn] = (0, react_1.useState)(false);
+    const [raised, setRaised] = (0, react_1.useState)(false);
+    const [viewers, setViewers] = (0, react_1.useState)(room.listeners);
+    const [chatInput, setChatInput] = (0, react_1.useState)("");
+    const [chatMsgs, setChatMsgs] = (0, react_1.useState)([
         { id: 1, user: "MelodyMaker", text: "Just joined! 🎶", accent: "#c9a84c", self: false },
         { id: 2, user: "TheatreKid99", text: "Sound is perfect tonight ✨", accent: "#4cb8c4", self: false },
     ]);
-    const [reactions, setReactions] = useState([]);
-    const chatEndRef = useRef(null);
-    const reactionTimers = useRef([]);
+    const [reactions, setReactions] = (0, react_1.useState)([]);
+    const chatEndRef = (0, react_1.useRef)(null);
+    const reactionTimers = (0, react_1.useRef)([]);
     // Tick up viewers
-    useEffect(() => {
+    (0, react_1.useEffect)(() => {
         const id = setInterval(() => setViewers(v => v + Math.floor(Math.random() * 3)), 4000);
         return () => clearInterval(id);
     }, []);
-    // Simulate incoming chat messages
-    useEffect(() => {
+    // Simulate incoming chat (+ subscribe to Supabase realtime if available)
+    (0, react_1.useEffect)(() => {
         let idx = 2;
+        // Simulated messages for demo feel
         const scheduleNext = () => {
-            const delay = 2500 + Math.random() * 4000;
+            const delay = 3000 + Math.random() * 5000;
             const t = setTimeout(() => {
                 const seed = LIVE_CHAT_SEEDS[idx % LIVE_CHAT_SEEDS.length];
                 setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: seed.user, text: seed.text, accent: room.accent, self: false }]);
@@ -2041,19 +2265,36 @@ function LiveRoomOverlay({ room, onLeave, show }) {
             reactionTimers.current.push(t);
         };
         scheduleNext();
-        return () => reactionTimers.current.forEach(clearTimeout);
+        // Real-time channel for actual users
+        const chan = supabase.channel && supabase.channel("live-room-" + room.id, { config: { broadcast: { self: false } } });
+        if (chan && chan.on) {
+            chan.on("broadcast", { event: "chat" }, ({ payload }) => {
+                setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: payload.user || "Viewer", text: payload.text, accent: room.accent, self: false }]);
+            }).subscribe();
+            reactionTimers.current._chan = chan;
+        }
+        return () => {
+            var _a, _b;
+            reactionTimers.current.forEach(t => typeof t === "number" && clearTimeout(t));
+            (_b = (_a = reactionTimers.current._chan) === null || _a === void 0 ? void 0 : _a.unsubscribe) === null || _b === void 0 ? void 0 : _b.call(_a);
+        };
     }, []);
-    // Auto-scroll chat
-    useEffect(() => {
-        var _a;
-        (_a = chatEndRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
-    }, [chatMsgs]);
     const sendChat = () => {
         if (!chatInput.trim())
             return;
-        setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: "You", text: chatInput.trim(), accent: "#c9a84c", self: true }]);
+        const txt = chatInput.trim();
+        setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: "You", text: txt, accent: "#c9a84c", self: true }]);
         setChatInput("");
+        // Broadcast to other users in the room
+        const chan = reactionTimers.current._chan;
+        if (chan)
+            chan.send({ type: "broadcast", event: "chat", payload: { user: "You", text: txt } });
     };
+    // Auto-scroll chat
+    (0, react_1.useEffect)(() => {
+        var _a;
+        (_a = chatEndRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
+    }, [chatMsgs]);
     const sendReaction = (emoji) => {
         const id = Date.now();
         const x = 20 + Math.random() * 60;
@@ -2106,21 +2347,74 @@ function LiveRoomOverlay({ room, onLeave, show }) {
 }
 // ═══════════════════════════ INBOX ══════════════════════════════════
 function InboxOverlay({ messages, setMessages, onClose, show }) {
-    const [thread, setThread] = useState(null);
-    const [input, setInput] = useState("");
-    const endRef = useRef(null);
-    useEffect(() => { var _a; (_a = endRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" }); }, [thread, messages]);
-    // FIX 2: mark read synchronously so badge in header decrements immediately
-    const markRead = (id) => setMessages(p => p.map(m => m.id === id ? Object.assign(Object.assign({}, m), { unread: 0 }) : m));
-    const sendMsg = (conv) => {
+    const [thread, setThread] = (0, react_1.useState)(null);
+    const [input, setInput] = (0, react_1.useState)("");
+    const [dbMsgs, setDbMsgs] = (0, react_1.useState)([]);
+    const [userId, setUserId] = (0, react_1.useState)(null);
+    const endRef = (0, react_1.useRef)(null);
+    const chanRef = (0, react_1.useRef)(null);
+    (0, react_1.useEffect)(() => { var _a; (_a = endRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" }); }, [thread, dbMsgs]);
+    // Load user + messages from Supabase
+    (0, react_1.useEffect)(() => {
+        supabase.auth.getUser().then(async ({ data }) => {
+            if (!data.user)
+                return;
+            setUserId(data.user.id);
+            // Load recent messages
+            const { data: rows } = await supabase.from("messages")
+                .select("*, sender:sender_id(name,handle,avatar_url), receiver:receiver_id(name,handle,avatar_url)")
+                .order("created_at", { ascending: false })
+                .limit(50);
+            if (rows) {
+                // Group by conversation partner
+                const convMap = {};
+                rows.forEach(m => {
+                    const partnerId = m.sender_id === data.user.id ? m.receiver_id : m.sender_id;
+                    const partner = m.sender_id === data.user.id ? m.receiver : m.sender;
+                    if (!convMap[partnerId]) {
+                        convMap[partnerId] = {
+                            id: partnerId,
+                            user: (partner === null || partner === void 0 ? void 0 : partner.name) || "Unknown",
+                            avatar: ((partner === null || partner === void 0 ? void 0 : partner.name) || "U").slice(0, 2).toUpperCase(),
+                            accent: "#c9a84c",
+                            unread: 0,
+                            msgs: [],
+                        };
+                    }
+                    convMap[partnerId].msgs.push({
+                        from: m.sender_id === data.user.id ? "me" : (partner === null || partner === void 0 ? void 0 : partner.name) || "them",
+                        text: m.text,
+                        time: new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                    });
+                    if (!m.read && m.receiver_id === data.user.id)
+                        convMap[partnerId].unread++;
+                });
+                const convList = Object.values(convMap);
+                if (convList.length > 0)
+                    setMessages(convList);
+                setDbMsgs(rows);
+            }
+            // Subscribe to realtime new messages
+            chanRef.current = supabase.channel && supabase.channel("inbox-" + data.user.id);
+        });
+        return () => { var _a, _b; return (_b = (_a = chanRef.current) === null || _a === void 0 ? void 0 : _a.unsubscribe) === null || _b === void 0 ? void 0 : _b.call(_a); };
+    }, []);
+    const markRead = (id) => {
+        setMessages(p => p.map(m => m.id === id ? Object.assign(Object.assign({}, m), { unread: 0 }) : m));
+        supabase.from("messages").update({ read: true }).eq("receiver_id", userId).eq("sender_id", id);
+    };
+    const sendMsg = async (conv) => {
         if (!input.trim())
             return;
         const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const txt = input.trim();
         setMessages(p => p.map(m => m.id === conv.id
-            ? Object.assign(Object.assign({}, m), { msgs: [...m.msgs, { from: "me", text: input.trim(), time: ts }] }) : m));
+            ? Object.assign(Object.assign({}, m), { msgs: [...m.msgs, { from: "me", text: txt, time: ts }] }) : m));
         setInput("");
+        if (userId) {
+            supabase.from("messages").insert({ sender_id: userId, receiver_id: conv.id, text: txt });
+        }
     };
-    // markRead is called on thread open; derive conv after so it sees fresh data
     const conv = thread ? messages.find(m => m.id === thread) : null;
     return (React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 200, display: "flex", flexDirection: "column" } },
         React.createElement("div", { style: { background: "linear-gradient(180deg,rgba(18,7,36,0.99),rgba(8,4,14,0.97))", padding: "14px 18px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.08)" } },
@@ -2161,15 +2455,15 @@ function InboxOverlay({ messages, setMessages, onClose, show }) {
 }
 // ════════════════════════════ CASTING ════════════════════════════════
 function CastingScreen({ show }) {
-    const [sub, setSub] = useState("calls");
+    const [sub, setSub] = (0, react_1.useState)("calls");
     // FIX 1: persisted casting data
     const [castingCalls, setCastingCalls] = usePersistedState("sl_casting_calls", INIT_CASTING_CALLS);
     const [auditions, setAuditions] = usePersistedState("sl_auditions", INIT_AUDITIONS);
     const [selfTapes, setSelfTapes] = usePersistedState("sl_selftapes", INIT_SELFTAPES);
     const [credits, setCredits] = usePersistedState("sl_credits", INIT_CREDITS);
-    const [callFilter, setCallFilter] = useState("all");
-    const [audFilter, setAudFilter] = useState("upcoming");
-    const [modal, setModal] = useState(null);
+    const [callFilter, setCallFilter] = (0, react_1.useState)("all");
+    const [audFilter, setAudFilter] = (0, react_1.useState)("upcoming");
+    const [modal, setModal] = (0, react_1.useState)(null);
     const SUBS = [
         { key: "calls", label: "📣 Calls" },
         { key: "auditions", label: "⭐ Auditions" },
@@ -2350,7 +2644,7 @@ const ResumeSection = ({ title, onAdd, children }) => (React.createElement("div"
         React.createElement("button", { onClick: onAdd, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 8, padding: "4px 10px", color: "#c9a84c", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "+ Add")),
     children));
 function PostCastingModal({ onClose, onSubmit }) {
-    const [f, setF] = useState({ title: "", role: "", type: "Lead", voice: "Any", comp: "Paid", date: "", prep: "", selftape: false });
+    const [f, setF] = (0, react_1.useState)({ title: "", role: "", type: "Lead", voice: "Any", comp: "Paid", date: "", prep: "", selftape: false });
     const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
     return (React.createElement(CastingModal, { title: "Post Casting Call", onClose: onClose, onSubmit: () => {
             if (!f.title.trim()) {
@@ -2403,7 +2697,7 @@ function PostCastingModal({ onClose, onSubmit }) {
             React.createElement("span", { style: { fontSize: 13, color: "rgba(255,255,255,0.7)" } }, "Accept self tapes / remote submissions"))));
 }
 function AddAuditionModal({ onClose, onSubmit }) {
-    const [f, setF] = useState({ show: "", role: "", company: "", date: "", location: "", prep: "", status: "upcoming" });
+    const [f, setF] = (0, react_1.useState)({ show: "", role: "", company: "", date: "", location: "", prep: "", status: "upcoming" });
     const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
     return (React.createElement(CastingModal, { title: "Add Audition", onClose: onClose, onSubmit: () => {
             if (!f.show.trim()) {
@@ -2433,7 +2727,7 @@ function AddAuditionModal({ onClose, onSubmit }) {
             React.createElement("div", { style: { display: "flex", gap: 8 } }, [["upcoming", "Upcoming"], ["callback", "Callback 🌟"], ["completed", "Done ✓"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => u("status", v), style: { flex: 1, padding: "8px", background: f.status === v ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.05)", border: `1px solid ${f.status === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, color: f.status === v ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: f.status === v ? 700 : 400, fontSize: 11, cursor: "pointer" } }, l)))))));
 }
 function NewTapeModal({ onClose, onSubmit }) {
-    const [f, setF] = useState({ show: "", scene: "", deadline: "", submitTo: "" });
+    const [f, setF] = (0, react_1.useState)({ show: "", scene: "", deadline: "", submitTo: "" });
     const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
     return (React.createElement(CastingModal, { title: "New Self Tape", onClose: onClose, onSubmit: () => {
             if (!f.show.trim()) {
@@ -2456,7 +2750,7 @@ function NewTapeModal({ onClose, onSubmit }) {
             React.createElement("input", { value: f.submitTo, onChange: e => u("submitTo", e.target.value), style: darkInput, placeholder: "casting@theatre.org" }))));
 }
 function AddCreditModal({ onClose, onSubmit }) {
-    const [f, setF] = useState({ title: "", role: "", company: "", year: "" });
+    const [f, setF] = (0, react_1.useState)({ title: "", role: "", company: "", year: "" });
     const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
     return (React.createElement(CastingModal, { title: "Add Theatre Credit", onClose: onClose, onSubmit: () => { if (f.title && f.role)
             onSubmit(f); } },
@@ -2524,10 +2818,7 @@ const primaryBtn = (accent, disabled = false) => ({ width: "100%", padding: "14p
 const ghostBtn = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer", marginBottom: 10 };
 // Utility
 const clamp = (text) => text.length > 20 ? 22 : text.length > 14 ? 26 : 32;
-const r = ReactDOM.createRoot(document.getElementById("root"));
-r.render(React.createElement(StageLab));
 
 </script>
-
 </body>
 </html>
