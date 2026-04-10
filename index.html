@@ -1,50 +1,14 @@
 <!DOCTYPE html>
-
 <html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>StageLab</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#08080f;overscroll-behavior:none;-webkit-tap-highlight-color:transparent;color:#fff}
-#err{display:none;position:fixed;inset:0;background:#0a0005;color:#f87171;font:13px/1.6 monospace;padding:20px;z-index:9999;overflow:auto;white-space:pre-wrap}
-</style>
-</head>
-<body>
-<div id="err"></div>
-<div id="root">
-  <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#08080f">
-    <div style="text-align:center">
-      <svg width="64" height="64" viewBox="0 0 100 100">
-        <defs><linearGradient id="g" x1="20" y1="80" x2="80" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#f5c518"/>
-          <stop offset="50%" stop-color="#f07020"/>
-          <stop offset="100%" stop-color="#e040a0"/>
-        </linearGradient></defs>
-        <rect width="100" height="100" rx="20" fill="#4a006e"/>
-        <path d="M64 18C80 18 84 28 80 36C76 44 62 48 50 52C36 57 24 63 24 74C24 84 34 88 46 86C54 84 62 80 66 74" stroke="url(#g)" stroke-width="14" stroke-linecap="round" fill="none"/>
-      </svg>
-      <p style="color:#c9a84c;font-family:sans-serif;margin-top:16px;letter-spacing:.1em;font-size:13px">LOADING STAGELAB...</p>
-    </div>
-  </div>
-</div>
-<script>
-window.onerror = function(m,s,l,c,e) {
-  var b = document.getElementById('err');
-  b.style.display = 'block';
-  b.textContent = 'Error line ' + l + ':\n' + m + '\n\n' + (e && e.stack ? e.stack : '');
-  return true;
-};
-window.addEventListener('unhandledrejection', function(e) {
-  var b = document.getElementById('err');
-  b.style.display = 'block';
-  b.textContent = 'Promise error:\n' + (e.reason && e.reason.stack ? e.reason.stack : String(e.reason));
-});
-</script>
-<script src="react.js"></script>
-<script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>StageLab</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
