@@ -173,6 +173,42 @@ const supabase = (() => {
     };
     return { auth, from };
 })();
+// ── Debug helper — call window.debugStageLab() in browser console ──
+window.debugStageLab = async () => {
+    const log = (msg) => { console.log("[StageLab]", msg); };
+    log("=== DEBUG START ===");
+    // 1. Check auth
+    const { data: { user } } = await supabase.auth.getUser();
+    log("User: " + (user ? user.id + " / " + user.email : "NOT LOGGED IN"));
+    if (!user) {
+        log("STOP: not authenticated");
+        return;
+    }
+    // 2. Check token
+    const token = localStorage.getItem("sb_token");
+    log("Token: " + (token ? token.slice(0, 20) + "..." : "MISSING"));
+    // 3. Check profile
+    const { data: prof, error: profErr } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    log("Profile: " + (profErr ? "ERROR: " + JSON.stringify(profErr) : JSON.stringify(prof)));
+    // 4. Check posts
+    const { data: posts, error: postsErr } = await supabase.from("posts").select("id,title,type,media_url").eq("user_id", user.id).limit(5);
+    log("My posts: " + (postsErr ? "ERROR: " + JSON.stringify(postsErr) : (posts === null || posts === void 0 ? void 0 : posts.length) + " found: " + JSON.stringify(posts)));
+    // 5. Check all public posts
+    const { data: allPosts, error: allErr } = await supabase.from("posts").select("id,title,user_id").eq("visibility", "public").limit(5);
+    log("Public posts: " + (allErr ? "ERROR: " + JSON.stringify(allErr) : (allPosts === null || allPosts === void 0 ? void 0 : allPosts.length) + " found"));
+    // 6. Check profiles table
+    const { data: allProfs, error: profsErr } = await supabase.from("profiles").select("id,name,handle,role").limit(10);
+    log("All profiles: " + (profsErr ? "ERROR: " + JSON.stringify(profsErr) : (allProfs === null || allProfs === void 0 ? void 0 : allProfs.length) + " found: " + JSON.stringify(allProfs === null || allProfs === void 0 ? void 0 : allProfs.map(p => p.name + "/" + p.handle))));
+    // 7. Test storage upload
+    log("Testing storage upload...");
+    const testBlob = new Blob(["test"], { type: "text/plain" });
+    const testFile = new File([testBlob], "test.txt", { type: "text/plain" });
+    const testPath = user.id + "/debug-" + Date.now() + ".txt";
+    const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + testPath, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "text/plain", "x-upsert": "true" }, body: testFile });
+    log("Storage upload test: " + uploadRes.status + " " + (uploadRes.ok ? "OK ✅" : "FAILED ❌ - " + await uploadRes.text()));
+    log("=== DEBUG END ===");
+    alert("Debug complete — check browser console (Safari: Develop > Web Inspector > Console)");
+};
 // ═══════════════════════════════════ DATA ═══════════════════════════════════
 const INIT_VIDEOS = [
     { id: 1, creator: "Elena Vasquez", handle: "@elenavsings", avatar: "EV", title: "Act II opener — full run", type: "video", likes: 1240, comments: 87, shares: 312, reposts: 94, gifts: 23, accent: "#c9a84c", bg: "linear-gradient(160deg,#1a0a2e,#2d1040)", note: "♪", tier: "gold" },
@@ -420,7 +456,6 @@ function OnboardScreen({ onDone, session }) {
     const toggleSkill = (s) => setSkills(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
     const saveAndContinue = async () => {
         var _a;
-        // Validate step 0 requires a role
         if (step === 0 && !role) {
             return;
         }
@@ -428,45 +463,88 @@ function OnboardScreen({ onDone, session }) {
             setStep(s => s + 1);
             return;
         }
-        // Step 2 — final save
         setSaving(true);
         const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
-        const token = localStorage.getItem("sb_token");
-        if (uid) {
-            let avatarUrl = null;
-            // Upload avatar if chosen
-            if (avatar && token) {
-                try {
-                    // Convert data URI to blob
-                    const res = await fetch(avatar);
-                    const blob = await res.blob();
-                    const ext = blob.type.includes("png") ? "png" : "jpg";
-                    const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/avatars/" + uid + "/avatar." + ext, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": blob.type, "x-upsert": "true" }, body: blob });
-                    if (uploadRes.ok) {
-                        avatarUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/avatars/" + uid + "/avatar." + ext;
-                    }
+        // Get token — try multiple sources since signup token may not be in localStorage yet
+        const token = localStorage.getItem("sb_token")
+            || (session === null || session === void 0 ? void 0 : session.access_token)
+            || null;
+        if (!uid) {
+            // No user — skip upload, go straight to app
+            setSaving(false);
+            onDone();
+            return;
+        }
+        let avatarUrl = null;
+        // Upload avatar — skip if no token (won't work) or no avatar chosen
+        if (avatar && token) {
+            try {
+                // Convert data URI to blob without using fetch() which can fail on data: URIs
+                let blob;
+                if (avatar.startsWith("data:")) {
+                    // Parse data URI manually
+                    const [header, b64] = avatar.split(",");
+                    const mimeMatch = header.match(/:(.*?);/);
+                    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+                    const binary = atob(b64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++)
+                        bytes[i] = binary.charCodeAt(i);
+                    blob = new Blob([bytes], { type: mime });
                 }
-                catch (e) {
-                    console.warn("Avatar upload failed:", e);
+                else {
+                    // Object URL — fetch it
+                    const r = await fetch(avatar);
+                    blob = await r.blob();
+                }
+                const ext = blob.type.includes("png") ? "png" : "jpg";
+                const path = uid + "/avatar." + ext;
+                const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/avatars/" + path, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": blob.type || "image/jpeg",
+                        "x-upsert": "true",
+                        "Cache-Control": "3600",
+                    },
+                    body: blob,
+                });
+                if (uploadRes.ok) {
+                    avatarUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/avatars/" + path;
+                }
+                else {
+                    const errText = await uploadRes.text().catch(() => uploadRes.status);
+                    console.warn("Avatar upload failed:", uploadRes.status, errText);
+                    // Don't block — continue without avatar
                 }
             }
-            // Build clean handle
-            const cleanHandle = handle
-                ? (handle.startsWith("@") ? handle : "@" + handle)
-                : "@" + (name || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_");
-            const { error } = await supabase.from("profiles").update({
-                name: name.trim(),
+            catch (e) {
+                console.warn("Avatar upload error:", e);
+                // Don't block onboarding if upload fails
+            }
+        }
+        // Build clean handle
+        const cleanHandle = handle
+            ? (handle.startsWith("@") ? handle : "@" + handle)
+            : "@" + (name || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_");
+        // Save profile — this is the critical part
+        try {
+            const updateData = {
+                name: (name || "").trim(),
                 handle: cleanHandle,
-                role,
-                bio: bio.trim(),
-                location: location.trim(),
-                avatar_url: avatarUrl,
-            }).eq("id", uid);
-            if (error) {
-                console.error("Profile save error:", error);
-                setSaving(false);
-                // Still proceed — don't block the user
-            }
+                role: role || "",
+                bio: (bio || "").trim(),
+                location: (location || "").trim(),
+            };
+            // Only set avatar_url if we successfully uploaded
+            if (avatarUrl)
+                updateData.avatar_url = avatarUrl;
+            const { error } = await supabase.from("profiles").update(updateData).eq("id", uid);
+            if (error)
+                console.error("Profile update error:", error);
+        }
+        catch (e) {
+            console.error("Profile save exception:", e);
         }
         setSaving(false);
         onDone();
@@ -536,7 +614,23 @@ function OnboardScreen({ onDone, session }) {
                                 r.readAsDataURL(f);
                             } }),
                         React.createElement("div", { style: { padding: "12px 28px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 24, color: "#c9a84c", fontWeight: 700, fontSize: 14, cursor: "pointer" } }, avatar ? "Change Photo" : "📷 Choose Photo")),
-                    !avatar && (React.createElement("button", { onClick: () => onDone(), style: { marginTop: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "Skip for now"))),
+                    !avatar && (React.createElement("button", { onClick: async () => {
+                            var _a;
+                            // Save profile data even if skipping photo
+                            setSaving(true);
+                            const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
+                            if (uid) {
+                                const cleanHandle = handle
+                                    ? (handle.startsWith("@") ? handle : "@" + handle)
+                                    : "@" + (name || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_");
+                                await supabase.from("profiles").update({
+                                    name: (name || "").trim(), handle: cleanHandle,
+                                    role: role || "", bio: (bio || "").trim(), location: (location || "").trim(),
+                                }).eq("id", uid);
+                            }
+                            setSaving(false);
+                            onDone();
+                        }, style: { marginTop: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "Skip photo for now"))),
                 React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px" } },
                     React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 12 } }, "YOUR PROFILE SUMMARY"),
                     React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center" } },
