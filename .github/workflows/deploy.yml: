@@ -1,0 +1,88 @@
+name: Build and Deploy StageLab
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Create Vite project structure
+        run: |
+          npm create vite@latest build -- --template react --yes 2>/dev/null || true
+          mkdir -p build/src
+          cp StageLab.jsx build/src/App.jsx
+
+      - name: Fix App.jsx for Vite
+        run: |
+          cd build
+          sed -i '/^import { useState/d' src/App.jsx
+          sed -i 's/^export default function StageLab/function StageLab/' src/App.jsx
+          echo "export default StageLab;" >> src/App.jsx
+          sed -i 's/pre>=021/pre>=21/g; s/pre<=022/pre<=22/g' src/App.jsx
+
+      - name: Write main.jsx
+        run: |
+          cat > build/src/main.jsx << 'EOF'
+          import React from 'react'
+          import ReactDOM from 'react-dom/client'
+          import App from './App.jsx'
+          ReactDOM.createRoot(document.getElementById('root')).render(
+            React.createElement(App)
+          )
+          EOF
+
+      - name: Write index.html
+        run: |
+          cat > build/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+              <meta name="apple-mobile-web-app-capable" content="yes" />
+              <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+              <title>StageLab</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.jsx"></script>
+            </body>
+          </html>
+          EOF
+
+      - name: Install and Build
+        run: |
+          cd build
+          npm install
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
