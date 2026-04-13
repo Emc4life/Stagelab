@@ -1,10 +1,9 @@
 var { useState, useRef, useEffect, useCallback } = React;
 
-“use strict”;
-// ── Supabase client ──────────────────────────────────────────────────
+// ?? Supabase client ??????????????????????????????????????????????????
 const SUPA_URL = “https://dsegdddquztgkdwyzbai.supabase.co”;
 const SUPA_KEY = “eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZWdkZGRxdXp0Z2tkd3l6YmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTMxODUsImV4cCI6MjA5MTE4OTE4NX0.vF76Ptppf7-Z_oNzyr3XEtlwc6xp_3H78Foktx0-En0”;
-// Minimal inline Supabase client — no external dependency needed
+// Minimal inline Supabase client - no external dependency needed
 const supabase = (() => {
 const headers = () => {
 const t = localStorage.getItem(“sb_token”);
@@ -153,7 +152,7 @@ return q;
 };
 return { auth, from };
 })();
-// ── Debug helper — call window.debugStageLab() in browser console ──
+// ?? Debug helper - call window.debugStageLab() in browser console ??
 window.debugStageLab = async () => {
 const log = (msg) => { console.log(”[StageLab]”, msg); };
 log(”=== DEBUG START ===”);
@@ -187,14 +186,14 @@ const testPath = user.id + “/debug-” + Date.now() + “.txt”;
 const uploadRes = await fetch(“https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/” + testPath, { method: “POST”, headers: { “Authorization”: “Bearer “ + token, “Content-Type”: “text/plain”, “x-upsert”: “true” }, body: testFile });
 log(“Storage upload test: “ + uploadRes.status + “ “ + (uploadRes.ok ? “OK ✅” : “FAILED ❌ - “ + await uploadRes.text()));
 log(”=== DEBUG END ===”);
-alert(“Debug complete — check browser console (Safari: Develop > Web Inspector > Console)”);
+alert(“Debug complete - check browser console (Safari: Develop > Web Inspector > Console)”);
 };
-// ═══════════════════════════════════ DATA ═══════════════════════════════════
+// ??????????????????????????????????? DATA ???????????????????????????????????
 const INIT_VIDEOS = [
-{ id: 1, creator: “Elena Vasquez”, handle: “@elenavsings”, avatar: “EV”, title: “Act II opener — full run”, type: “video”, likes: 1240, comments: 87, shares: 312, reposts: 94, gifts: 23, accent: “#c9a84c”, bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”, note: “♪”, tier: “gold” },
-{ id: 2, creator: “Marcus Bell”, handle: “@marcusbell_mt”, avatar: “MB”, title: “Raw rehearsal — just piano”, type: “audio”, likes: 876, comments: 54, shares: 201, reposts: 67, gifts: 11, accent: “#4cb8c4”, bg: “linear-gradient(160deg,#0a1a1a,#0f2d2a)”, note: “♩”, tier: “silver” },
-{ id: 3, creator: “Priya Nair”, handle: “@priyanairwrites”, avatar: “PN”, title: “New lyrics drop — verse 3”, type: “lyrics”, likes: 542, comments: 39, shares: 118, reposts: 45, gifts: 8, accent: “#e8a87c”, bg: “linear-gradient(160deg,#1a0f0a,#2d1a10)”, note: “✦”, tier: “platinum” },
-{ id: 4, creator: “Jonah Strauss”, handle: “@jonahstrauss”, avatar: “JS”, title: “Pit orchestra — sitzprobe”, type: “audio”, likes: 2100, comments: 143, shares: 589, reposts: 201, gifts: 44, accent: “#a084e8”, bg: “linear-gradient(160deg,#0a0a1a,#10152d)”, note: “♬”, tier: “gold” },
+{ id: 1, creator: “Elena Vasquez”, handle: “@elenavsings”, avatar: “EV”, title: “Act II opener - full run”, type: “video”, likes: 1240, comments: 87, shares: 312, reposts: 94, gifts: 23, accent: “#c9a84c”, bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”, note: “♪”, tier: “gold” },
+{ id: 2, creator: “Marcus Bell”, handle: “@marcusbell_mt”, avatar: “MB”, title: “Raw rehearsal - just piano”, type: “audio”, likes: 876, comments: 54, shares: 201, reposts: 67, gifts: 11, accent: “#4cb8c4”, bg: “linear-gradient(160deg,#0a1a1a,#0f2d2a)”, note: “♩”, tier: “silver” },
+{ id: 3, creator: “Priya Nair”, handle: “@priyanairwrites”, avatar: “PN”, title: “New lyrics drop - verse 3”, type: “lyrics”, likes: 542, comments: 39, shares: 118, reposts: 45, gifts: 8, accent: “#e8a87c”, bg: “linear-gradient(160deg,#1a0f0a,#2d1a10)”, note: “✦”, tier: “platinum” },
+{ id: 4, creator: “Jonah Strauss”, handle: “@jonahstrauss”, avatar: “JS”, title: “Pit orchestra - sitzprobe”, type: “audio”, likes: 2100, comments: 143, shares: 589, reposts: 201, gifts: 44, accent: “#a084e8”, bg: “linear-gradient(160deg,#0a0a1a,#10152d)”, note: “♬”, tier: “gold” },
 ];
 const INIT_COMMENTS = {
 1: [{ id: 1, user: “MelodyMaker”, avatar: “MM”, text: “This is absolutely stunning 🎶”, time: “2h”, likes: 14, liked: false }],
@@ -228,21 +227,21 @@ const POSTER_THEMES = [
 { bg: “linear-gradient(160deg,#0a0a1a,#10152d,#0a1510)”, accent: “#a084e8”, name: “Purple Haze” },
 ];
 const COLLABS = [
-{ role: “Tenor Lead”, project: “The Last Waltz”, location: “San Diego / Remote”, accent: “#c9a84c”, bio: “Seeking a dramatic tenor, A2–Bb4, movement experience preferred.” },
+{ role: “Tenor Lead”, project: “The Last Waltz”, location: “San Diego / Remote”, accent: “#c9a84c”, bio: “Seeking a dramatic tenor, A2-Bb4, movement experience preferred.” },
 { role: “Composer”, project: “Neon Dreams”, location: “Virtual”, accent: “#4cb8c4”, bio: “Looking for a composer comfortable with electronic + orchestral hybrid.” },
 { role: “Lyricist”, project: “Borrowed Time”, location: “New York / Hybrid”, accent: “#e8a87c”, bio: “Playwright needs a lyricist for a 90-min two-hander. Contemporary style.” },
 ];
 const LIVE_ROOMS = [
-{ id: 1, title: “The Midnight Serenade – Rehearsal”, host: “Alex Rivera”, listeners: 27, accent: “#c9a84c” },
+{ id: 1, title: “The Midnight Serenade - Rehearsal”, host: “Alex Rivera”, listeners: 27, accent: “#c9a84c” },
 { id: 2, title: “Song Feedback Circle”, host: “Elena Voss”, listeners: 51, accent: “#4cb8c4” },
-{ id: 3, title: “Act II Workshop — Open Session”, host: “Jonah Strauss”, listeners: 14, accent: “#a084e8” },
+{ id: 3, title: “Act II Workshop - Open Session”, host: “Jonah Strauss”, listeners: 14, accent: “#a084e8” },
 ];
-// ── Casting data ──────────────────────────────────────────────────────────────
+// ?? Casting data ??????????????????????????????????????????????????????????????
 const INIT_CASTING_CALLS = [
 { id: 1, title: “Into the Woods”, role: “The Witch”, type: “Lead”, voice: “Mezzo-Soprano”, comp: “Paid”, date: “April 20 · 2:0 PM”, location: “The Old Globe, San Diego”, prep: “16 bars up-tempo + ballad. Sides on request.”, company: “Old Globe Theatre”, selftape: true, posted: “1h ago”, emoji: “🌲” },
 { id: 2, title: “Hamilton”, role: “Ensemble / Swing”, type: “Ensemble”, voice: “Any”, comp: “Paid”, date: “April 25 · 10:0 AM”, location: “La Jolla Playhouse”, prep: “One up-tempo 16 bars. Dance call follows.”, company: “La Jolla Playhouse”, selftape: false, posted: “3h ago”, emoji: “🎩” },
-{ id: 3, title: “Neon Requiem”, role: “Lead – Echo”, type: “Lead”, voice: “Soprano”, comp: “Stipend”, date: “May 2 · Remote”, location: “Remote / Self-Tape”, prep: “Full Act 1 scene + original song. Under 4 min.”, company: “StageLab Dev Workshop”, selftape: true, posted: “1d ago”, emoji: “⚡” },
-{ id: 4, title: “The Midnight Serenade”, role: “Jazz Vocalist”, type: “Supporting”, voice: “Alto”, comp: “Paid”, date: “May 5 · 3:0 PM”, location: “Balboa Theatre, San Diego”, prep: “Jazz standard, 2–3 min.”, company: “SD Musical Theatre”, selftape: true, posted: “2d ago”, emoji: “🌙” },
+{ id: 3, title: “Neon Requiem”, role: “Lead - Echo”, type: “Lead”, voice: “Soprano”, comp: “Stipend”, date: “May 2 · Remote”, location: “Remote / Self-Tape”, prep: “Full Act 1 scene + original song. Under 4 min.”, company: “StageLab Dev Workshop”, selftape: true, posted: “1d ago”, emoji: “⚡” },
+{ id: 4, title: “The Midnight Serenade”, role: “Jazz Vocalist”, type: “Supporting”, voice: “Alto”, comp: “Paid”, date: “May 5 · 3:0 PM”, location: “Balboa Theatre, San Diego”, prep: “Jazz standard, 2-3 min.”, company: “SD Musical Theatre”, selftape: true, posted: “2d ago”, emoji: “🌙” },
 ];
 const INIT_AUDITIONS = [
 { id: 1, show: “Into the Woods”, role: “The Witch”, company: “Old Globe”, date: “April 20 · 2:0 PM”, location: “The Old Globe”, prep: “16 bars + ballad”, status: “upcoming”, emoji: “🌲” },
@@ -260,7 +259,7 @@ const INIT_CREDITS = [
 { title: “Company”, role: “Amy”, company: “Cygnet Theatre”, year: “2020” },
 ];
 const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + “K” : String(n);
-// ══════════════════════ PERSISTENCE HELPERS ══════════════════════════
+// ?????????????????????? PERSISTENCE HELPERS ??????????????????????????
 function usePersistedState(key, init) {
 const [val, setVal] = useState(() => {
 try {
@@ -283,9 +282,9 @@ return resolved;
 };
 return [val, set];
 }
-// ════════════════════════════ GLOBAL CSS ════════════════════════════
+// ???????????????????????????? GLOBAL CSS ????????????????????????????
 const CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap'); *{box-sizing:border-box;margin:0;padding:0;} body{background:#08080f;overscroll-behavior:none;} ::-webkit-scrollbar{width:0;} @keyframes barPulse{0%,100%{transform:scaleY(0.55);opacity:0.65;}50%{transform:scaleY(1);opacity:1;}} .bar{animation:barPulse 1.2s ease-in-out infinite;} @keyframes liveDot{0%,100%{opacity:1;}50%{opacity:0.2;}} @keyframes speaking{0%{transform:scale(1);box-shadow:0 0 20px var(--sa,#c9a84c)44;}100%{transform:scale(1.7);box-shadow:0 0 40px var(--sa,#c9a84c)88;}} @keyframes spotlight{0%,100%{transform:translateX(-50%) translateY(-30%);}50%{transform:translateX(-50%) translateY(-45%);}} @keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}} @keyframes fadeIn{from{opacity:0;}to{opacity:1;}} @keyframes pop{0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}} @keyframes floatUp{0%{transform:translateY(0);opacity:1;}100%{transform:translateY(-120px);opacity:0;}} .overlay-enter{animation:slideUp 0.32s cubic-bezier(0.32,0.72,0,1) forwards;} .fade-in{animation:fadeIn 0.25s ease forwards;} .pop{animation:pop 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;} input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.3);} input,textarea,button,select{font-family:'DM Sans',sans-serif;}`;
-// ══════════════ BRAND LOGO ══════════════════════════════════════════
+// ?????????????? BRAND LOGO ??????????????????????????????????????????
 const SLogo = ({ size = 32, showText = false, textSize = 17 }) => (React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: showText ? 10 : 0 } },
 React.createElement(“svg”, { width: size, height: size, viewBox: “0 0 100 100”, fill: “none” },
 React.createElement(“defs”, null,
@@ -297,7 +296,7 @@ React.createElement(“rect”, { width: “100”, height: “100”, fill: “
 React.createElement(“path”, { d: “M 64 18 C 80 18 84 28 80 36 C 76 44 62 48 50 52 C 36 57 24 63 24 74 C 24 84 34 88 46 86 C 54 84 62 80 66 74”, stroke: “url(#sg)”, strokeWidth: “14”, strokeLinecap: “round”, fill: “none” }),
 React.createElement(“line”, { x1: “24”, y1: “74”, x2: “16”, y2: “78”, stroke: “url(#sg)”, strokeWidth: “14”, strokeLinecap: “round” })),
 showText && (React.createElement(“span”, { style: { fontFamily: “‘DM Sans’,sans-serif”, fontWeight: 700, fontSize: textSize, color: “#fff”, letterSpacing: “-0.01em”, lineHeight: 1 } }, “StageLab”))));
-// ══════════════════════════════ ROOT ════════════════════════════════
+// ?????????????????????????????? ROOT ????????????????????????????????
 function StageLab() {
 const [page, setPage] = useState(“loading”);
 const [tab, setTab] = useState(0);
@@ -333,7 +332,7 @@ if (page === “onboard”)
 return React.createElement(OnboardScreen, { onDone: () => setPage(“app”), session: session });
 return React.createElement(MainApp, { tab: tab, setTab: setTab, session: session });
 }
-// ════════════════════════════════ AUTH ══════════════════════════════
+// ???????????????????????????????? AUTH ??????????????????????????????
 function AuthScreen({ onEnter, onOnboard }) {
 const [mode, setMode] = useState(0); // 0=signin 1=signup
 const [name, setName] = useState(””);
@@ -356,7 +355,7 @@ setError(””);
 setLoading(true);
 try {
 if (mode === 0) {
-// ── Sign In ──
+// ?? Sign In ??
 const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
 if (err)
 throw err;
@@ -364,7 +363,7 @@ showToast(“Welcome back! 🎭”);
 setTimeout(() => onEnter(data.session), 700);
 }
 else {
-// ── Sign Up ──
+// ?? Sign Up ??
 const { data, error: err } = await supabase.auth.signUp({
 email, password,
 options: { data: { name } }
@@ -399,7 +398,7 @@ React.createElement(“button”, { onClick: () => onEnter(null), style: { width
 toast && React.createElement(Toast, { msg: toast })));
 }
 const AInput = ({ placeholder, type = “text” }) => (React.createElement(“input”, { type: type, placeholder: placeholder, style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 14, outline: “none” } }));
-// ═══════════════════════════ ONBOARD ═══════════════════════════════
+// ??????????????????????????? ONBOARD ???????????????????????????????
 const ROLES = [“Actor”, “Singer”, “Dancer”, “Composer”, “Lyricist”, “Musical Director”, “Director”, “Choreographer”, “Playwright”, “Producer”, “Stage Manager”, “Designer”, “Pit Musician”, “Other”];
 const SKILLS_LIST = [“Soprano”, “Mezzo”, “Alto”, “Tenor”, “Baritone”, “Bass”, “Jazz”, “Classical”, “Contemporary”, “Hip-Hop”, “Tap”, “Ballet”, “Character”, “Improv”, “Piano”, “Guitar”, “Violin”, “Conducting”];
 function OnboardScreen({ onDone, session }) {
@@ -426,18 +425,18 @@ return;
 }
 setSaving(true);
 const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
-// Get token — try multiple sources since signup token may not be in localStorage yet
+// Get token - try multiple sources since signup token may not be in localStorage yet
 const token = localStorage.getItem(“sb_token”)
 || (session === null || session === void 0 ? void 0 : session.access_token)
 || null;
 if (!uid) {
-// No user — skip upload, go straight to app
+// No user - skip upload, go straight to app
 setSaving(false);
 onDone();
 return;
 }
 let avatarUrl = null;
-// Upload avatar — skip if no token (won’t work) or no avatar chosen
+// Upload avatar - skip if no token (won’t work) or no avatar chosen
 if (avatar && token) {
 try {
 // Convert data URI to blob without using fetch() which can fail on data: URIs
@@ -454,7 +453,7 @@ bytes[i] = binary.charCodeAt(i);
 blob = new Blob([bytes], { type: mime });
 }
 else {
-// Object URL — fetch it
+// Object URL - fetch it
 const r = await fetch(avatar);
 blob = await r.blob();
 }
@@ -476,7 +475,7 @@ avatarUrl = “https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public
 else {
 const errText = await uploadRes.text().catch(() => uploadRes.status);
 console.warn(“Avatar upload failed:”, uploadRes.status, errText);
-// Don’t block — continue without avatar
+// Don’t block - continue without avatar
 }
 }
 catch (e) {
@@ -488,7 +487,7 @@ console.warn(“Avatar upload error:”, e);
 const cleanHandle = handle
 ? (handle.startsWith(”@”) ? handle : “@” + handle)
 : “@” + (name || “user”).toLowerCase().replace(/[^a-z0-9*]/g, “*”);
-// Save profile — this is the critical part
+// Save profile - this is the critical part
 try {
 const updateData = {
 name: (name || “”).trim(),
@@ -607,8 +606,8 @@ React.createElement(“div”, { style: { padding: “16px 24px 40px”, backgro
 React.createElement(“button”, { onClick: saveAndContinue, disabled: saving || (step === 0 && !role), style: { width: “100%”, padding: “16px”, background: (saving || (step === 0 && !role)) ? “rgba(255,255,255,0.08)” : “linear-gradient(90deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 14, color: (saving || (step === 0 && !role)) ? “rgba(255,255,255,0.3)” : “#1a0a2e”, fontWeight: 700, fontSize: 16, cursor: (saving || (step === 0 && !role)) ? “not-allowed” : “pointer” } }, saving ? “Creating your profile…” : step < 2 ? “Continue →” : “🎭 Enter StageLab”),
 step > 0 && (React.createElement(“button”, { onClick: () => setStep(s => s - 1), style: { width: “100%”, marginTop: 10, background: “none”, border: “none”, color: “rgba(255,255,255,0.35)”, fontSize: 13, cursor: “pointer” } }, “\u2190 Back”)))));
 }
-// ═══════════════════════════ MAIN APP ═══════════════════════════════
-// 5-tab bottom nav — Feed | Create | Discover | Studio | Me
+// ??????????????????????????? MAIN APP ???????????????????????????????
+// 5-tab bottom nav - Feed | Create | Discover | Studio | Me
 const NAV = [
 { icon: “⌂”, label: “Feed” },
 { icon: “✂”, label: “Create” },
@@ -652,7 +651,7 @@ liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () =
 showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
 toast && React.createElement(Toast, { msg: toast })));
 }
-// ═══════════════════════════ FEED ═══════════════════════════════════
+// ??????????????????????????? FEED ???????????????????????????????????
 function FeedScreen({ videos, setVideos, comments, setComments, show }) {
 const [cur, setCur] = useState(0);
 const [liked, setLiked] = useState({});
@@ -676,7 +675,7 @@ const ACCENTS = [”#c9a84c”, “#4cb8c4”, “#e8a87c”, “#a084e8”, “
 const mapped = data.map((p, i) => {
 var _a, _b, _c, _d, _e;
 return ({
-// Include ALL post types — video, audio, lyrics, poster
+// Include ALL post types - video, audio, lyrics, poster
 id: p.id,
 creator: ((_a = p.profiles) === null || _a === void 0 ? void 0 : _a.name) || “Unknown”,
 handle: ((_b = p.profiles) === null || _b === void 0 ? void 0 : _b.handle) || “@user”,
@@ -846,7 +845,7 @@ React.createElement(Btn, { icon: “\uD83C\uDF81”, label: fmt(vid.gifts), onCl
 const Btn = ({ icon, label, onClick, accent, active }) => (React.createElement(“button”, { onClick: onClick, style: { background: “none”, border: “none”, cursor: “pointer”, display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 3 } },
 React.createElement(“div”, { style: { width: 42, height: 42, borderRadius: 13, display: “flex”, alignItems: “center”, justifyContent: “center”, background: active ? accent + “33” : “rgba(0,0,0,0.4)”, fontSize: 20, color: active ? accent : “#fff”, border: active ? `1px solid ${accent}55` : “none” } }, icon),
 React.createElement(“span”, { style: { fontSize: 9, color: “rgba(255,255,255,0.48)”, letterSpacing: “0.04em” } }, label)));
-// ── Comments Modal ──────────────────────────────────────────────────
+// ?? Comments Modal ??????????????????????????????????????????????????
 function CommentsModal({ vid, comments, onAdd, onClose }) {
 const [text, setText] = useState(””);
 const [localComments, setLocalComments] = useState(comments);
@@ -884,7 +883,7 @@ React.createElement(“input”, { value: text, onChange: e => setText(e.target.
 submit(); }, placeholder: “Add a comment\u2026”, style: { flex: 1, padding: “10px 13px”, background: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 13, outline: “none” } }),
 React.createElement(“button”, { onClick: submit, style: { padding: “10px 16px”, background: vid.accent, color: “#1a0a2e”, border: “none”, borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “Post”))));
 }
-// ── Gift Modal ──────────────────────────────────────────────────────
+// ?? Gift Modal ??????????????????????????????????????????????????????
 function GiftModal({ vid, onGift, onClose }) {
 const [sent, setSent] = useState(null);
 const handleGift = (g) => { setSent(g); setTimeout(() => onGift(g), 900); };
@@ -907,7 +906,7 @@ React.createElement(“span”, { style: { fontSize: 11, color: vid.accent, font
 “$”,
 g.amount)))))))));
 }
-// ── Subscribe Modal ─────────────────────────────────────────────────
+// ?? Subscribe Modal ?????????????????????????????????????????????????
 function SubscribeModal({ vid, onSubscribe, onClose }) {
 const [done, setDone] = useState(null);
 const handle = (tier) => { setDone(tier); onSubscribe(vid.id, tier); };
@@ -938,7 +937,7 @@ React.createElement(“button”, { onClick: () => handle(key), style: { width: 
 “Subscribe \u2014 “,
 t.price))))))));
 }
-// ── Creator Profile Modal ───────────────────────────────────────────
+// ?? Creator Profile Modal ???????????????????????????????????????????
 function CreatorModal({ vid, onSubscribe, onClose }) {
 var _a;
 return (React.createElement(“div”, { style: { position: “absolute”, inset: 0, background: “#08080f”, zIndex: 60, overflowY: “auto” }, className: “fade-in” },
@@ -959,12 +958,12 @@ React.createElement(“button”, { onClick: onSubscribe, style: { width: “100
 “Subscribe to “,
 vid.creator.split(” “)[0]),
 React.createElement(“div”, { style: { fontSize: 10, fontWeight: 700, letterSpacing: “0.13em”, color: “rgba(255,255,255,0.3)”, marginBottom: 12 } }, “RECENT WORKS”),
-[vid.title, “Workshop session — Act I finale”, “Chord progressions for ‘The Last Light’”].map((w, i) => (React.createElement(“div”, { key: i, style: { display: “flex”, alignItems: “center”, padding: “11px 13px”, background: “rgba(255,255,255,0.4)”, borderRadius: 12, marginBottom: 8, gap: 10 } },
+[vid.title, “Workshop session - Act I finale”, “Chord progressions for ‘The Last Light’”].map((w, i) => (React.createElement(“div”, { key: i, style: { display: “flex”, alignItems: “center”, padding: “11px 13px”, background: “rgba(255,255,255,0.4)”, borderRadius: 12, marginBottom: 8, gap: 10 } },
 React.createElement(“span”, { style: { color: vid.accent, fontSize: 16 } }, vid.note),
 React.createElement(“span”, { style: { fontSize: 13 } }, w),
 i === 0 && React.createElement(“span”, { style: { marginLeft: “auto”, background: vid.accent + “22”, color: vid.accent, borderRadius: 10, padding: “2px 8px”, fontSize: 10, fontWeight: 700 } }, “NEW”)))))));
 }
-// ═══════════════════════════ CREATE ═════════════════════════════════
+// ??????????????????????????? CREATE ?????????????????????????????????
 function CreateScreen({ show, setTab }) {
 const [sub, setSub] = useState(0);
 const TABS = [“🎬 Video”, “🎵 Audio”, “🎨 Poster”, “✍️ Lyrics”];
@@ -980,7 +979,7 @@ sub === 1 && React.createElement(AudioPostTab, { show: show, setTab: setTab }),
 sub === 2 && React.createElement(PosterMakerTab, { show: show, setTab: setTab }),
 sub === 3 && React.createElement(LyricsPostTab, { show: show, setTab: setTab }))));
 }
-// ── Shared step progress bar ──────────────────────────────────────────
+// ?? Shared step progress bar ??????????????????????????????????????????
 function StepBar({ step, steps }) {
 return (React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: 6, marginBottom: 20 } }, steps.map((label, i) => (React.createElement(React.Fragment, { key: i },
 React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 4 } },
@@ -995,7 +994,7 @@ transition: “all 0.3s” } }, i < step ? “✓” : i + 1),
 React.createElement(“span”, { style: { fontSize: 9, color: i === step ? “#c9a84c” : “rgba(255,255,255,0.3)”, fontWeight: i === step ? 700 : 400, letterSpacing: “0.05em” } }, label)),
 i < steps.length - 1 && (React.createElement(“div”, { style: { flex: 1, height: 2, borderRadius: 1, background: i < step ? “#c9a84c” : “rgba(255,255,255,0.08)”, marginBottom: 14, transition: “background 0.3s” } })))))));
 }
-// ─── Video Post Tab ───────────────────────────────────────────────────
+// ??? Video Post Tab ???????????????????????????????????????????????????
 function VideoPostTab({ show, setTab }) {
 const [mode, setMode] = useState(“upload”); // upload | record
 const [videoFile, setVideoFile] = useState(null);
@@ -1074,7 +1073,7 @@ setRecTime(0);
 recTimer.current = setInterval(() => setRecTime(t => t + 1), 1000);
 }
 catch (e) {
-show(“📷 Camera access denied — check browser permissions”);
+show(“📷 Camera access denied - check browser permissions”);
 }
 };
 const stopRecording = () => {
@@ -1118,7 +1117,7 @@ mediaUrl = “https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/
 else {
 const errText = await uploadRes.text().catch(() => “”);
 console.error(“Video upload failed:”, uploadRes.status, errText);
-show(“⚠️ Upload failed — your post will save without the video file”);
+show(“⚠️ Upload failed - your post will save without the video file”);
 }
 }
 if (saveToProfile) {
@@ -1164,7 +1163,7 @@ setTimeout(() => setTab(0), 600);
 }
 };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-// ── Step 0: Upload or Record ──
+// ?? Step 0: Upload or Record ??
 if (step === 0)
 return (React.createElement(“div”, { style: { padding: “18px 16px 80px” } },
 React.createElement(“div”, { style: { fontSize: 20, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 14 } }, “Post a Video”),
@@ -1196,7 +1195,7 @@ React.createElement(“span”, { style: { fontSize: 12, fontWeight: 700, color:
 fmt(recTime))))),
 React.createElement(“div”, { style: { display: “flex”, gap: 14, alignItems: “center” } }, !recording ? (React.createElement(“button”, { onClick: startRecording, style: { width: 68, height: 68, borderRadius: “50%”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “4px solid rgba(255,255,255,0.2)”, fontSize: 28, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\u23FA”)) : (React.createElement(“button”, { onClick: stopRecording, style: { width: 68, height: 68, borderRadius: “50%”, background: “#ef4444”, border: “4px solid rgba(255,255,255,0.3)”, fontSize: 26, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center”, animation: “liveDot 1s infinite” } }, “\u23F9”))),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10, textAlign: “center” } }, recording ? `Recording… ${fmt(recTime)}` : “Tap ⏺ to start recording”)))));
-// ── Step 1: Edit ──
+// ?? Step 1: Edit ??
 if (step === 1)
 return (React.createElement(“div”, { style: { padding: “16px 16px 80px” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 16 } },
@@ -1238,7 +1237,7 @@ React.createElement(“label”, { style: { flex: 1, padding: “10px”, backgr
 React.createElement(“input”, { type: “file”, accept: “image/*”, style: { display: “none” }, onChange: handleThumb }),
 thumbnail ? “Change thumbnail” : “Upload thumbnail”)),
 React.createElement(“button”, { onClick: () => setStep(2), style: primaryBtn(”#c9a84c”) }, “Continue \u2192”)));
-// ── Step 2: Details & Publish ──
+// ?? Step 2: Details & Publish ??
 return (React.createElement(“div”, { style: { padding: “16px 16px 80px” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 18 } },
 React.createElement(“button”, { onClick: () => setStep(1), style: { background: “none”, border: “none”, color: “rgba(255,255,255,0.5)”, fontSize: 20, cursor: “pointer” } }, “\u2190”),
@@ -1273,7 +1272,7 @@ React.createElement(“button”, { onClick: () => publish(false), style: primar
 React.createElement(“button”, { onClick: () => publish(true), style: Object.assign(Object.assign({}, primaryBtn(“rgba(255,255,255,0.1)”)), { color: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.15)” }) }, “\uD83D\uDCBE Save to Profile Only”),
 React.createElement(“button”, { onClick: () => show(“Draft saved ✓”), style: ghostBtn }, “Save as Draft”)));
 }
-// ─── Audio Post Tab ───────────────────────────────────────────────────
+// ??? Audio Post Tab ???????????????????????????????????????????????????
 function AudioPostTab({ show, setTab }) {
 const [mode, setMode] = useState(“upload”); // upload | record
 const [audioFile, setAudioFile] = useState(null);
@@ -1342,7 +1341,7 @@ setRecTime(0);
 recTimer.current = setInterval(() => setRecTime(t => t + 1), 1000);
 }
 catch (e) {
-show(“🎙 Mic access denied — check browser permissions”);
+show(“🎙 Mic access denied - check browser permissions”);
 }
 };
 const stopRecording = () => {
@@ -1402,7 +1401,7 @@ React.createElement(“div”, { style: { display: “flex”, gap: 1.5, height:
 React.createElement(“div”, { style: { fontSize: 28, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, color: recording ? “#ef4444” : “rgba(255,255,255,0.4)”, marginBottom: 16, letterSpacing: “0.05em” } }, fmt(recTime)),
 !recording ? (React.createElement(“button”, { onClick: startRecording, style: { width: 72, height: 72, borderRadius: “50%”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “4px solid rgba(255,255,255,0.2)”, fontSize: 30, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\uD83C\uDF99”)) : (React.createElement(“button”, { onClick: stopRecording, style: { width: 72, height: 72, borderRadius: “50%”, background: “#ef4444”, border: “4px solid rgba(255,255,255,0.3)”, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center”, animation: “liveDot 1s infinite” } },
 React.createElement(“div”, { style: { width: 24, height: 24, background: “#fff”, borderRadius: 4 } }))),
-React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10 } }, recording ? “Recording — tap to stop” : “Tap to start recording”),
+React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10 } }, recording ? “Recording - tap to stop” : “Tap to start recording”),
 audioURL && !recording && (React.createElement(“div”, { style: { marginTop: 14, width: “100%”, background: “rgba(255,255,255,0.6)”, borderRadius: 12, padding: “12px 14px”, display: “flex”, alignItems: “center”, gap: 10 } },
 React.createElement(“audio”, { ref: audioRef, src: audioURL, onEnded: () => setPlaying(false) }),
 React.createElement(“button”, { onClick: togglePlay, style: { width: 36, height: 36, borderRadius: “50%”, background: “#c9a84c”, border: “none”, color: “#1a0a2e”, fontSize: 16, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, playing ? “⏸” : “▶”),
@@ -1449,7 +1448,7 @@ React.createElement(“button”, { onClick: () => publish(false), style: primar
 React.createElement(“button”, { onClick: () => publish(true), style: Object.assign(Object.assign({}, primaryBtn(“rgba(255,255,255,0.1)”)), { color: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.15)” }) }, “\uD83D\uDCBE Save to Profile Only”),
 React.createElement(“button”, { onClick: () => show(“Draft saved ✓”), style: ghostBtn }, “Save as Draft”)));
 }
-// ─── Poster Maker Tab ─────────────────────────────────────────────────
+// ??? Poster Maker Tab ?????????????????????????????????????????????????
 function PosterMakerTab({ show, setTab }) {
 const [pTheme, setPTheme] = useState(0);
 const [pTitle, setPTitle] = useState(“The Midnight Serenade”);
@@ -1503,7 +1502,7 @@ React.createElement(“input”, { value: v, onChange: e => s(e.target.value), p
 React.createElement(“button”, { onClick: () => show(“🖼 Poster saved to your camera roll!”), style: primaryBtn(pt.accent) }, “\u2B07 Download Poster”),
 React.createElement(“button”, { onClick: () => { show(“✓ Poster shared to your feed!”); setTab(0); }, style: ghostBtn }, “Share to Feed”)));
 }
-// ─── Lyrics Post Tab ──────────────────────────────────────────────────
+// ??? Lyrics Post Tab ??????????????????????????????????????????????????
 function LyricsPostTab({ show, setTab }) {
 const [title, setTitle] = useState(””);
 const [lyrics, setLyrics] = useState(””);
@@ -1584,8 +1583,8 @@ return;
 } show(“✍️ Lyrics posted to your feed!”); setTab(0); }, style: primaryBtn(”#c9a84c”) }, “\u270D\uFE0F Post Lyrics”),
 React.createElement(“button”, { onClick: () => show(“📝 Draft saved ✓”), style: ghostBtn }, “Save as Draft”)));
 }
-// ═══════════════════════════ DISCOVER ═══════════════════════════════
-// ── Discover data ────────────────────────────────────────────────────
+// ??????????????????????????? DISCOVER ???????????????????????????????
+// ?? Discover data ????????????????????????????????????????????????????
 const DISCOVER_PEOPLE = [
 { id: 1, name: “Sofia Chen”, handle: “@sofiac”, role: “Composer & Producer”, location: “New York, NY”, skills: [“Jazz”, “Orchestration”, “Piano”], accent: “#c9a84c”, following: false, avatar: “SC”, bio: “Award-winning composer. 3 off-Broadway credits. Looking for lyricists.” },
 { id: 2, name: “Marcus Bell”, handle: “@marcusb”, role: “Musical Director”, location: “Chicago, IL”, skills: [“Conducting”, “Vocal Direction”, “Piano”], accent: “#4cb8c4”, following: false, avatar: “MB”, bio: “Musical director with 10 years regional theatre. Available for new works.” },
@@ -1598,14 +1597,14 @@ const DISCOVER_PROJECTS = [
 { id: 1, title: “The Midnight Serenade”, type: “Jazz Musical”, status: “Seeking Lyricist”, location: “San Diego / Remote”, accent: “#c9a84c”, members: 3, desc: “1920s New Orleans murder mystery. Act I complete. Need sharp, witty lyrics with a blues edge.” },
 { id: 2, title: “Neon Requiem”, type: “Rock Musical”, status: “Workshop Stage”, location: “New York”, accent: “#a084e8”, members: 5, desc: “Dystopian 2049. Strong belters needed. 3-day paid workshop in May.” },
 { id: 3, title: “Static”, type: “Contemporary”, status: “Seeking Composer”, location: “Remote Friendly”, accent: “#4cb8c4”, members: 2, desc: “Two-hander about a long-distance couple. Indie/folk sound. Intimate and modern.” },
-{ id: 4, title: “Borrowed Time”, type: “Drama Musical”, status: “Open Auditions”, location: “New York / Hybrid”, accent: “#e8a87c”, members: 4, desc: “90-min two-hander. Lyricist attached. Need lead performers — soprano and baritone.” },
-{ id: 5, title: “The Last Waltz”, type: “Period Musical”, status: “Seeking Tenor Lead”, location: “San Diego / Remote”, accent: “#e8507c”, members: 6, desc: “1940s period piece. Dramatic tenor A2–Bb4. Movement experience preferred.” },
+{ id: 4, title: “Borrowed Time”, type: “Drama Musical”, status: “Open Auditions”, location: “New York / Hybrid”, accent: “#e8a87c”, members: 4, desc: “90-min two-hander. Lyricist attached. Need lead performers - soprano and baritone.” },
+{ id: 5, title: “The Last Waltz”, type: “Period Musical”, status: “Seeking Tenor Lead”, location: “San Diego / Remote”, accent: “#e8507c”, members: 6, desc: “1940s period piece. Dramatic tenor A2-Bb4. Movement experience preferred.” },
 ];
 const DISCOVER_CALLS = [
-{ id: 1, title: “Into the Woods — The Witch”, company: “Old Globe Theatre”, deadline: “Apr 20”, type: “Audition”, paid: true, remote: false, accent: “#c9a84c”, desc: “Mezzo-soprano. 16 bars + ballad. Dance call follows.” },
-{ id: 2, title: “Ensemble — In the Heights”, company: “La Jolla Playhouse”, deadline: “Apr 25”, type: “Audition”, paid: true, remote: false, accent: “#4cb8c4”, desc: “All voice types. Up-tempo 16 bars. All ethnicities encouraged.” },
-{ id: 3, title: “Composer — Neon Dreams”, company: “Independent”, deadline: “May 10”, type: “Collab Call”, paid: false, remote: true, accent: “#a084e8”, desc: “Electronic + orchestral hybrid. Looking for composer with film score background.” },
-{ id: 4, title: “Lead Vocalist — Static”, company: “New Works Festival”, deadline: “May 15”, type: “Collab Call”, paid: true, remote: true, accent: “#e8a87c”, desc: “Self-tape accepted. Contemporary sound. Strong actor-singer.” },
+{ id: 1, title: “Into the Woods - The Witch”, company: “Old Globe Theatre”, deadline: “Apr 20”, type: “Audition”, paid: true, remote: false, accent: “#c9a84c”, desc: “Mezzo-soprano. 16 bars + ballad. Dance call follows.” },
+{ id: 2, title: “Ensemble - In the Heights”, company: “La Jolla Playhouse”, deadline: “Apr 25”, type: “Audition”, paid: true, remote: false, accent: “#4cb8c4”, desc: “All voice types. Up-tempo 16 bars. All ethnicities encouraged.” },
+{ id: 3, title: “Composer - Neon Dreams”, company: “Independent”, deadline: “May 10”, type: “Collab Call”, paid: false, remote: true, accent: “#a084e8”, desc: “Electronic + orchestral hybrid. Looking for composer with film score background.” },
+{ id: 4, title: “Lead Vocalist - Static”, company: “New Works Festival”, deadline: “May 15”, type: “Collab Call”, paid: true, remote: true, accent: “#e8a87c”, desc: “Self-tape accepted. Contemporary sound. Strong actor-singer.” },
 ];
 function DiscoverScreen({ show }) {
 const [tab, setTab] = useState(“people”);
@@ -1652,7 +1651,7 @@ setLoadingUsers(false);
 });
 }, []);
 const q = query.toLowerCase();
-// Merge real users with sample data — real users first
+// Merge real users with sample data - real users first
 const allPeople = […realUsers, …DISCOVER_PEOPLE.filter(sp => !realUsers.some(ru => ru.id === sp.id))];
 const filteredPeople = allPeople.filter(p => !q || p.name.toLowerCase().includes(q) ||
 p.role.toLowerCase().includes(q) ||
@@ -1760,7 +1759,7 @@ React.createElement(“button”, { onClick: () => show(`Applied to "${c.title}"
 React.createElement(“button”, { onClick: () => toggleSave(“call-” + c.id), style: { flex: 1, padding: “10px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, saved[“call-” + c.id] ? “🔖 Saved” : “🔖 Save”)))))),
 tab === “shows” && React.createElement(LocalShowsPanel, { show: show }))));
 }
-// ── Local Shows Panel ────────────────────────────────────────────────
+// ?? Local Shows Panel ????????????????????????????????????????????????
 const ZIP_REGEX = /^\d{5}$/;
 function LocalShowsPanel({ show }) {
 const [zip, setZip] = useState(””);
@@ -1828,53 +1827,53 @@ const state = region.state;
 // Realistic show database keyed by region
 const SHOW_DB = {
 “San Diego”: [
-{ title: “Into the Woods”, company: “The Old Globe”, type: “Musical”, address: “The Old Globe, Balboa Park, San Diego, CA”, dates: “Apr 5 – May 11, 2026”, nextShow: “Sun Apr 20 at 2:0 PM”, tickets: “$30–$98”, description: “Sondheim’s fairy tale mashup at the Tony Award-winning Old Globe.”, url: “https://www.theoldglobe.org”, pro: true, soldOut: false },
-{ title: “Hamilton”, company: “Balboa Theatre”, type: “Touring”, address: “Balboa Theatre, San Diego, CA”, dates: “Apr 22 – May 11, 2026”, nextShow: “Wed Apr 23 at 7:30 PM”, tickets: “$89–$250”, description: “Lin-Manuel Miranda’s hip-hop musical about America’s founding father.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: true },
-{ title: “A Midsummer Night’s Dream”, company: “La Jolla Playhouse”, type: “Play”, address: “La Jolla Playhouse, La Jolla, CA”, dates: “Mar 29 – Apr 27, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$25–$85”, description: “Shakespeare’s romantic comedy reimagined at La Jolla Playhouse.”, url: “https://lajollaplayhouse.org”, pro: true, soldOut: false },
-{ title: “Mamma Mia!”, company: “Cygnet Theatre”, type: “Musical”, address: “Cygnet Theatre, Old Town, San Diego, CA”, dates: “Apr 12 – May 18, 2026”, nextShow: “Thu Apr 17 at 7:0 PM”, tickets: “$20–$55”, description: “ABBA’s greatest hits power this feel-good musical about love.”, url: “https://cygnettheatre.com”, pro: true, soldOut: false },
-{ title: “Sweeney Todd”, company: “Moonlight Amphitheatre”, type: “Musical”, address: “Moonlight Amphitheatre, Vista, CA”, dates: “May 2 – May 17, 2026”, nextShow: “Sat May 3 at 8:0 PM”, tickets: “$18–$45”, description: “Sondheim’s dark thriller under the stars at the outdoor amphitheatre.”, url: “https://moonlightamphitheatre.com”, pro: false, soldOut: false },
-{ title: “The Phantom of the Opera”, company: “San Diego Civic Theatre”, type: “Touring”, address: “San Diego Civic Theatre, San Diego, CA”, dates: “Apr 15 – May 4, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$45–$145”, description: “Andrew Lloyd Webber’s beloved classic on its national tour.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
+{ title: “Into the Woods”, company: “The Old Globe”, type: “Musical”, address: “The Old Globe, Balboa Park, San Diego, CA”, dates: “Apr 5 - May 11, 2026”, nextShow: “Sun Apr 20 at 2:0 PM”, tickets: “$30-$98”, description: “Sondheim’s fairy tale mashup at the Tony Award-winning Old Globe.”, url: “https://www.theoldglobe.org”, pro: true, soldOut: false },
+{ title: “Hamilton”, company: “Balboa Theatre”, type: “Touring”, address: “Balboa Theatre, San Diego, CA”, dates: “Apr 22 - May 11, 2026”, nextShow: “Wed Apr 23 at 7:30 PM”, tickets: “$89-$250”, description: “Lin-Manuel Miranda’s hip-hop musical about America’s founding father.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: true },
+{ title: “A Midsummer Night’s Dream”, company: “La Jolla Playhouse”, type: “Play”, address: “La Jolla Playhouse, La Jolla, CA”, dates: “Mar 29 - Apr 27, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$25-$85”, description: “Shakespeare’s romantic comedy reimagined at La Jolla Playhouse.”, url: “https://lajollaplayhouse.org”, pro: true, soldOut: false },
+{ title: “Mamma Mia!”, company: “Cygnet Theatre”, type: “Musical”, address: “Cygnet Theatre, Old Town, San Diego, CA”, dates: “Apr 12 - May 18, 2026”, nextShow: “Thu Apr 17 at 7:0 PM”, tickets: “$20-$55”, description: “ABBA’s greatest hits power this feel-good musical about love.”, url: “https://cygnettheatre.com”, pro: true, soldOut: false },
+{ title: “Sweeney Todd”, company: “Moonlight Amphitheatre”, type: “Musical”, address: “Moonlight Amphitheatre, Vista, CA”, dates: “May 2 - May 17, 2026”, nextShow: “Sat May 3 at 8:0 PM”, tickets: “$18-$45”, description: “Sondheim’s dark thriller under the stars at the outdoor amphitheatre.”, url: “https://moonlightamphitheatre.com”, pro: false, soldOut: false },
+{ title: “The Phantom of the Opera”, company: “San Diego Civic Theatre”, type: “Touring”, address: “San Diego Civic Theatre, San Diego, CA”, dates: “Apr 15 - May 4, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$45-$145”, description: “Andrew Lloyd Webber’s beloved classic on its national tour.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
 ],
 “Southern California”: [
-{ title: “Hamilton”, company: “Hollywood Pantages Theatre”, type: “Touring”, address: “Pantages Theatre, Hollywood, CA”, dates: “Apr 8 – May 25, 2026”, nextShow: “Sat Apr 19 at 8:0 PM”, tickets: “$79–$299”, description: “The smash-hit Broadway musical about Alexander Hamilton.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
-{ title: “Next to Normal”, company: “Center Theatre Group”, type: “Musical”, address: “Mark Taper Forum, Los Angeles, CA”, dates: “Apr 3 – May 4, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$35–$110”, description: “Pulitzer Prize-winning rock musical about a family and mental illness.”, url: “https://www.centertheatregroup.org”, pro: true, soldOut: false },
-{ title: “Moulin Rouge!”, company: “Hollywood Pantages”, type: “Touring”, address: “Pantages Theatre, Hollywood, CA”, dates: “May 6 – Jun 7, 2026”, nextShow: “Wed May 7 at 7:30 PM”, tickets: “$75–$275”, description: “The Broadway sensation set in the dazzling underworld of Paris.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
-{ title: “Little Women”, company: “Pasadena Playhouse”, type: “Musical”, address: “Pasadena Playhouse, Pasadena, CA”, dates: “Apr 16 – May 11, 2026”, nextShow: “Thu Apr 17 at 7:30 PM”, tickets: “$30–$95”, description: “Louisa May Alcott’s classic story reimagined as an intimate musical.”, url: “https://www.pasadenaplayhouse.org”, pro: true, soldOut: false },
-{ title: “Spring Awakening”, company: “A Noise Within”, type: “Musical”, address: “A Noise Within, Pasadena, CA”, dates: “Apr 5 – May 3, 2026”, nextShow: “Sat Apr 19 at 7:0 PM”, tickets: “$25–$65”, description: “Rock musical about the turbulent journey from adolescence to adulthood.”, url: “https://www.anoisewithin.org”, pro: true, soldOut: false },
-{ title: “The Book of Mormon”, company: “Ahmanson Theatre”, type: “Touring”, address: “Ahmanson Theatre, Los Angeles, CA”, dates: “Mar 25 – Apr 27, 2026”, nextShow: “Sun Apr 20 at 1:0 PM”, tickets: “$55–$175”, description: “Outrageously funny musical from the creators of South Park.”, url: “https://www.centertheatregroup.org”, pro: true, soldOut: false },
+{ title: “Hamilton”, company: “Hollywood Pantages Theatre”, type: “Touring”, address: “Pantages Theatre, Hollywood, CA”, dates: “Apr 8 - May 25, 2026”, nextShow: “Sat Apr 19 at 8:0 PM”, tickets: “$79-$299”, description: “The smash-hit Broadway musical about Alexander Hamilton.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
+{ title: “Next to Normal”, company: “Center Theatre Group”, type: “Musical”, address: “Mark Taper Forum, Los Angeles, CA”, dates: “Apr 3 - May 4, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$35-$110”, description: “Pulitzer Prize-winning rock musical about a family and mental illness.”, url: “https://www.centertheatregroup.org”, pro: true, soldOut: false },
+{ title: “Moulin Rouge!”, company: “Hollywood Pantages”, type: “Touring”, address: “Pantages Theatre, Hollywood, CA”, dates: “May 6 - Jun 7, 2026”, nextShow: “Wed May 7 at 7:30 PM”, tickets: “$75-$275”, description: “The Broadway sensation set in the dazzling underworld of Paris.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
+{ title: “Little Women”, company: “Pasadena Playhouse”, type: “Musical”, address: “Pasadena Playhouse, Pasadena, CA”, dates: “Apr 16 - May 11, 2026”, nextShow: “Thu Apr 17 at 7:30 PM”, tickets: “$30-$95”, description: “Louisa May Alcott’s classic story reimagined as an intimate musical.”, url: “https://www.pasadenaplayhouse.org”, pro: true, soldOut: false },
+{ title: “Spring Awakening”, company: “A Noise Within”, type: “Musical”, address: “A Noise Within, Pasadena, CA”, dates: “Apr 5 - May 3, 2026”, nextShow: “Sat Apr 19 at 7:0 PM”, tickets: “$25-$65”, description: “Rock musical about the turbulent journey from adolescence to adulthood.”, url: “https://www.anoisewithin.org”, pro: true, soldOut: false },
+{ title: “The Book of Mormon”, company: “Ahmanson Theatre”, type: “Touring”, address: “Ahmanson Theatre, Los Angeles, CA”, dates: “Mar 25 - Apr 27, 2026”, nextShow: “Sun Apr 20 at 1:0 PM”, tickets: “$55-$175”, description: “Outrageously funny musical from the creators of South Park.”, url: “https://www.centertheatregroup.org”, pro: true, soldOut: false },
 ],
 “New York City”: [
-{ title: “The Notebook”, company: “Schoenfeld Theatre”, type: “Musical”, address: “Schoenfeld Theatre, Broadway, New York, NY”, dates: “Now Playing”, nextShow: “Sat Apr 19 at 8:0 PM”, tickets: “$79–$350”, description: “Sweeping musical adaptation of Nicholas Sparks’ beloved love story.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
-{ title: “Suffs”, company: “Public Theater”, type: “Musical”, address: “The Public Theater, New York, NY”, dates: “Now Playing”, nextShow: “Fri Apr 18 at 7:30 PM”, tickets: “$35–$125”, description: “The story of the women suffragists who fought for the right to vote.”, url: “https://publictheater.org”, pro: true, soldOut: false },
-{ title: “Merrily We Roll Along”, company: “Hudson Theatre”, type: “Musical”, address: “Hudson Theatre, Broadway, NY”, dates: “Now Playing”, nextShow: “Wed Apr 16 at 7:0 PM”, tickets: “$89–$299”, description: “Sondheim’s moving musical about friendship told in reverse.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: true },
-{ title: “Sweeney Todd”, company: “Barrow Street Theatre”, type: “Musical”, address: “Barrow Street Theatre, New York, NY”, dates: “Apr 1 – Jun 1, 2026”, nextShow: “Sun Apr 20 at 3:0 PM”, tickets: “$45–$110”, description: “Intimate immersive production of Sondheim’s masterpiece.”, url: “https://barrowstreettheatre.com”, pro: true, soldOut: false },
-{ title: “Othello”, company: “Classic Stage Company”, type: “Play”, address: “Classic Stage Company, New York, NY”, dates: “Apr 10 – May 18, 2026”, nextShow: “Thu Apr 17 at 7:0 PM”, tickets: “$35–$95”, description: “Shakespeare’s tragedy of jealousy with a contemporary cast.”, url: “https://classicstage.org”, pro: true, soldOut: false },
-{ title: “The Inheritance”, company: “Second Stage Theater”, type: “Play”, address: “Second Stage Theater, New York, NY”, dates: “Apr 8 – May 25, 2026”, nextShow: “Sat Apr 19 at 2:0 PM”, tickets: “$40–$99”, description: “Epic two-part play about the lives of gay men in New York City.”, url: “https://secondstagetheatre.com”, pro: true, soldOut: false },
+{ title: “The Notebook”, company: “Schoenfeld Theatre”, type: “Musical”, address: “Schoenfeld Theatre, Broadway, New York, NY”, dates: “Now Playing”, nextShow: “Sat Apr 19 at 8:0 PM”, tickets: “$79-$350”, description: “Sweeping musical adaptation of Nicholas Sparks’ beloved love story.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
+{ title: “Suffs”, company: “Public Theater”, type: “Musical”, address: “The Public Theater, New York, NY”, dates: “Now Playing”, nextShow: “Fri Apr 18 at 7:30 PM”, tickets: “$35-$125”, description: “The story of the women suffragists who fought for the right to vote.”, url: “https://publictheater.org”, pro: true, soldOut: false },
+{ title: “Merrily We Roll Along”, company: “Hudson Theatre”, type: “Musical”, address: “Hudson Theatre, Broadway, NY”, dates: “Now Playing”, nextShow: “Wed Apr 16 at 7:0 PM”, tickets: “$89-$299”, description: “Sondheim’s moving musical about friendship told in reverse.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: true },
+{ title: “Sweeney Todd”, company: “Barrow Street Theatre”, type: “Musical”, address: “Barrow Street Theatre, New York, NY”, dates: “Apr 1 - Jun 1, 2026”, nextShow: “Sun Apr 20 at 3:0 PM”, tickets: “$45-$110”, description: “Intimate immersive production of Sondheim’s masterpiece.”, url: “https://barrowstreettheatre.com”, pro: true, soldOut: false },
+{ title: “Othello”, company: “Classic Stage Company”, type: “Play”, address: “Classic Stage Company, New York, NY”, dates: “Apr 10 - May 18, 2026”, nextShow: “Thu Apr 17 at 7:0 PM”, tickets: “$35-$95”, description: “Shakespeare’s tragedy of jealousy with a contemporary cast.”, url: “https://classicstage.org”, pro: true, soldOut: false },
+{ title: “The Inheritance”, company: “Second Stage Theater”, type: “Play”, address: “Second Stage Theater, New York, NY”, dates: “Apr 8 - May 25, 2026”, nextShow: “Sat Apr 19 at 2:0 PM”, tickets: “$40-$99”, description: “Epic two-part play about the lives of gay men in New York City.”, url: “https://secondstagetheatre.com”, pro: true, soldOut: false },
 ],
 “Chicago”: [
-{ title: “Chicago”, company: “Cadillac Palace Theatre”, type: “Touring”, address: “Cadillac Palace Theatre, Chicago, IL”, dates: “Apr 8 – May 4, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$45–$180”, description: “The longest-running American musical on Broadway comes home to Chicago.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
-{ title: “Wicked”, company: “CIBC Theatre”, type: “Touring”, address: “CIBC Theatre, Chicago, IL”, dates: “Apr 15 – Jun 14, 2026”, nextShow: “Sun Apr 20 at 2:0 PM”, tickets: “$55–$225”, description: “The untold story of the witches of Oz returns to its home city.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
-{ title: “Fun Home”, company: “Goodman Theatre”, type: “Musical”, address: “Goodman Theatre, Chicago, IL”, dates: “Apr 5 – May 11, 2026”, nextShow: “Wed Apr 16 at 7:30 PM”, tickets: “$30–$95”, description: “Tony-winning musical about memory and identity.”, url: “https://www.goodmantheatre.org”, pro: true, soldOut: false },
-{ title: “Proof”, company: “Steppenwolf Theatre”, type: “Play”, address: “Steppenwolf Theatre, Chicago, IL”, dates: “Mar 27 – May 4, 2026”, nextShow: “Thu Apr 17 at 7:30 PM”, tickets: “$25–$89”, description: “Pulitzer Prize-winning play about mathematics, madness, and family.”, url: “https://www.steppenwolf.org”, pro: true, soldOut: false },
-{ title: “A Raisin in the Sun”, company: “Court Theatre”, type: “Play”, address: “Court Theatre, Hyde Park, Chicago, IL”, dates: “Apr 3 – Apr 27, 2026”, nextShow: “Sat Apr 19 at 2:0 PM”, tickets: “$20–$65”, description: “Lorraine Hansberry’s landmark drama about a Black family’s dreams.”, url: “https://www.courttheatre.org”, pro: true, soldOut: false },
-{ title: “The Light in the Piazza”, company: “Lyric Opera of Chicago”, type: “Musical”, address: “Lyric Opera House, Chicago, IL”, dates: “Apr 12 – May 3, 2026”, nextShow: “Fri Apr 18 at 7:30 PM”, tickets: “$35–$150”, description: “Adam Guettel’s gorgeous operatic musical set in 1950s Florence.”, url: “https://www.lyricopera.org”, pro: true, soldOut: false },
+{ title: “Chicago”, company: “Cadillac Palace Theatre”, type: “Touring”, address: “Cadillac Palace Theatre, Chicago, IL”, dates: “Apr 8 - May 4, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$45-$180”, description: “The longest-running American musical on Broadway comes home to Chicago.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
+{ title: “Wicked”, company: “CIBC Theatre”, type: “Touring”, address: “CIBC Theatre, Chicago, IL”, dates: “Apr 15 - Jun 14, 2026”, nextShow: “Sun Apr 20 at 2:0 PM”, tickets: “$55-$225”, description: “The untold story of the witches of Oz returns to its home city.”, url: “https://www.ticketmaster.com”, pro: true, soldOut: false },
+{ title: “Fun Home”, company: “Goodman Theatre”, type: “Musical”, address: “Goodman Theatre, Chicago, IL”, dates: “Apr 5 - May 11, 2026”, nextShow: “Wed Apr 16 at 7:30 PM”, tickets: “$30-$95”, description: “Tony-winning musical about memory and identity.”, url: “https://www.goodmantheatre.org”, pro: true, soldOut: false },
+{ title: “Proof”, company: “Steppenwolf Theatre”, type: “Play”, address: “Steppenwolf Theatre, Chicago, IL”, dates: “Mar 27 - May 4, 2026”, nextShow: “Thu Apr 17 at 7:30 PM”, tickets: “$25-$89”, description: “Pulitzer Prize-winning play about mathematics, madness, and family.”, url: “https://www.steppenwolf.org”, pro: true, soldOut: false },
+{ title: “A Raisin in the Sun”, company: “Court Theatre”, type: “Play”, address: “Court Theatre, Hyde Park, Chicago, IL”, dates: “Apr 3 - Apr 27, 2026”, nextShow: “Sat Apr 19 at 2:0 PM”, tickets: “$20-$65”, description: “Lorraine Hansberry’s landmark drama about a Black family’s dreams.”, url: “https://www.courttheatre.org”, pro: true, soldOut: false },
+{ title: “The Light in the Piazza”, company: “Lyric Opera of Chicago”, type: “Musical”, address: “Lyric Opera House, Chicago, IL”, dates: “Apr 12 - May 3, 2026”, nextShow: “Fri Apr 18 at 7:30 PM”, tickets: “$35-$150”, description: “Adam Guettel’s gorgeous operatic musical set in 1950s Florence.”, url: “https://www.lyricopera.org”, pro: true, soldOut: false },
 ],
 “Bay Area”: [
-{ title: “Rent”, company: “Berkeley Repertory Theatre”, type: “Musical”, address: “Berkeley Rep, Berkeley, CA”, dates: “Apr 10 – May 17, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$35–$115”, description: “Jonathan Larson’s rock musical about Bohemian life in New York City.”, url: “https://www.berkeleyrep.org”, pro: true, soldOut: false },
-{ title: “Cabaret”, company: “SF Playhouse”, type: “Musical”, address: “SF Playhouse, San Francisco, CA”, dates: “Apr 8 – May 16, 2026”, nextShow: “Thu Apr 17 at 7:0 PM”, tickets: “$20–$75”, description: “Immersive staging of Kander & Ebb’s masterpiece at the Kit Kat Klub.”, url: “https://www.sfplayhouse.org”, pro: true, soldOut: false },
-{ title: “Hamilton”, company: “SHN Golden Gate Theatre”, type: “Touring”, address: “Golden Gate Theatre, San Francisco, CA”, dates: “Apr 1 – May 18, 2026”, nextShow: “Sat Apr 19 at 8:0 PM”, tickets: “$79–$350”, description: “The phenomenon returns to the Bay Area for a limited engagement.”, url: “https://www.shnsf.com”, pro: true, soldOut: true },
-{ title: “War Horse”, company: “American Conservatory Theater”, type: “Play”, address: “Geary Theatre, San Francisco, CA”, dates: “Mar 28 – Apr 27, 2026”, nextShow: “Sun Apr 20 at 2:0 PM”, tickets: “$30–$105”, description: “The spectacular story of Joey the horse and the soldier who loved him.”, url: “https://www.act-sf.org”, pro: true, soldOut: false },
-{ title: “Sunday in the Park with George”, company: “42nd Street Moon”, type: “Musical”, address: “Gateway Theatre, San Francisco, CA”, dates: “Apr 4 – Apr 26, 2026”, nextShow: “Fri Apr 18 at 7:30 PM”, tickets: “$20–$60”, description: “Sondheim’s meditation on art and obsession, set to a Seurat painting.”, url: “https://www.42ndstmoon.org”, pro: true, soldOut: false },
-{ title: “The Curious Incident”, company: “TheatreWorks Silicon Valley”, type: “Play”, address: “Mountain View Center for the Arts, Mountain View, CA”, dates: “Apr 16 – May 11, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$25–$80”, description: “Mark Haddon’s bestselling novel in an award-winning stage adaptation.”, url: “https://theatreworks.org”, pro: true, soldOut: false },
+{ title: “Rent”, company: “Berkeley Repertory Theatre”, type: “Musical”, address: “Berkeley Rep, Berkeley, CA”, dates: “Apr 10 - May 17, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$35-$115”, description: “Jonathan Larson’s rock musical about Bohemian life in New York City.”, url: “https://www.berkeleyrep.org”, pro: true, soldOut: false },
+{ title: “Cabaret”, company: “SF Playhouse”, type: “Musical”, address: “SF Playhouse, San Francisco, CA”, dates: “Apr 8 - May 16, 2026”, nextShow: “Thu Apr 17 at 7:0 PM”, tickets: “$20-$75”, description: “Immersive staging of Kander & Ebb’s masterpiece at the Kit Kat Klub.”, url: “https://www.sfplayhouse.org”, pro: true, soldOut: false },
+{ title: “Hamilton”, company: “SHN Golden Gate Theatre”, type: “Touring”, address: “Golden Gate Theatre, San Francisco, CA”, dates: “Apr 1 - May 18, 2026”, nextShow: “Sat Apr 19 at 8:0 PM”, tickets: “$79-$350”, description: “The phenomenon returns to the Bay Area for a limited engagement.”, url: “https://www.shnsf.com”, pro: true, soldOut: true },
+{ title: “War Horse”, company: “American Conservatory Theater”, type: “Play”, address: “Geary Theatre, San Francisco, CA”, dates: “Mar 28 - Apr 27, 2026”, nextShow: “Sun Apr 20 at 2:0 PM”, tickets: “$30-$105”, description: “The spectacular story of Joey the horse and the soldier who loved him.”, url: “https://www.act-sf.org”, pro: true, soldOut: false },
+{ title: “Sunday in the Park with George”, company: “42nd Street Moon”, type: “Musical”, address: “Gateway Theatre, San Francisco, CA”, dates: “Apr 4 - Apr 26, 2026”, nextShow: “Fri Apr 18 at 7:30 PM”, tickets: “$20-$60”, description: “Sondheim’s meditation on art and obsession, set to a Seurat painting.”, url: “https://www.42ndstmoon.org”, pro: true, soldOut: false },
+{ title: “The Curious Incident”, company: “TheatreWorks Silicon Valley”, type: “Play”, address: “Mountain View Center for the Arts, Mountain View, CA”, dates: “Apr 16 - May 11, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$25-$80”, description: “Mark Haddon’s bestselling novel in an award-winning stage adaptation.”, url: “https://theatreworks.org”, pro: true, soldOut: false },
 ],
 };
 const DEFAULT_SHOWS = [
-{ title: “The Sound of Music”, company: “Regional Repertory Theatre”, type: “Musical”, address: “Performing Arts Center, “ + city + “, “ + state, dates: “Apr 12 – May 4, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$20–$55”, description: “Rodgers & Hammerstein’s classic musical about the von Trapp family.”, url: “”, pro: false, soldOut: false },
-{ title: “Death of a Salesman”, company: “Civic Theatre Company”, type: “Play”, address: “Civic Theatre, “ + city + “, “ + state, dates: “Apr 5 – Apr 27, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$18–$45”, description: “Arthur Miller’s timeless American tragedy about Willy Loman.”, url: “”, pro: false, soldOut: false },
-{ title: “Legally Blonde”, company: “Community Musical Theatre”, type: “Musical”, address: “Arts Center, “ + city + “, “ + state, dates: “Apr 18 – May 3, 2026”, nextShow: “Sat Apr 19 at 7:0 PM”, tickets: “$15–$35”, description: “Elle Woods proves everyone wrong in this fun, feel-good musical comedy.”, url: “”, pro: false, soldOut: false },
-{ title: “A Streetcar Named Desire”, company: “Studio Theatre”, type: “Play”, address: “Studio Theatre, “ + city + “, “ + state, dates: “Apr 3 – Apr 26, 2026”, nextShow: “Thu Apr 17 at 7:30 PM”, tickets: “$20–$50”, description: “Tennessee Williams’ iconic drama of desire, illusion, and the brutal nature of reality.”, url: “”, pro: false, soldOut: false },
-{ title: “Avenue Q”, company: “Musical Theatre Workshop”, type: “Musical”, address: “Black Box Theatre, “ + city + “, “ + state, dates: “Apr 25 – May 17, 2026”, nextShow: “Fri Apr 25 at 8:0 PM”, tickets: “$15–$40”, description: “The Tony-winning puppet musical about finding your purpose in life.”, url: “”, pro: false, soldOut: false },
-{ title: “Shakespeare in the Park”, company: “Local Shakespeare Company”, type: “Play”, address: “City Park Amphitheatre, “ + city + “, “ + state, dates: “May 1 – May 25, 2026”, nextShow: “Sat May 3 at 7:0 PM”, tickets: “Free”, description: “Free outdoor Shakespeare performed under the stars in the park.”, url: “”, pro: false, soldOut: false },
+{ title: “The Sound of Music”, company: “Regional Repertory Theatre”, type: “Musical”, address: “Performing Arts Center, “ + city + “, “ + state, dates: “Apr 12 - May 4, 2026”, nextShow: “Sat Apr 19 at 7:30 PM”, tickets: “$20-$55”, description: “Rodgers & Hammerstein’s classic musical about the von Trapp family.”, url: “”, pro: false, soldOut: false },
+{ title: “Death of a Salesman”, company: “Civic Theatre Company”, type: “Play”, address: “Civic Theatre, “ + city + “, “ + state, dates: “Apr 5 - Apr 27, 2026”, nextShow: “Fri Apr 18 at 8:0 PM”, tickets: “$18-$45”, description: “Arthur Miller’s timeless American tragedy about Willy Loman.”, url: “”, pro: false, soldOut: false },
+{ title: “Legally Blonde”, company: “Community Musical Theatre”, type: “Musical”, address: “Arts Center, “ + city + “, “ + state, dates: “Apr 18 - May 3, 2026”, nextShow: “Sat Apr 19 at 7:0 PM”, tickets: “$15-$35”, description: “Elle Woods proves everyone wrong in this fun, feel-good musical comedy.”, url: “”, pro: false, soldOut: false },
+{ title: “A Streetcar Named Desire”, company: “Studio Theatre”, type: “Play”, address: “Studio Theatre, “ + city + “, “ + state, dates: “Apr 3 - Apr 26, 2026”, nextShow: “Thu Apr 17 at 7:30 PM”, tickets: “$20-$50”, description: “Tennessee Williams’ iconic drama of desire, illusion, and the brutal nature of reality.”, url: “”, pro: false, soldOut: false },
+{ title: “Avenue Q”, company: “Musical Theatre Workshop”, type: “Musical”, address: “Black Box Theatre, “ + city + “, “ + state, dates: “Apr 25 - May 17, 2026”, nextShow: “Fri Apr 25 at 8:0 PM”, tickets: “$15-$40”, description: “The Tony-winning puppet musical about finding your purpose in life.”, url: “”, pro: false, soldOut: false },
+{ title: “Shakespeare in the Park”, company: “Local Shakespeare Company”, type: “Play”, address: “City Park Amphitheatre, “ + city + “, “ + state, dates: “May 1 - May 25, 2026”, nextShow: “Sat May 3 at 7:0 PM”, tickets: “Free”, description: “Free outdoor Shakespeare performed under the stars in the park.”, url: “”, pro: false, soldOut: false },
 ];
 const regionalShows = SHOW_DB[region.region] || DEFAULT_SHOWS;
 const shows = regionalShows.map((item, idx) => (Object.assign(Object.assign({}, item), { accent: ACCENTS[idx % ACCENTS.length], image: null })));
@@ -1978,7 +1977,7 @@ const EmptyState = ({ query, type }) => (React.createElement(“div”, { style:
 React.createElement(“div”, { style: { fontSize: 40, marginBottom: 12 } }, “\uD83D\uDD0D”),
 React.createElement(“div”, { style: { fontSize: 16, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 6 } }, query ? `No ${type} matching "${query}"` : `No ${type} found`),
 React.createElement(“div”, { style: { fontSize: 13 } }, “Try a different search term”)));
-// ════════════════════════════ AI ════════════════════════════════════
+// ???????????????????????????? AI ????????????????????????????????????
 function AIScreen({ show }) {
 const [lyricIn, setLyricIn] = useState(””);
 const [lyricOut, setLyricOut] = useState(””);
@@ -2026,7 +2025,7 @@ catch (_b) { }
 }
 }
 catch (_c) {
-setOut(“AI unavailable — try again.”);
+setOut(“AI unavailable - try again.”);
 }
 setLoad(false);
 };
@@ -2066,7 +2065,7 @@ React.createElement(“input”, { value: sceneIn, onChange: e => setSceneIn(e.t
 React.createElement(“button”, { onClick: build, disabled: loadS, style: primaryBtn(”#4cb8c4”, loadS) }, loadS ? “📜 Writing…” : “📜 Build Scene”),
 sceneOut && React.createElement(“div”, { style: { marginTop: 12, padding: “14px”, background: “rgba(0,0,0,0.35)”, borderRadius: 12, fontSize: 13, color: “rgba(255,255,255,0.82)”, lineHeight: 1.6, whiteSpace: “pre-line” } }, sceneOut))));
 }
-// ════════════════════════════ STUDIO ════════════════════════════════
+// ???????????????????????????? STUDIO ????????????????????????????????
 // Studio bundles AI, Casting, and Live into one tab with sub-navigation
 function StudioScreen({ show, onJoin, setLiveRoom }) {
 const [sub, setSub] = useState(“ai”);
@@ -2091,7 +2090,7 @@ sub === “ai” && React.createElement(AIScreen, { show: show }),
 sub === “casting” && React.createElement(CastingScreen, { show: show }),
 sub === “live” && React.createElement(LiveScreen, { show: show, onJoin: onJoin }))));
 }
-// ═══════════════════════════ PROFILE ════════════════════════════════
+// ??????????????????????????? PROFILE ????????????????????????????????
 const INIT_PROFILE_MEDIA = [
 { id: 1, type: “photo”, url: “https://picsum.photos/id/1028/400/400”, caption: “Act II rehearsal” },
 { id: 2, type: “photo”, url: “https://picsum.photos/id/1060/400/400”, caption: “Sitzprobe night” },
@@ -2101,9 +2100,9 @@ const INIT_PROFILE_MEDIA = [
 { id: 6, type: “video”, url: “”, caption: “Final dress rehearsal”, duration: “3:48” },
 ];
 const INIT_PROFILE_TAPES = [
-{ id: 1, title: “Into the Woods — The Witch”, date: “Apr 2026”, status: “submitted”, duration: “3:22” },
-{ id: 2, title: “Hamilton — Eliza Hamilton”, date: “Mar 2026”, status: “pending”, duration: “4:5” },
-{ id: 3, title: “Sweeney Todd — Mrs. Lovett”, date: “Feb 2026”, status: “submitted”, duration: “2:58” },
+{ id: 1, title: “Into the Woods - The Witch”, date: “Apr 2026”, status: “submitted”, duration: “3:22” },
+{ id: 2, title: “Hamilton - Eliza Hamilton”, date: “Mar 2026”, status: “pending”, duration: “4:5” },
+{ id: 3, title: “Sweeney Todd - Mrs. Lovett”, date: “Feb 2026”, status: “submitted”, duration: “2:58” },
 ];
 function ProfileScreen({ show }) {
 const [subPage, setSubPage] = useState(“main”);
@@ -2113,13 +2112,13 @@ name: “”, handle: “”, bio: “”, location: “”, website: “”, ro
 };
 const [profile, setProfile] = useState(PROFILE_DEFAULT);
 const [draft, setDraft] = useState(PROFILE_DEFAULT);
-// Load everything from Supabase — it is the single source of truth
+// Load everything from Supabase - it is the single source of truth
 useEffect(() => {
 supabase.auth.getUser().then(async ({ data: authData }) => {
 if (!authData.user)
 return;
 const uid = authData.user.id;
-// Profile — always use DB values, never stale localStorage
+// Profile - always use DB values, never stale localStorage
 const { data: prof } = await supabase.from(“profiles”).select(”*”).eq(“id”, uid).single();
 if (prof) {
 const p = {
@@ -2135,14 +2134,14 @@ banner: prof.banner_url || null,
 setProfile(p);
 setDraft(p);
 }
-// Media grid — always fresh from DB
+// Media grid - always fresh from DB
 const { data: mediaRows } = await supabase.from(“media”).select(”*”).eq(“user_id”, uid).order(“created_at”, { ascending: false });
 if (mediaRows) {
 setMedia(mediaRows.length > 0
 ? mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption }))
 : []);
 }
-// Self tapes — always fresh from DB
+// Self tapes - always fresh from DB
 const { data: tapeRows } = await supabase.from(“self_tapes”).select(”*”).eq(“user_id”, uid).order(“created_at”, { ascending: false });
 if (tapeRows) {
 setTapes(tapeRows.length > 0
@@ -2215,7 +2214,7 @@ avatar_url: draft.avatar,
 banner_url: draft.banner,
 }).eq(“id”, data.user.id);
 if (error) {
-show(“❌ Save failed — try again”);
+show(“❌ Save failed - try again”);
 return;
 }
 }
@@ -2241,7 +2240,7 @@ const caption = file.name.replace(/.[^.]+$/, “”);
 setMedia(p => [{ id: tempId, type: isVideo ? “video” : “photo”, url: localUrl, caption, uploading: true }, …p]);
 show(isVideo ? “🎬 Uploading video…” : “📸 Uploading photo…”);
 if (!user) {
-// Not logged in — keep local only
+// Not logged in - keep local only
 setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
 show(“⚠️ Sign in to save media permanently”);
 continue;
@@ -2266,9 +2265,9 @@ setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), {
 show(isVideo ? “🎬 Video saved!” : “📸 Photo saved!”);
 }
 else {
-// Upload failed — keep local preview but warn
+// Upload failed - keep local preview but warn
 setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
-show(“⚠️ Upload failed — check your connection”);
+show(“⚠️ Upload failed - check your connection”);
 }
 }
 };
@@ -2308,7 +2307,7 @@ show(“🎬 Self tape saved!”);
 }
 else {
 setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
-show(“⚠️ Upload failed — check your connection”);
+show(“⚠️ Upload failed - check your connection”);
 }
 };
 const removeMedia = async (id) => {
@@ -2555,7 +2554,7 @@ l,
 React.createElement(“span”, { style: { opacity: 0.4, fontSize: 16 } }, “\u203A”))))),
 React.createElement(“button”, { onClick: async () => { await supabase.auth.signOut(); show(“Logged out”); }, style: Object.assign(Object.assign({}, ghostBtn), { color: “#f87171”, borderColor: “rgba(239,68,68,0.3)” }) }, “Log Out”)));
 }
-// ═══════════════════════════ LIVE ═══════════════════════════════════
+// ??????????????????????????? LIVE ???????????????????????????????????
 const LIVE_CHAT_SEEDS = [
 { user: “MelodyMaker”, text: “This is incredible!! 🎶”, emoji: “MM” },
 { user: “TheatreKid99”, text: “The harmonics on that last section 😭”, emoji: “TK” },
@@ -2576,7 +2575,7 @@ React.createElement(“div”, { style: { position: “relative”, zIndex: 1, t
 React.createElement(“div”, { style: { fontSize: 36, marginBottom: 8 } }, “\uD83C\uDF99\uFE0F”),
 React.createElement(“div”, { style: { fontSize: 18, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 4 } }, “Go Live”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.5)”, marginBottom: 14 } }, “Share your rehearsal, workshop, or premiere in real time”),
-React.createElement(“button”, { onClick: () => show(“🔴 Going live… (Demo — browser mic access needed)”), style: { padding: “11px 28px”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “none”, borderRadius: 20, color: “#fff”, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “\u25CF Start Broadcasting”))),
+React.createElement(“button”, { onClick: () => show(“🔴 Going live… (Demo - browser mic access needed)”), style: { padding: “11px 28px”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “none”, borderRadius: 20, color: “#fff”, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “\u25CF Start Broadcasting”))),
 React.createElement(“div”, { style: { fontSize: 10, fontWeight: 700, letterSpacing: “0.12em”, color: “rgba(255,255,255,0.3)”, marginBottom: 12 } }, “LIVE NOW”),
 LIVE_ROOMS.map(room => (React.createElement(“div”, { key: room.id, onClick: () => onJoin(room), style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 16, padding: “14px 16px”, marginBottom: 12, cursor: “pointer” } },
 React.createElement(“div”, { style: { display: “flex”, justifyContent: “space-between”, alignItems: “flex-start”, marginBottom: 10 } },
@@ -2706,7 +2705,7 @@ React.createElement(“div”, { style: { background: “linear-gradient(0deg,rg
 React.createElement(“div”, { style: { width: 42, height: 42, borderRadius: 13, display: “flex”, alignItems: “center”, justifyContent: “center”, background: c.active ? room.accent + “33” : “rgba(255,255,255,0.08)”, fontSize: 18, border: c.active ? `1px solid ${room.accent}55` : “none” } }, c.icon),
 React.createElement(“span”, { style: { fontSize: 9, color: “rgba(255,255,255,0.4)” } }, c.label)))))));
 }
-// ═══════════════════════════ INBOX ══════════════════════════════════
+// ??????????????????????????? INBOX ??????????????????????????????????
 function InboxOverlay({ messages, setMessages, onClose, show }) {
 const [thread, setThread] = useState(null);
 const [input, setInput] = useState(””);
@@ -2814,7 +2813,7 @@ React.createElement(“span”, { style: { fontSize: 10, color: “rgba(255,255,
 React.createElement(“div”, { style: { fontSize: 12, color: m.unread > 0 ? “rgba(255,255,255,0.72)” : “rgba(255,255,255,0.35)”, overflow: “hidden”, textOverflow: “ellipsis”, whiteSpace: “nowrap” } }, (_a = m.msgs[m.msgs.length - 1]) === null || _a === void 0 ? void 0 : _a.text))));
 })))));
 }
-// ════════════════════════════ CASTING ════════════════════════════════
+// ???????????????????????????? CASTING ????????????????????????????????
 function CastingScreen({ show }) {
 const [sub, setSub] = useState(“calls”);
 // FIX 1: persisted casting data
@@ -2985,7 +2984,7 @@ React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,2
 React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr 1fr”, gap: 10 } }, [[“14”, “Shows”], [“6”, “Lead Roles”], [“8yr”, “Experience”]].map(([n, l]) => (React.createElement(“div”, { key: l, style: { background: “rgba(255,255,255,0.08)”, borderRadius: 12, padding: “10px 0”, textAlign: “center” } },
 React.createElement(“div”, { style: { fontSize: 18, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, n),
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.45)”, letterSpacing: “0.06em” } }, l)))))),
-React.createElement(ResumeSection, { title: “Training”, onAdd: () => setModal(“add-training”) }, [{ title: “B.F.A. Musical Theatre”, sub: “San Diego State · 2018” }, { title: “Vocal Performance”, sub: “Pacific Conservatory · 2015–2019” }].map((t, i) => (React.createElement(“div”, { key: i, style: { padding: “10px 0”, borderBottom: “1px solid rgba(255,255,255,0.5)” } },
+React.createElement(ResumeSection, { title: “Training”, onAdd: () => setModal(“add-training”) }, [{ title: “B.F.A. Musical Theatre”, sub: “San Diego State · 2018” }, { title: “Vocal Performance”, sub: “Pacific Conservatory · 2015-2019” }].map((t, i) => (React.createElement(“div”, { key: i, style: { padding: “10px 0”, borderBottom: “1px solid rgba(255,255,255,0.5)” } },
 React.createElement(“div”, { style: { fontSize: 13, fontWeight: 600 } }, t.title),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.38)” } }, t.sub))))),
 React.createElement(ResumeSection, { title: “Theatre Credits”, onAdd: () => setModal(“add-credit”) }, credits.map((c, i) => (React.createElement(“div”, { key: i, style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, padding: “10px 0”, borderBottom: “1px solid rgba(255,255,255,0.5)” } },
@@ -3010,7 +3009,7 @@ modal === “add-audition” && React.createElement(AddAuditionModal, { onClose:
 modal === “new-tape” && React.createElement(NewTapeModal, { onClose: () => setModal(null), onSubmit: (d) => { addTape(d); setModal(null); show(“Self tape saved! 🎬”); } }),
 modal === “add-credit” && React.createElement(AddCreditModal, { onClose: () => setModal(null), onSubmit: (d) => { addCredit(d); setModal(null); show(“Credit added ✓”); } })));
 }
-// ── Casting sub-components ────────────────────────────────────────────────────
+// ?? Casting sub-components ????????????????????????????????????????????????????
 const Tag = ({ label, color }) => (React.createElement(“span”, { style: { background: color ? color + “18” : “rgba(255,255,255,0.7)”, border: `1px solid ${color ? color + "44" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, padding: “3px 10px”, fontSize: 11, fontWeight: 600, color: color || “rgba(255,255,255,0.65)” } }, label));
 const ResumeSection = ({ title, onAdd, children }) => (React.createElement(“div”, { style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 16, padding: “16px”, marginBottom: 14 } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 10 } },
@@ -3153,7 +3152,7 @@ const CField = ({ label, children }) => (React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.32)”, letterSpacing: “0.12em”, marginBottom: 6 } }, label),
 children));
 const darkInput = { width: “100%”, padding: “11px 14px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 13, outline: “none” };
-// ═══════════════════════ REUSABLE COMPONENTS ════════════════════════════════
+// ??????????????????????? REUSABLE COMPONENTS ????????????????????????????????
 function Sheet({ children, onClose, height = “72vh” }) {
 return (React.createElement(“div”, { onClick: onClose, style: { position: “fixed”, inset: 0, background: “rgba(0,0,0,0.76)”, zIndex: 100, display: “flex”, alignItems: “flex-end”, justifyContent: “center” } },
 React.createElement(“div”, { onClick: e => e.stopPropagation(), className: “overlay-enter”, style: { background: “#120920”, borderRadius: “20px 20px 0 0”, width: “100%”, maxWidth: 480, height, display: “flex”, flexDirection: “column”, padding: “16px 20px”, border: “1px solid rgba(255,255,255,0.1)”, borderBottom: “none” } },
