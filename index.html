@@ -631,11 +631,11 @@ step > 0 && (React.createElement(“button”, { onClick: () => setStep(s => s -
 // ═══════════════════════════ MAIN APP ═══════════════════════════════
 // 5-tab bottom nav — Feed | Create | Discover | Studio | Me
 const NAV = [
-{ icon: “⌂”, label: “Feed” },
-{ icon: “✂”, label: “Create” },
-{ icon: “◎”, label: “Discover” },
-{ icon: “✦”, label: “Studio” },
-{ icon: “◉”, label: “Me” },
+{ icon: “🏠”, label: “Feed” },
+{ icon: “🎬”, label: “Create” },
+{ icon: “🔍”, label: “Discover” },
+{ icon: “⭐”, label: “Studio” },
+{ icon: “👤”, label: “Me” },
 ];
 function MainApp({ tab, setTab, session }) {
 const [toast, setToast] = useState(””);
@@ -659,7 +659,7 @@ React.createElement(“button”, { onClick: () => setShowInbox(true), style: { 
 totalUnread > 0 && (React.createElement(“span”, { style: { position: “absolute”, top: 4, right: 4, minWidth: 16, height: 16, background: “#c9a84c”, borderRadius: 8, fontSize: 9, fontWeight: 700, color: “#1a0a2e”, display: “flex”, alignItems: “center”, justifyContent: “center”, border: “1.5px solid #08080f”, padding: “0 3px” } }, totalUnread))),
 React.createElement(“button”, { onClick: () => show(“🔔 You’re all caught up”), style: { background: “rgba(255,255,255,0.07)”, border: “none”, borderRadius: 10, width: 36, height: 36, color: “#fff”, cursor: “pointer”, fontSize: 15, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\uD83D\uDD14”)))),
 React.createElement(“nav”, { style: { position: “fixed”, bottom: 0, left: 0, right: 0, zIndex: 100, background: “linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))”, borderTop: “1px solid rgba(255,255,255,0.07)”, display: “flex”, justifyContent: “space-around”, padding: “8px 0 max(8px, env(safe-area-inset-bottom))” } }, NAV.map((n, i) => (React.createElement(“button”, { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: “none”, border: “none”, cursor: “pointer”, display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 3, padding: “4px 0”, minWidth: 44, minHeight: 44 } },
-React.createElement(“div”, { style: { width: tab === i ? 28 : 22, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : “50%”, background: tab === i ? “linear-gradient(135deg,#c9a84c,#e8a87c)” : “rgba(255,255,255,0.08)”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: tab === i ? 14 : 13, transition: “all 0.2s cubic-bezier(0.34,1.56,0.64,1)”, position: “relative” } },
+React.createElement(“div”, { style: { width: tab === i ? 28 : 22, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : “50%”, background: tab === i ? “linear-gradient(135deg,#c9a84c,#e8a87c)” : “rgba(255,255,255,0.08)”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: tab === i ? 18 : 16, transition: “all 0.2s cubic-bezier(0.34,1.56,0.64,1)”, position: “relative” } },
 React.createElement(“span”, { style: { color: n.live ? (tab === i ? “#1a0a2e” : “#ef4444”) : (tab === i ? “#1a0a2e” : “rgba(255,255,255,0.55)”), animation: n.live && tab !== i ? “liveDot 1.5s infinite” : “none” } }, n.icon),
 n.label === “Live” && tab !== i && React.createElement(“span”, { style: { position: “absolute”, top: -2, right: -2, width: 7, height: 7, background: “#ef4444”, borderRadius: “50%”, border: “1.5px solid #08080f”, animation: “liveDot 1.5s infinite” } })),
 React.createElement(“span”, { style: { fontSize: 9, fontWeight: tab === i ? 700 : 400, color: tab === i ? “#c9a84c” : “rgba(255,255,255,0.35)”, letterSpacing: “0.04em” } }, n.label))))),
@@ -1216,7 +1216,7 @@ React.createElement(“span”, { style: { fontSize: 12, fontWeight: 700, color:
 “REC “,
 fmt(recTime))))),
 React.createElement(“div”, { style: { display: “flex”, gap: 14, alignItems: “center” } }, !recording ? (React.createElement(“button”, { onClick: startRecording, style: { width: 68, height: 68, borderRadius: “50%”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “4px solid rgba(255,255,255,0.2)”, fontSize: 28, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\u23FA”)) : (React.createElement(“button”, { onClick: stopRecording, style: { width: 68, height: 68, borderRadius: “50%”, background: “#ef4444”, border: “4px solid rgba(255,255,255,0.3)”, fontSize: 26, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center”, animation: “liveDot 1s infinite” } }, “\u23F9”))),
-React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10, textAlign: “center” } }, recording ? `Recording… ${fmt(recTime)}` : “Tap ⏺ to start recording”)))));
+React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10, textAlign: “center” } }, recording ? `Recording... ${fmt(recTime)}` : “Tap ⏺ to start recording”)))));
 // ── Step 1: Edit ──
 if (step === 1)
 return (React.createElement(“div”, { style: { padding: “16px 16px 80px” } },
@@ -1989,7 +1989,7 @@ if (s.url) {
 window.open(s.url, “_blank”);
 }
 else {
-show(`Opening tickets for ${s.title}…`);
+show(`Opening tickets for ${s.title}...`);
 }
 }, style: { flex: 2, padding: “11px”, background: s.soldOut ? “rgba(255,255,255,0.06)” : `linear-gradient(135deg,${s.accent},${s.accent}cc)`, border: “none”, borderRadius: 10, color: s.soldOut ? “rgba(255,255,255,0.3)” : “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: s.soldOut ? “not-allowed” : “pointer” } }, s.soldOut ? “Sold Out” : “🎟 Get Tickets”),
 React.createElement(“button”, { onClick: () => show(`Added ${s.title} to your calendar! 📅`), style: { flex: 1, padding: “11px”, background: “rgba(255,255,255,0.06)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 11, cursor: “pointer” } }, “\uD83D\uDCC5 Save Date”)))))),
@@ -2571,7 +2571,7 @@ React.createElement(“div”, { style: { display: “flex”, gap: 10, marginBo
 React.createElement(“div”, { style: { fontSize: 9, fontWeight: 700, letterSpacing: “0.13em”, color: “rgba(255,255,255,0.3)”, marginBottom: 10 } }, “PLAYBACK QUALITY”),
 React.createElement(“div”, { style: { display: “flex”, gap: 10, marginBottom: 20 } }, [[“Auto”, “auto”], [“SD”, “sd”], [“HD”, “hd”]].map(([l, v]) => (React.createElement(“button”, { key: v, onClick: () => { setQuality(v); show(`Quality set to ${l}`); }, style: { flex: 1, padding: “11px”, background: quality === v ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.05)”, border: `1px solid ${quality === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: quality === v ? “#c9a84c” : “rgba(255,255,255,0.6)”, fontWeight: quality === v ? 700 : 400, fontSize: 13, cursor: “pointer” } }, l)))),
 React.createElement(“div”, { style: { fontSize: 9, fontWeight: 700, letterSpacing: “0.13em”, color: “rgba(255,255,255,0.3)”, marginBottom: 10 } }, “ACCOUNT”),
-React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, gap: 10, marginBottom: 24 } }, [[“Change Password”, “password”], [“Linked Accounts”, “links”], [“Download My Data”, “data”]].map(([l, k]) => (React.createElement(“button”, { key: k, onClick: () => show(`Opening ${l}…`), style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.04)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 12, color: “rgba(255,255,255,0.8)”, fontWeight: 500, fontSize: 13, cursor: “pointer”, textAlign: “left”, display: “flex”, justifyContent: “space-between”, alignItems: “center” } },
+React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, gap: 10, marginBottom: 24 } }, [[“Change Password”, “password”], [“Linked Accounts”, “links”], [“Download My Data”, “data”]].map(([l, k]) => (React.createElement(“button”, { key: k, onClick: () => show(`Opening ${l}...`), style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.04)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 12, color: “rgba(255,255,255,0.8)”, fontWeight: 500, fontSize: 13, cursor: “pointer”, textAlign: “left”, display: “flex”, justifyContent: “space-between”, alignItems: “center” } },
 l,
 React.createElement(“span”, { style: { opacity: 0.4, fontSize: 16 } }, “\u203A”))))),
 React.createElement(“button”, { onClick: async () => { await supabase.auth.signOut(); show(“Logged out”); }, style: Object.assign(Object.assign({}, ghostBtn), { color: “#f87171”, borderColor: “rgba(239,68,68,0.3)” }) }, “Log Out”)));
