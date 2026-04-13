@@ -1,24 +1,53 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>StageLab</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#08080f" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; }
+    body { background: #08080f; color: #fff; font-family: monospace; padding: 20px; }
     #root { width: 100vw; height: 100dvh; }
-    input, textarea, button { font-family: inherit; }
+    #err { background: #ff000033; border: 1px solid red; padding: 16px; border-radius: 8px; margin-top: 20px; font-size: 12px; word-break: break-all; }
   </style>
 </head>
 <body>
+  <div id="status" style="color:#c9a84c;font-size:14px;">Loading React...</div>
+  <div id="err" style="display:none"></div>
   <div id="root"></div>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="app.js"></script>
+
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      document.getElementById('status').textContent = 'ERROR';
+      var d = document.getElementById('err');
+      d.style.display = 'block';
+      d.textContent = 'Error: ' + msg + '\nFile: ' + src + '\nLine: ' + line + ':' + col;
+      return false;
+    };
+    window.onunhandledrejection = function(e) {
+      document.getElementById('status').textContent = 'PROMISE ERROR';
+      var d = document.getElementById('err');
+      d.style.display = 'block';
+      d.textContent = 'Promise error: ' + (e.reason && e.reason.message || e.reason);
+    };
+  </script>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"
+    onload="document.getElementById('status').textContent='React loaded, loading ReactDOM...'"
+    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load React from unpkg'">
+  </script>
+
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+    onload="document.getElementById('status').textContent='ReactDOM loaded, loading app...'"
+    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load ReactDOM from unpkg'">
+  </script>
+
+  <script src="app.js"
+    onload="document.getElementById('status').textContent='App loaded!'"
+    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load app.js - file may be missing or too large'">
+  </script>
+
 </body>
 </html>
