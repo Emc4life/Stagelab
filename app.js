@@ -1,6 +1,6 @@
 var { useState, useRef, useEffect, useCallback } = React;
 
-// ?? Supabase client ??????????????????????????????????????????????????
+// – Supabase client –––––––––––––––––––––––––
 const SUPA_URL = “https://dsegdddquztgkdwyzbai.supabase.co”;
 const SUPA_KEY = “eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZWdkZGRxdXp0Z2tkd3l6YmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTMxODUsImV4cCI6MjA5MTE4OTE4NX0.vF76Ptppf7-Z_oNzyr3XEtlwc6xp_3H78Foktx0-En0”;
 // Minimal inline Supabase client - no external dependency needed
@@ -152,7 +152,7 @@ return q;
 };
 return { auth, from };
 })();
-// ?? Debug helper - call window.debugStageLab() in browser console ??
+// – Debug helper - call window.debugStageLab() in browser console –
 window.debugStageLab = async () => {
 const log = (msg) => { console.log(”[StageLab]”, msg); };
 log(”=== DEBUG START ===”);
@@ -184,25 +184,25 @@ const testBlob = new Blob([“test”], { type: “text/plain” });
 const testFile = new File([testBlob], “test.txt”, { type: “text/plain” });
 const testPath = user.id + “/debug-” + Date.now() + “.txt”;
 const uploadRes = await fetch(“https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/” + testPath, { method: “POST”, headers: { “Authorization”: “Bearer “ + token, “Content-Type”: “text/plain”, “x-upsert”: “true” }, body: testFile });
-log(“Storage upload test: “ + uploadRes.status + “ “ + (uploadRes.ok ? “OK ✅” : “FAILED ❌ - “ + await uploadRes.text()));
+log(“Storage upload test: “ + uploadRes.status + “ “ + (uploadRes.ok ? “OK \u2705” : “FAILED \u274c - “ + await uploadRes.text()));
 log(”=== DEBUG END ===”);
 alert(“Debug complete - check browser console (Safari: Develop > Web Inspector > Console)”);
 };
-// ??????????????????????????????????? DATA ???????????????????????????????????
+// ———————————– DATA ———————————–
 const INIT_VIDEOS = [
-{ id: 1, creator: “Elena Vasquez”, handle: “@elenavsings”, avatar: “EV”, title: “Act II opener - full run”, type: “video”, likes: 1240, comments: 87, shares: 312, reposts: 94, gifts: 23, accent: “#c9a84c”, bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”, note: “♪”, tier: “gold” },
-{ id: 2, creator: “Marcus Bell”, handle: “@marcusbell_mt”, avatar: “MB”, title: “Raw rehearsal - just piano”, type: “audio”, likes: 876, comments: 54, shares: 201, reposts: 67, gifts: 11, accent: “#4cb8c4”, bg: “linear-gradient(160deg,#0a1a1a,#0f2d2a)”, note: “♩”, tier: “silver” },
-{ id: 3, creator: “Priya Nair”, handle: “@priyanairwrites”, avatar: “PN”, title: “New lyrics drop - verse 3”, type: “lyrics”, likes: 542, comments: 39, shares: 118, reposts: 45, gifts: 8, accent: “#e8a87c”, bg: “linear-gradient(160deg,#1a0f0a,#2d1a10)”, note: “✦”, tier: “platinum” },
-{ id: 4, creator: “Jonah Strauss”, handle: “@jonahstrauss”, avatar: “JS”, title: “Pit orchestra - sitzprobe”, type: “audio”, likes: 2100, comments: 143, shares: 589, reposts: 201, gifts: 44, accent: “#a084e8”, bg: “linear-gradient(160deg,#0a0a1a,#10152d)”, note: “♬”, tier: “gold” },
+{ id: 1, creator: “Elena Vasquez”, handle: “@elenavsings”, avatar: “EV”, title: “Act II opener - full run”, type: “video”, likes: 1240, comments: 87, shares: 312, reposts: 94, gifts: 23, accent: “#c9a84c”, bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”, note: “\u266a”, tier: “gold” },
+{ id: 2, creator: “Marcus Bell”, handle: “@marcusbell_mt”, avatar: “MB”, title: “Raw rehearsal - just piano”, type: “audio”, likes: 876, comments: 54, shares: 201, reposts: 67, gifts: 11, accent: “#4cb8c4”, bg: “linear-gradient(160deg,#0a1a1a,#0f2d2a)”, note: “\u2669”, tier: “silver” },
+{ id: 3, creator: “Priya Nair”, handle: “@priyanairwrites”, avatar: “PN”, title: “New lyrics drop - verse 3”, type: “lyrics”, likes: 542, comments: 39, shares: 118, reposts: 45, gifts: 8, accent: “#e8a87c”, bg: “linear-gradient(160deg,#1a0f0a,#2d1a10)”, note: “\u2726”, tier: “platinum” },
+{ id: 4, creator: “Jonah Strauss”, handle: “@jonahstrauss”, avatar: “JS”, title: “Pit orchestra - sitzprobe”, type: “audio”, likes: 2100, comments: 143, shares: 589, reposts: 201, gifts: 44, accent: “#a084e8”, bg: “linear-gradient(160deg,#0a0a1a,#10152d)”, note: “\u266c”, tier: “gold” },
 ];
 const INIT_COMMENTS = {
-1: [{ id: 1, user: “MelodyMaker”, avatar: “MM”, text: “This is absolutely stunning 🎶”, time: “2h”, likes: 14, liked: false }],
-2: [{ id: 3, user: “TheatreKid99”, avatar: “TK”, text: “Marcus never misses. That vibrato 😭”, time: “1h”, likes: 9, liked: false }],
+1: [{ id: 1, user: “MelodyMaker”, avatar: “MM”, text: “This is absolutely stunning \u1f3b6”, time: “2h”, likes: 14, liked: false }],
+2: [{ id: 3, user: “TheatreKid99”, avatar: “TK”, text: “Marcus never misses. That vibrato \u1f62d”, time: “1h”, likes: 9, liked: false }],
 3: [{ id: 4, user: “LyricLover”, avatar: “LL”, text: “Verse 3 is your best work yet Priya!!”, time: “45m”, likes: 22, liked: false }],
-4: [{ id: 5, user: “OrchestraFan”, avatar: “OF”, text: “The brass section is on FIRE 🔥”, time: “2h”, likes: 31, liked: false }],
+4: [{ id: 5, user: “OrchestraFan”, avatar: “OF”, text: “The brass section is on FIRE \u1f525”, time: “2h”, likes: 31, liked: false }],
 };
 const INIT_MESSAGES = [
-{ id: 1, user: “Elena Vasquez”, avatar: “EV”, accent: “#c9a84c”, time: “10m”, unread: 2, msgs: [{ from: “Elena Vasquez”, text: “Hey! Loved your latest piece 🎶”, time: “10m” }, { from: “Elena Vasquez”, text: “Would you be open to collaborating?”, time: “9m” }] },
+{ id: 1, user: “Elena Vasquez”, avatar: “EV”, accent: “#c9a84c”, time: “10m”, unread: 2, msgs: [{ from: “Elena Vasquez”, text: “Hey! Loved your latest piece \u1f3b6”, time: “10m” }, { from: “Elena Vasquez”, text: “Would you be open to collaborating?”, time: “9m” }] },
 { id: 2, user: “Marcus Bell”, avatar: “MB”, accent: “#4cb8c4”, time: “1h”, unread: 0, msgs: [{ from: “Marcus Bell”, text: “Can you send the lead sheets?”, time: “1h” }] },
 { id: 3, user: “Jonah Strauss”, avatar: “JS”, accent: “#a084e8”, time: “3h”, unread: 1, msgs: [{ from: “Jonah Strauss”, text: “The sitzprobe is confirmed for Friday”, time: “3h” }] },
 { id: 4, user: “Priya Nair”, avatar: “PN”, accent: “#e8a87c”, time: “1d”, unread: 0, msgs: [{ from: “Priya Nair”, text: “New draft of Act II lyrics attached”, time: “1d” }] },
@@ -213,12 +213,12 @@ gold: { label: “Gold”, color: “#c9a84c”, price: “$12.99/mo”, perks: 
 platinum: { label: “Platinum”, color: “#e0d0ff”, price: “$29.99/mo”, perks: [“All Gold perks”, “1-on-1 feedback session”, “Credit in productions”] },
 };
 const GIFTS = [
-{ emoji: “🌹”, label: “Rose”, amount: 0.99 },
-{ emoji: “⭐”, label: “Star”, amount: 2.99 },
-{ emoji: “🎭”, label: “Mask”, amount: 4.99 },
-{ emoji: “🏆”, label: “Trophy”, amount: 9.99 },
-{ emoji: “💎”, label: “Diamond”, amount: 19.99 },
-{ emoji: “👑”, label: “Crown”, amount: 49.99 },
+{ emoji: “\u1f339”, label: “Rose”, amount: 0.99 },
+{ emoji: “\u2b50”, label: “Star”, amount: 2.99 },
+{ emoji: “\u1f3ad”, label: “Mask”, amount: 4.99 },
+{ emoji: “\u1f3c6”, label: “Trophy”, amount: 9.99 },
+{ emoji: “\u1f48e”, label: “Diamond”, amount: 19.99 },
+{ emoji: “\u1f451”, label: “Crown”, amount: 49.99 },
 ];
 const POSTER_THEMES = [
 { bg: “linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)”, accent: “#c9a84c”, name: “Midnight Gold” },
@@ -236,21 +236,21 @@ const LIVE_ROOMS = [
 { id: 2, title: “Song Feedback Circle”, host: “Elena Voss”, listeners: 51, accent: “#4cb8c4” },
 { id: 3, title: “Act II Workshop - Open Session”, host: “Jonah Strauss”, listeners: 14, accent: “#a084e8” },
 ];
-// ?? Casting data ??????????????????????????????????????????????????????????????
+// – Casting data –––––––––––––––––––––––––––––––
 const INIT_CASTING_CALLS = [
-{ id: 1, title: “Into the Woods”, role: “The Witch”, type: “Lead”, voice: “Mezzo-Soprano”, comp: “Paid”, date: “April 20 · 2:0 PM”, location: “The Old Globe, San Diego”, prep: “16 bars up-tempo + ballad. Sides on request.”, company: “Old Globe Theatre”, selftape: true, posted: “1h ago”, emoji: “🌲” },
-{ id: 2, title: “Hamilton”, role: “Ensemble / Swing”, type: “Ensemble”, voice: “Any”, comp: “Paid”, date: “April 25 · 10:0 AM”, location: “La Jolla Playhouse”, prep: “One up-tempo 16 bars. Dance call follows.”, company: “La Jolla Playhouse”, selftape: false, posted: “3h ago”, emoji: “🎩” },
-{ id: 3, title: “Neon Requiem”, role: “Lead - Echo”, type: “Lead”, voice: “Soprano”, comp: “Stipend”, date: “May 2 · Remote”, location: “Remote / Self-Tape”, prep: “Full Act 1 scene + original song. Under 4 min.”, company: “StageLab Dev Workshop”, selftape: true, posted: “1d ago”, emoji: “⚡” },
-{ id: 4, title: “The Midnight Serenade”, role: “Jazz Vocalist”, type: “Supporting”, voice: “Alto”, comp: “Paid”, date: “May 5 · 3:0 PM”, location: “Balboa Theatre, San Diego”, prep: “Jazz standard, 2-3 min.”, company: “SD Musical Theatre”, selftape: true, posted: “2d ago”, emoji: “🌙” },
+{ id: 1, title: “Into the Woods”, role: “The Witch”, type: “Lead”, voice: “Mezzo-Soprano”, comp: “Paid”, date: “April 20 \u00b7 2:0 PM”, location: “The Old Globe, San Diego”, prep: “16 bars up-tempo + ballad. Sides on request.”, company: “Old Globe Theatre”, selftape: true, posted: “1h ago”, emoji: “\u1f332” },
+{ id: 2, title: “Hamilton”, role: “Ensemble / Swing”, type: “Ensemble”, voice: “Any”, comp: “Paid”, date: “April 25 \u00b7 10:0 AM”, location: “La Jolla Playhouse”, prep: “One up-tempo 16 bars. Dance call follows.”, company: “La Jolla Playhouse”, selftape: false, posted: “3h ago”, emoji: “\u1f3a9” },
+{ id: 3, title: “Neon Requiem”, role: “Lead - Echo”, type: “Lead”, voice: “Soprano”, comp: “Stipend”, date: “May 2 \u00b7 Remote”, location: “Remote / Self-Tape”, prep: “Full Act 1 scene + original song. Under 4 min.”, company: “StageLab Dev Workshop”, selftape: true, posted: “1d ago”, emoji: “\u26a1” },
+{ id: 4, title: “The Midnight Serenade”, role: “Jazz Vocalist”, type: “Supporting”, voice: “Alto”, comp: “Paid”, date: “May 5 \u00b7 3:0 PM”, location: “Balboa Theatre, San Diego”, prep: “Jazz standard, 2-3 min.”, company: “SD Musical Theatre”, selftape: true, posted: “2d ago”, emoji: “\u1f319” },
 ];
 const INIT_AUDITIONS = [
-{ id: 1, show: “Into the Woods”, role: “The Witch”, company: “Old Globe”, date: “April 20 · 2:0 PM”, location: “The Old Globe”, prep: “16 bars + ballad”, status: “upcoming”, emoji: “🌲” },
-{ id: 2, show: “Hamilton”, role: “Ensemble”, company: “La Jolla”, date: “April 25 · 10:0 AM”, location: “La Jolla Playhouse”, prep: “16 bars up-tempo”, status: “callback”, emoji: “🎩” },
-{ id: 3, show: “Company”, role: “Amy”, company: “Cygnet Theatre”, date: “March 18 · 1:0 PM”, location: “Cygnet Theatre”, prep: “Act 2 sides”, status: “completed”, emoji: “🥂” },
+{ id: 1, show: “Into the Woods”, role: “The Witch”, company: “Old Globe”, date: “April 20 \u00b7 2:0 PM”, location: “The Old Globe”, prep: “16 bars + ballad”, status: “upcoming”, emoji: “\u1f332” },
+{ id: 2, show: “Hamilton”, role: “Ensemble”, company: “La Jolla”, date: “April 25 \u00b7 10:0 AM”, location: “La Jolla Playhouse”, prep: “16 bars up-tempo”, status: “callback”, emoji: “\u1f3a9” },
+{ id: 3, show: “Company”, role: “Amy”, company: “Cygnet Theatre”, date: “March 18 \u00b7 1:0 PM”, location: “Cygnet Theatre”, prep: “Act 2 sides”, status: “completed”, emoji: “\u1f942” },
 ];
 const INIT_SELFTAPES = [
-{ id: 1, show: “Neon Requiem”, scene: “Act 1 Sc 3 + original song”, deadline: “April 25”, submitTo: “casting@stagelabdev.com”, status: “submitted”, emoji: “⚡” },
-{ id: 2, show: “The Last Waltz”, scene: “‘Goodbye Until Tomorrow’”, deadline: “May 1”, submitTo: “director@lastwaltz.com”, status: “pending”, emoji: “🌹” },
+{ id: 1, show: “Neon Requiem”, scene: “Act 1 Sc 3 + original song”, deadline: “April 25”, submitTo: “casting@stagelabdev.com”, status: “submitted”, emoji: “\u26a1” },
+{ id: 2, show: “The Last Waltz”, scene: “‘Goodbye Until Tomorrow’”, deadline: “May 1”, submitTo: “director@lastwaltz.com”, status: “pending”, emoji: “\u1f339” },
 ];
 const INIT_CREDITS = [
 { title: “Into the Woods”, role: “Rapunzel”, company: “SDSU Theatre”, year: “2023” },
@@ -259,7 +259,7 @@ const INIT_CREDITS = [
 { title: “Company”, role: “Amy”, company: “Cygnet Theatre”, year: “2020” },
 ];
 const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + “K” : String(n);
-// ?????????????????????? PERSISTENCE HELPERS ??????????????????????????
+// ––––––––––– PERSISTENCE HELPERS –––––––––––––
 function usePersistedState(key, init) {
 const [val, setVal] = useState(() => {
 try {
@@ -282,9 +282,9 @@ return resolved;
 };
 return [val, set];
 }
-// ???????????????????????????? GLOBAL CSS ????????????????????????????
+// –––––––––––––– GLOBAL CSS ––––––––––––––
 const CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap'); *{box-sizing:border-box;margin:0;padding:0;} body{background:#08080f;overscroll-behavior:none;} ::-webkit-scrollbar{width:0;} @keyframes barPulse{0%,100%{transform:scaleY(0.55);opacity:0.65;}50%{transform:scaleY(1);opacity:1;}} .bar{animation:barPulse 1.2s ease-in-out infinite;} @keyframes liveDot{0%,100%{opacity:1;}50%{opacity:0.2;}} @keyframes speaking{0%{transform:scale(1);box-shadow:0 0 20px var(--sa,#c9a84c)44;}100%{transform:scale(1.7);box-shadow:0 0 40px var(--sa,#c9a84c)88;}} @keyframes spotlight{0%,100%{transform:translateX(-50%) translateY(-30%);}50%{transform:translateX(-50%) translateY(-45%);}} @keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}} @keyframes fadeIn{from{opacity:0;}to{opacity:1;}} @keyframes pop{0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}} @keyframes floatUp{0%{transform:translateY(0);opacity:1;}100%{transform:translateY(-120px);opacity:0;}} .overlay-enter{animation:slideUp 0.32s cubic-bezier(0.32,0.72,0,1) forwards;} .fade-in{animation:fadeIn 0.25s ease forwards;} .pop{animation:pop 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;} input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.3);} input,textarea,button,select{font-family:'DM Sans',sans-serif;}`;
-// ?????????????? BRAND LOGO ??????????????????????????????????????????
+// ––––––– BRAND LOGO ——————————————
 const SLogo = ({ size = 32, showText = false, textSize = 17 }) => (React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: showText ? 10 : 0 } },
 React.createElement(“svg”, { width: size, height: size, viewBox: “0 0 100 100”, fill: “none” },
 React.createElement(“defs”, null,
@@ -296,7 +296,7 @@ React.createElement(“rect”, { width: “100”, height: “100”, fill: “
 React.createElement(“path”, { d: “M 64 18 C 80 18 84 28 80 36 C 76 44 62 48 50 52 C 36 57 24 63 24 74 C 24 84 34 88 46 86 C 54 84 62 80 66 74”, stroke: “url(#sg)”, strokeWidth: “14”, strokeLinecap: “round”, fill: “none” }),
 React.createElement(“line”, { x1: “24”, y1: “74”, x2: “16”, y2: “78”, stroke: “url(#sg)”, strokeWidth: “14”, strokeLinecap: “round” })),
 showText && (React.createElement(“span”, { style: { fontFamily: “‘DM Sans’,sans-serif”, fontWeight: 700, fontSize: textSize, color: “#fff”, letterSpacing: “-0.01em”, lineHeight: 1 } }, “StageLab”))));
-// ?????????????????????????????? ROOT ????????????????????????????????
+// —————————— ROOT ––––––––––––––––
 function StageLab() {
 const [page, setPage] = useState(“loading”);
 const [tab, setTab] = useState(0);
@@ -332,7 +332,7 @@ if (page === “onboard”)
 return React.createElement(OnboardScreen, { onDone: () => setPage(“app”), session: session });
 return React.createElement(MainApp, { tab: tab, setTab: setTab, session: session });
 }
-// ???????????????????????????????? AUTH ??????????????????????????????
+// –––––––––––––––– AUTH ——————————
 function AuthScreen({ onEnter, onOnboard }) {
 const [mode, setMode] = useState(0); // 0=signin 1=signup
 const [name, setName] = useState(””);
@@ -355,15 +355,15 @@ setError(””);
 setLoading(true);
 try {
 if (mode === 0) {
-// ?? Sign In ??
+// – Sign In –
 const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
 if (err)
 throw err;
-showToast(“Welcome back! 🎭”);
+showToast(“Welcome back! \u1f3ad”);
 setTimeout(() => onEnter(data.session), 700);
 }
 else {
-// ?? Sign Up ??
+// – Sign Up –
 const { data, error: err } = await supabase.auth.signUp({
 email, password,
 options: { data: { name } }
@@ -371,7 +371,7 @@ options: { data: { name } }
 if (err)
 throw err;
 // Wait a moment for the DB trigger to create the profile row
-showToast(“Account created! Let’s set up your profile 🎭”);
+showToast(“Account created! Let’s set up your profile \u1f3ad”);
 setTimeout(() => onOnboard(data.session), 1000);
 }
 }
@@ -393,12 +393,12 @@ mode === 1 && (React.createElement(“input”, { value: name, onChange: e => se
 React.createElement(“input”, { value: email, onChange: e => setEmail(e.target.value), placeholder: “Email address”, type: “email”, style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 14, outline: “none” } }),
 React.createElement(“input”, { value: password, onChange: e => setPassword(e.target.value), placeholder: “Password”, type: “password”, onKeyDown: e => e.key === “Enter” && submit(), style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 14, outline: “none” } })),
 error && React.createElement(“div”, { style: { background: “rgba(239,68,68,0.12)”, border: “1px solid rgba(239,68,68,0.3)”, borderRadius: 10, padding: “10px 14px”, fontSize: 13, color: “#f87171”, marginBottom: 12 } }, error),
-React.createElement(“button”, { onClick: submit, disabled: loading, style: { width: “100%”, padding: “15px”, background: loading ? “rgba(255,255,255,0.1)” : “linear-gradient(90deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 14, color: loading ? “rgba(255,255,255,0.4)” : “#1a0a2e”, fontWeight: 700, fontSize: 15, cursor: loading ? “not-allowed” : “pointer”, marginBottom: 20 } }, loading ? “…” : mode === 0 ? “Sign In” : “Create Account”),
+React.createElement(“button”, { onClick: submit, disabled: loading, style: { width: “100%”, padding: “15px”, background: loading ? “rgba(255,255,255,0.1)” : “linear-gradient(90deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 14, color: loading ? “rgba(255,255,255,0.4)” : “#1a0a2e”, fontWeight: 700, fontSize: 15, cursor: loading ? “not-allowed” : “pointer”, marginBottom: 20 } }, loading ? “\u2026” : mode === 0 ? “Sign In” : “Create Account”),
 React.createElement(“button”, { onClick: () => onEnter(null), style: { width: “100%”, background: “none”, border: “none”, color: “rgba(255,255,255,0.35)”, fontSize: 12, cursor: “pointer”, letterSpacing: “0.05em” } }, “Skip for now \u2022 Demo mode”)),
 toast && React.createElement(Toast, { msg: toast })));
 }
 const AInput = ({ placeholder, type = “text” }) => (React.createElement(“input”, { type: type, placeholder: placeholder, style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 14, outline: “none” } }));
-// ??????????????????????????? ONBOARD ???????????????????????????????
+// ————————— ONBOARD —————————––
 const ROLES = [“Actor”, “Singer”, “Dancer”, “Composer”, “Lyricist”, “Musical Director”, “Director”, “Choreographer”, “Playwright”, “Producer”, “Stage Manager”, “Designer”, “Pit Musician”, “Other”];
 const SKILLS_LIST = [“Soprano”, “Mezzo”, “Alto”, “Tenor”, “Baritone”, “Bass”, “Jazz”, “Classical”, “Contemporary”, “Hip-Hop”, “Tap”, “Ballet”, “Character”, “Improv”, “Piano”, “Guitar”, “Violin”, “Conducting”];
 function OnboardScreen({ onDone, session }) {
@@ -573,7 +573,7 @@ const r = new FileReader();
 r.onload = ev => setAvatar(ev.target.result);
 r.readAsDataURL(f);
 } }),
-React.createElement(“div”, { style: { padding: “12px 28px”, background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.4)”, borderRadius: 24, color: “#c9a84c”, fontWeight: 700, fontSize: 14, cursor: “pointer” } }, avatar ? “Change Photo” : “📷 Choose Photo”)),
+React.createElement(“div”, { style: { padding: “12px 28px”, background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.4)”, borderRadius: 24, color: “#c9a84c”, fontWeight: 700, fontSize: 14, cursor: “pointer” } }, avatar ? “Change Photo” : “\u1f4f7 Choose Photo”)),
 !avatar && (React.createElement(“button”, { onClick: async () => {
 var _a;
 // Save profile data even if skipping photo
@@ -603,17 +603,17 @@ location && React.createElement(“div”, { style: { fontSize: 11, color: “rg
 location))),
 skills.length > 0 && (React.createElement(“div”, { style: { display: “flex”, flexWrap: “wrap”, gap: 6, marginTop: 12 } }, skills.slice(0, 6).map(s => (React.createElement(“span”, { key: s, style: { background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.3)”, borderRadius: 20, padding: “3px 10px”, fontSize: 11, color: “#c9a84c” } }, s))))))))),
 React.createElement(“div”, { style: { padding: “16px 24px 40px”, background: “linear-gradient(0deg,rgba(8,4,14,0.98),transparent)”, flexShrink: 0 } },
-React.createElement(“button”, { onClick: saveAndContinue, disabled: saving || (step === 0 && !role), style: { width: “100%”, padding: “16px”, background: (saving || (step === 0 && !role)) ? “rgba(255,255,255,0.08)” : “linear-gradient(90deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 14, color: (saving || (step === 0 && !role)) ? “rgba(255,255,255,0.3)” : “#1a0a2e”, fontWeight: 700, fontSize: 16, cursor: (saving || (step === 0 && !role)) ? “not-allowed” : “pointer” } }, saving ? “Creating your profile…” : step < 2 ? “Continue →” : “🎭 Enter StageLab”),
+React.createElement(“button”, { onClick: saveAndContinue, disabled: saving || (step === 0 && !role), style: { width: “100%”, padding: “16px”, background: (saving || (step === 0 && !role)) ? “rgba(255,255,255,0.08)” : “linear-gradient(90deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 14, color: (saving || (step === 0 && !role)) ? “rgba(255,255,255,0.3)” : “#1a0a2e”, fontWeight: 700, fontSize: 16, cursor: (saving || (step === 0 && !role)) ? “not-allowed” : “pointer” } }, saving ? “Creating your profile\u2026” : step < 2 ? “Continue \u2192” : “\u1f3ad Enter StageLab”),
 step > 0 && (React.createElement(“button”, { onClick: () => setStep(s => s - 1), style: { width: “100%”, marginTop: 10, background: “none”, border: “none”, color: “rgba(255,255,255,0.35)”, fontSize: 13, cursor: “pointer” } }, “\u2190 Back”)))));
 }
-// ??????????????????????????? MAIN APP ???????????????????????????????
+// ————————— MAIN APP —————————––
 // 5-tab bottom nav - Feed | Create | Discover | Studio | Me
 const NAV = [
-{ icon: “⌂”, label: “Feed” },
-{ icon: “✂”, label: “Create” },
-{ icon: “◎”, label: “Discover” },
-{ icon: “✦”, label: “Studio” },
-{ icon: “◉”, label: “Me” },
+{ icon: “\u2302”, label: “Feed” },
+{ icon: “\u2702”, label: “Create” },
+{ icon: “\u25ce”, label: “Discover” },
+{ icon: “\u2726”, label: “Studio” },
+{ icon: “\u25c9”, label: “Me” },
 ];
 function MainApp({ tab, setTab, session }) {
 const [toast, setToast] = useState(””);
@@ -635,7 +635,7 @@ React.createElement(“div”, { style: { display: “flex”, gap: 8, alignItem
 React.createElement(“button”, { onClick: () => setShowInbox(true), style: { background: “rgba(255,255,255,0.7)”, border: “none”, borderRadius: 10, width: 36, height: 36, color: “#fff”, cursor: “pointer”, position: “relative”, fontSize: 15, display: “flex”, alignItems: “center”, justifyContent: “center” } },
 “\u2709”,
 totalUnread > 0 && (React.createElement(“span”, { style: { position: “absolute”, top: 4, right: 4, minWidth: 16, height: 16, background: “#c9a84c”, borderRadius: 8, fontSize: 9, fontWeight: 700, color: “#1a0a2e”, display: “flex”, alignItems: “center”, justifyContent: “center”, border: “1.5px solid #08080f”, padding: “0 3px” } }, totalUnread))),
-React.createElement(“button”, { onClick: () => show(“🔔 You’re all caught up”), style: { background: “rgba(255,255,255,0.7)”, border: “none”, borderRadius: 10, width: 36, height: 36, color: “#fff”, cursor: “pointer”, fontSize: 15, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\uD83D\uDD14”)))),
+React.createElement(“button”, { onClick: () => show(”\u1f514 You’re all caught up”), style: { background: “rgba(255,255,255,0.7)”, border: “none”, borderRadius: 10, width: 36, height: 36, color: “#fff”, cursor: “pointer”, fontSize: 15, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\uD83D\uDD14”)))),
 React.createElement(“nav”, { style: { position: “fixed”, bottom: 0, left: 0, right: 0, zIndex: 100, background: “linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))”, borderTop: “1px solid rgba(255,255,255,0.7)”, display: “flex”, justifyContent: “space-around”, padding: “8px 0 max(8px, env(safe-area-inset-bottom))” } }, NAV.map((n, i) => (React.createElement(“button”, { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: “none”, border: “none”, cursor: “pointer”, display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 3, padding: “4px 0”, minWidth: 44, minHeight: 44 } },
 React.createElement(“div”, { style: { width: tab === i ? 28 : 22, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : “50%”, background: tab === i ? “linear-gradient(135deg,#c9a84c,#e8a87c)” : “rgba(255,255,255,0.08)”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: tab === i ? 14 : 13, transition: “all 0.2s cubic-bezier(0.34,1.56,0.64,1)”, position: “relative” } },
 React.createElement(“span”, { style: { color: n.live ? (tab === i ? “#1a0a2e” : “#ef4444”) : (tab === i ? “#1a0a2e” : “rgba(255,255,255,0.55)”), animation: n.live && tab !== i ? “liveDot 1.5s infinite” : “none” } }, n.icon),
@@ -647,11 +647,11 @@ tab === 1 && React.createElement(CreateScreen, { show: show, setTab: setTab }),
 tab === 2 && React.createElement(DiscoverScreen, { show: show }),
 tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, setLiveRoom: setLiveRoom }),
 tab === 4 && React.createElement(ProfileScreen, { show: show })),
-liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show(“👋 Left the room”); }, show: show }),
+liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show(”\u1f44b Left the room”); }, show: show }),
 showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
 toast && React.createElement(Toast, { msg: toast })));
 }
-// ??????????????????????????? FEED ???????????????????????????????????
+// ————————— FEED ———————————–
 function FeedScreen({ videos, setVideos, comments, setComments, show }) {
 const [cur, setCur] = useState(0);
 const [liked, setLiked] = useState({});
@@ -696,7 +696,7 @@ thumbnail_url: p.thumbnail_url || null,
 collab_open: p.collab_open || false,
 accent: ACCENTS[i % ACCENTS.length],
 bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”,
-note: “♪”,
+note: “\u266a”,
 tier: “silver”,
 });
 });
@@ -734,11 +734,11 @@ if (reposted[vid.id])
 return;
 setReposted(p => (Object.assign(Object.assign({}, p), { [vid.id]: true })));
 setVideos(p => p.map(v => v.id === vid.id ? Object.assign(Object.assign({}, v), { reposts: v.reposts + 1 }) : v));
-show(“↻ Reposted to your followers!”);
+show(”\u21bb Reposted to your followers!”);
 };
 const doShare = (vid) => {
 setVideos(p => p.map(v => v.id === vid.id ? Object.assign(Object.assign({}, v), { shares: v.shares + 1 }) : v));
-show(“↗ Link copied!”);
+show(”\u2197 Link copied!”);
 };
 const doGift = (vid, gift) => {
 setVideos(p => p.map(v => v.id === vid.id ? Object.assign(Object.assign({}, v), { gifts: v.gifts + 1 }) : v));
@@ -818,7 +818,7 @@ vid.type !== “video” && vid.thumbnail_url && (React.createElement(“img”,
 (vid.type === “audio” || !vid.media_url) && (React.createElement(“div”, { style: { position: “absolute”, top: “30%”, left: 0, right: 0, display: “flex”, alignItems: “flex-end”, justifyContent: “center”, gap: 3, height: 76, pointerEvents: “none” } }, Array.from({ length: 28 }).map((*, i) => (React.createElement(“div”, { key: i, className: active && playing ? “bar” : “”, style: { width: 7, borderRadius: 4, height: `${18 + Math.sin(i * 0.7) * 14}px`, background: `linear-gradient(to top, ${vid.accent}, ${vid.accent}88)`, transformOrigin: “bottom” } }))))),
 vid.type === “video” && vid.media_url && !playing && (React.createElement(“div”, { style: { position: “absolute”, inset: 0, display: “flex”, alignItems: “center”, justifyContent: “center”, pointerEvents: “none” } },
 React.createElement(“div”, { style: { width: 56, height: 56, borderRadius: “50%”, background: “rgba(0,0,0,0.55)”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: 22 } }, “\u25B6”))),
-React.createElement(“div”, { style: { position: “absolute”, top: 14, left: 14, background: “rgba(0,0,0,0.55)”, borderRadius: 20, padding: “4px 12px”, fontSize: 10, fontWeight: 700, letterSpacing: “0.1em”, color: “rgba(255,255,255,0.8)” } }, vid.type === “video” ? “▶ VIDEO” : vid.type === “lyrics” ? “📝 LYRICS” : “🎵 AUDIO”),
+React.createElement(“div”, { style: { position: “absolute”, top: 14, left: 14, background: “rgba(0,0,0,0.55)”, borderRadius: 20, padding: “4px 12px”, fontSize: 10, fontWeight: 700, letterSpacing: “0.1em”, color: “rgba(255,255,255,0.8)” } }, vid.type === “video” ? “\u25b6 VIDEO” : vid.type === “lyrics” ? “\u1f4dd LYRICS” : “\u1f3b5 AUDIO”),
 React.createElement(“div”, { style: { position: “absolute”, bottom: 0, left: 0, right: 54, padding: “0 15px 15px”, background: “linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: 9, marginBottom: 8, cursor: “pointer” }, onClick: onProfile },
 React.createElement(“div”, { style: { width: 38, height: 38, borderRadius: “50%”, background: vid.accent + “33”, border: `2px solid ${vid.accent}`, overflow: “hidden”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontWeight: 700, fontSize: 13, flexShrink: 0 } }, vid.avatar_url
@@ -828,7 +828,7 @@ React.createElement(“div”, { style: { flex: 1, minWidth: 0 } },
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 14, fontFamily: “‘Cormorant Garamond’,serif” } }, vid.creator),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.42)” } },
 vid.handle,
-vid.role ? “ · “ + vid.role : “”)),
+vid.role ? “ \u00b7 “ + vid.role : “”)),
 !vid.subscribed
 ? React.createElement(“button”, { onClick: e => { e.stopPropagation(); onSubscribe(); }, style: { flexShrink: 0, padding: “5px 12px”, background: vid.accent, border: “none”, borderRadius: 20, color: “#1a0a2e”, fontWeight: 700, fontSize: 11, cursor: “pointer” } }, “Subscribe”)
 : React.createElement(“span”, { style: { flexShrink: 0, fontSize: 11, fontWeight: 700, color: vid.accent } }, “\u2713 Subscribed”)),
@@ -836,7 +836,7 @@ React.createElement(“div”, { style: { fontSize: 14, fontWeight: 500, fontFam
 vid.caption ? React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.5)”, marginTop: 4, lineHeight: 1.4 } }, vid.caption) : null,
 vid.collab_open && React.createElement(“div”, { style: { fontSize: 10, color: vid.accent, marginTop: 6, fontWeight: 700, letterSpacing: “0.05em” } }, “\uD83C\uDFAD OPEN FOR COLLAB”)),
 React.createElement(“div”, { style: { position: “absolute”, bottom: 14, right: 8, display: “flex”, flexDirection: “column”, gap: 14, alignItems: “center” } },
-React.createElement(Btn, { icon: liked ? “♥” : “♡”, label: fmt(vid.likes), onClick: onLike, accent: vid.accent, active: liked }),
+React.createElement(Btn, { icon: liked ? “\u2665” : “\u2661”, label: fmt(vid.likes), onClick: onLike, accent: vid.accent, active: liked }),
 React.createElement(Btn, { icon: “\uD83D\uDCAC”, label: commentCount, onClick: onComment, accent: vid.accent }),
 React.createElement(Btn, { icon: “\u2197”, label: fmt(vid.shares), onClick: onShare, accent: vid.accent }),
 React.createElement(Btn, { icon: “\u21BB”, label: fmt(vid.reposts), onClick: onRepost, accent: vid.accent, active: reposted }),
@@ -845,7 +845,7 @@ React.createElement(Btn, { icon: “\uD83C\uDF81”, label: fmt(vid.gifts), onCl
 const Btn = ({ icon, label, onClick, accent, active }) => (React.createElement(“button”, { onClick: onClick, style: { background: “none”, border: “none”, cursor: “pointer”, display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 3 } },
 React.createElement(“div”, { style: { width: 42, height: 42, borderRadius: 13, display: “flex”, alignItems: “center”, justifyContent: “center”, background: active ? accent + “33” : “rgba(0,0,0,0.4)”, fontSize: 20, color: active ? accent : “#fff”, border: active ? `1px solid ${accent}55` : “none” } }, icon),
 React.createElement(“span”, { style: { fontSize: 9, color: “rgba(255,255,255,0.48)”, letterSpacing: “0.04em” } }, label)));
-// ?? Comments Modal ??????????????????????????????????????????????????
+// – Comments Modal –––––––––––––––––––––––––
 function CommentsModal({ vid, comments, onAdd, onClose }) {
 const [text, setText] = useState(””);
 const [localComments, setLocalComments] = useState(comments);
@@ -874,7 +874,7 @@ React.createElement(“span”, { style: { fontWeight: 700, fontSize: 13 } }, c.
 React.createElement(“span”, { style: { fontSize: 10, color: “rgba(255,255,255,0.32)” } }, c.time)),
 React.createElement(“div”, { style: { fontSize: 13, color: “rgba(255,255,255,0.82)”, lineHeight: 1.5 } }, c.text),
 React.createElement(“button”, { onClick: () => toggleLike(c.id), style: { marginTop: 5, background: “none”, border: “none”, color: c.liked ? vid.accent : “rgba(255,255,255,0.35)”, fontSize: 12, cursor: “pointer” } },
-c.liked ? “♥” : “♡”,
+c.liked ? “\u2665” : “\u2661”,
 “ “,
 c.likes))))),
 React.createElement(“div”, { ref: endRef })),
@@ -883,7 +883,7 @@ React.createElement(“input”, { value: text, onChange: e => setText(e.target.
 submit(); }, placeholder: “Add a comment\u2026”, style: { flex: 1, padding: “10px 13px”, background: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 13, outline: “none” } }),
 React.createElement(“button”, { onClick: submit, style: { padding: “10px 16px”, background: vid.accent, color: “#1a0a2e”, border: “none”, borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “Post”))));
 }
-// ?? Gift Modal ??????????????????????????????????????????????????????
+// – Gift Modal ——————————————————
 function GiftModal({ vid, onGift, onClose }) {
 const [sent, setSent] = useState(null);
 const handleGift = (g) => { setSent(g); setTimeout(() => onGift(g), 900); };
@@ -906,7 +906,7 @@ React.createElement(“span”, { style: { fontSize: 11, color: vid.accent, font
 “$”,
 g.amount)))))))));
 }
-// ?? Subscribe Modal ?????????????????????????????????????????????????
+// – Subscribe Modal ———————————————––
 function SubscribeModal({ vid, onSubscribe, onClose }) {
 const [done, setDone] = useState(null);
 const handle = (tier) => { setDone(tier); onSubscribe(vid.id, tier); };
@@ -937,7 +937,7 @@ React.createElement(“button”, { onClick: () => handle(key), style: { width: 
 “Subscribe \u2014 “,
 t.price))))))));
 }
-// ?? Creator Profile Modal ???????????????????????????????????????????
+// – Creator Profile Modal —————————————––
 function CreatorModal({ vid, onSubscribe, onClose }) {
 var _a;
 return (React.createElement(“div”, { style: { position: “absolute”, inset: 0, background: “#08080f”, zIndex: 60, overflowY: “auto” }, className: “fade-in” },
@@ -950,7 +950,7 @@ React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,2
 React.createElement(“div”, { style: { display: “inline-block”, background: vid.accent + “22”, border: `1px solid ${vid.accent}44`, borderRadius: 20, padding: “3px 12px”, fontSize: 11, color: vid.accent, fontWeight: 700, marginBottom: 16 } }, (_a = TIERS[vid.tier]) === null || _a === void 0 ? void 0 :
 _a.label,
 “ Creator”),
-React.createElement(“div”, { style: { display: “flex”, gap: 24, marginBottom: 14 } }, [[“14.2K”, “FOLLOWERS”], [“83”, “WORKS”], [“4.9★”, “RATING”]].map(([n, l]) => (React.createElement(“div”, { key: l },
+React.createElement(“div”, { style: { display: “flex”, gap: 24, marginBottom: 14 } }, [[“14.2K”, “FOLLOWERS”], [“83”, “WORKS”], [“4.9\u2605”, “RATING”]].map(([n, l]) => (React.createElement(“div”, { key: l },
 React.createElement(“div”, { style: { fontSize: 20, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, n),
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.35)”, letterSpacing: “0.1em” } }, l))))),
 React.createElement(“div”, { style: { fontSize: 13, color: “rgba(255,255,255,0.58)”, lineHeight: 1.65, marginBottom: 20 } }, “Broadway composer & lyricist. Creating new works at the intersection of jazz and contemporary musical theatre.”),
@@ -963,10 +963,10 @@ React.createElement(“span”, { style: { color: vid.accent, fontSize: 16 } }, 
 React.createElement(“span”, { style: { fontSize: 13 } }, w),
 i === 0 && React.createElement(“span”, { style: { marginLeft: “auto”, background: vid.accent + “22”, color: vid.accent, borderRadius: 10, padding: “2px 8px”, fontSize: 10, fontWeight: 700 } }, “NEW”)))))));
 }
-// ??????????????????????????? CREATE ?????????????????????????????????
+// ————————— CREATE ———————————
 function CreateScreen({ show, setTab }) {
 const [sub, setSub] = useState(0);
-const TABS = [“🎬 Video”, “🎵 Audio”, “🎨 Poster”, “✍️ Lyrics”];
+const TABS = [”\u1f3ac Video”, “\u1f3b5 Audio”, “\u1f3a8 Poster”, “\u270d\ufe0f Lyrics”];
 return (React.createElement(“div”, { style: { height: “calc(100vh - 72px)”, display: “flex”, flexDirection: “column” } },
 React.createElement(“div”, { style: { display: “flex”, background: “rgba(0,0,0,0.5)”, borderBottom: “1px solid rgba(255,255,255,0.08)”, flexShrink: 0 } }, TABS.map((t, i) => (React.createElement(“button”, { key: t, onClick: () => setSub(i), style: { flex: 1, padding: “13px 4px”, background: “none”, border: “none”,
 color: sub === i ? “#c9a84c” : “rgba(255,255,255,0.4)”,
@@ -979,7 +979,7 @@ sub === 1 && React.createElement(AudioPostTab, { show: show, setTab: setTab }),
 sub === 2 && React.createElement(PosterMakerTab, { show: show, setTab: setTab }),
 sub === 3 && React.createElement(LyricsPostTab, { show: show, setTab: setTab }))));
 }
-// ?? Shared step progress bar ??????????????????????????????????????????
+// – Shared step progress bar ——————————————
 function StepBar({ step, steps }) {
 return (React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: 6, marginBottom: 20 } }, steps.map((label, i) => (React.createElement(React.Fragment, { key: i },
 React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 4 } },
@@ -990,11 +990,11 @@ display: “flex”, alignItems: “center”, justifyContent: “center”,
 fontSize: 12, fontWeight: 700,
 color: i <= step ? “#1a0a2e” : “rgba(255,255,255,0.3)”,
 boxShadow: i === step ? “0 0 12px #c9a84c66” : “none”,
-transition: “all 0.3s” } }, i < step ? “✓” : i + 1),
+transition: “all 0.3s” } }, i < step ? “\u2713” : i + 1),
 React.createElement(“span”, { style: { fontSize: 9, color: i === step ? “#c9a84c” : “rgba(255,255,255,0.3)”, fontWeight: i === step ? 700 : 400, letterSpacing: “0.05em” } }, label)),
 i < steps.length - 1 && (React.createElement(“div”, { style: { flex: 1, height: 2, borderRadius: 1, background: i < step ? “#c9a84c” : “rgba(255,255,255,0.08)”, marginBottom: 14, transition: “background 0.3s” } })))))));
 }
-// ??? Video Post Tab ???????????????????????????????????????????????????
+// — Video Post Tab —————————————————
 function VideoPostTab({ show, setTab }) {
 const [mode, setMode] = useState(“upload”); // upload | record
 const [videoFile, setVideoFile] = useState(null);
@@ -1073,7 +1073,7 @@ setRecTime(0);
 recTimer.current = setInterval(() => setRecTime(t => t + 1), 1000);
 }
 catch (e) {
-show(“📷 Camera access denied - check browser permissions”);
+show(”\u1f4f7 Camera access denied - check browser permissions”);
 }
 };
 const stopRecording = () => {
@@ -1090,7 +1090,7 @@ clearInterval(recTimer.current);
 }, []);
 const publish = async (saveToProfile = false) => {
 if (!title.trim()) {
-show(“⚠️ Please add a title before publishing.”);
+show(”\u26a0\ufe0f Please add a title before publishing.”);
 return;
 }
 const { data: { user } } = await supabase.auth.getUser();
@@ -1098,7 +1098,7 @@ let mediaUrl = null;
 // Upload video/audio to Supabase Storage
 const fileOrBlob = recBlob || videoFile;
 if (fileOrBlob && user) {
-show(“⬆️ Uploading…”);
+show(”\u2b06\ufe0f Uploading\u2026”);
 const ext = recBlob ? “webm” : ((videoFile.name || “video”).split(”.”).pop() || “mp4”);
 const path = user.id + “/” + Date.now() + “.” + ext;
 const uploadRes = await fetch(“https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/” + path, {
@@ -1117,14 +1117,14 @@ mediaUrl = “https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/
 else {
 const errText = await uploadRes.text().catch(() => “”);
 console.error(“Video upload failed:”, uploadRes.status, errText);
-show(“⚠️ Upload failed - your post will save without the video file”);
+show(”\u26a0\ufe0f Upload failed - your post will save without the video file”);
 }
 }
 if (saveToProfile) {
 if (user && mediaUrl) {
 supabase.from(“media”).insert({ user_id: user.id, type: “video”, url: mediaUrl, caption: title });
 }
-show(“💾 Saved to your profile media!”);
+show(”\u1f4be Saved to your profile media!”);
 }
 else {
 if (user) {
@@ -1154,20 +1154,20 @@ avatar_url: (prof === null || prof === void 0 ? void 0 : prof.avatar_url) || nul
 title, caption, type: “video”,
 likes: 0, comments: 0, shares: 0, reposts: 0, gifts: 0,
 media_url: mediaUrl, thumbnail_url: thumbnail, collab_open: collab,
-accent: “#c9a84c”, bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”, note: “♪”, tier: “silver”,
+accent: “#c9a84c”, bg: “linear-gradient(160deg,#1a0a2e,#2d1040)”, note: “\u266a”, tier: “silver”,
 };
 setVideos(prev => [feedPost, …prev]);
 }
-show(“🚀 Video published to your feed!”);
+show(”\u1f680 Video published to your feed!”);
 setTimeout(() => setTab(0), 600);
 }
 };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-// ?? Step 0: Upload or Record ??
+// – Step 0: Upload or Record –
 if (step === 0)
 return (React.createElement(“div”, { style: { padding: “18px 16px 80px” } },
 React.createElement(“div”, { style: { fontSize: 20, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 14 } }, “Post a Video”),
-React.createElement(“div”, { style: { display: “flex”, background: “rgba(255,255,255,0.6)”, borderRadius: 12, padding: 3, marginBottom: 18 } }, [[“upload”, “📁 Upload”], [“record”, “📹 Record”]].map(([m, l]) => (React.createElement(“button”, { key: m, onClick: () => setMode(m), style: { flex: 1, padding: “9px”, background: mode === m ? “#c9a84c” : “none”, border: “none”, borderRadius: 10, color: mode === m ? “#1a0a2e” : “rgba(255,255,255,0.5)”, fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: “pointer” } }, l)))),
+React.createElement(“div”, { style: { display: “flex”, background: “rgba(255,255,255,0.6)”, borderRadius: 12, padding: 3, marginBottom: 18 } }, [[“upload”, “\u1f4c1 Upload”], [“record”, “\u1f4f9 Record”]].map(([m, l]) => (React.createElement(“button”, { key: m, onClick: () => setMode(m), style: { flex: 1, padding: “9px”, background: mode === m ? “#c9a84c” : “none”, border: “none”, borderRadius: 10, color: mode === m ? “#1a0a2e” : “rgba(255,255,255,0.5)”, fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: “pointer” } }, l)))),
 mode === “upload” ? (React.createElement(React.Fragment, null,
 React.createElement(“label”, { style: { display: “block”, width: “100%”, aspectRatio: “16/9”, background: “linear-gradient(160deg,#1a0a2e,#0d0515)”, border: “2px dashed rgba(201,168,76,0.35)”, borderRadius: 16, cursor: “pointer”, position: “relative”, overflow: “hidden”, marginBottom: 16 } },
 React.createElement(“input”, { type: “file”, accept: “video/*”, style: { display: “none” }, onChange: handleFile }),
@@ -1176,7 +1176,7 @@ React.createElement(“div”, { style: { width: 56, height: 56, borderRadius: 1
 React.createElement(“div”, { style: { fontSize: 14, fontWeight: 700, color: “#c9a84c” } }, “Tap to select video”),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.3)” } }, “MP4 \u00B7 MOV \u00B7 up to 2GB”))),
 React.createElement(“div”, { style: { fontSize: 10, fontWeight: 700, letterSpacing: “0.1em”, color: “rgba(255,255,255,0.3)”, marginBottom: 10 } }, “QUICK PICK”),
-React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr”, gap: 10 } }, [[“🎤”, “Performance”, “Share your act”], [“🎹”, “Rehearsal”, “Raw & unedited”], [“🎭”, “Workshop”, “Teaching moment”], [“🌟”, “Original Work”, “Your creation”]].map(([emoji, label, sub]) => (React.createElement(“label”, { key: label, style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 12, padding: “12px”, cursor: “pointer”, display: “flex”, alignItems: “center”, gap: 10 } },
+React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr”, gap: 10 } }, [[”\u1f3a4”, “Performance”, “Share your act”], [”\u1f3b9”, “Rehearsal”, “Raw & unedited”], [”\u1f3ad”, “Workshop”, “Teaching moment”], [”\u1f31f”, “Original Work”, “Your creation”]].map(([emoji, label, sub]) => (React.createElement(“label”, { key: label, style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 12, padding: “12px”, cursor: “pointer”, display: “flex”, alignItems: “center”, gap: 10 } },
 React.createElement(“input”, { type: “file”, accept: “video/*”, style: { display: “none” }, onChange: handleFile }),
 React.createElement(“span”, { style: { fontSize: 22 } }, emoji),
 React.createElement(“div”, null,
@@ -1194,8 +1194,8 @@ React.createElement(“span”, { style: { fontSize: 12, fontWeight: 700, color:
 “REC “,
 fmt(recTime))))),
 React.createElement(“div”, { style: { display: “flex”, gap: 14, alignItems: “center” } }, !recording ? (React.createElement(“button”, { onClick: startRecording, style: { width: 68, height: 68, borderRadius: “50%”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “4px solid rgba(255,255,255,0.2)”, fontSize: 28, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\u23FA”)) : (React.createElement(“button”, { onClick: stopRecording, style: { width: 68, height: 68, borderRadius: “50%”, background: “#ef4444”, border: “4px solid rgba(255,255,255,0.3)”, fontSize: 26, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center”, animation: “liveDot 1s infinite” } }, “\u23F9”))),
-React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10, textAlign: “center” } }, recording ? `Recording… ${fmt(recTime)}` : “Tap ⏺ to start recording”)))));
-// ?? Step 1: Edit ??
+React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10, textAlign: “center” } }, recording ? `Recording\u2026 ${fmt(recTime)}` : “Tap \u23fa to start recording”)))));
+// – Step 1: Edit –
 if (step === 1)
 return (React.createElement(“div”, { style: { padding: “16px 16px 80px” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 16 } },
@@ -1232,12 +1232,12 @@ React.createElement(“div”, { style: { background: “rgba(255,255,255,0.3)�
 React.createElement(SliderRow, { label: “Volume”, value: volume, min: 0, max: 100, accent: “#a084e8”, unit: “%”, onChange: setVolume })),
 React.createElement(Label, null, “THUMBNAIL”),
 React.createElement(“div”, { style: { display: “flex”, gap: 10, alignItems: “center”, marginBottom: 14 } },
-React.createElement(“div”, { style: { width: 80, height: 48, borderRadius: 10, overflow: “hidden”, background: “#1a0a2e”, flexShrink: 0, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: 18 } }, thumbnail ? React.createElement(“img”, { src: thumbnail, style: { width: “100%”, height: “100%”, objectFit: “cover” } }) : “🖼”),
+React.createElement(“div”, { style: { width: 80, height: 48, borderRadius: 10, overflow: “hidden”, background: “#1a0a2e”, flexShrink: 0, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: 18 } }, thumbnail ? React.createElement(“img”, { src: thumbnail, style: { width: “100%”, height: “100%”, objectFit: “cover” } }) : “\u1f5bc”),
 React.createElement(“label”, { style: { flex: 1, padding: “10px”, background: “rgba(255,255,255,0.5)”, border: “1px dashed rgba(255,255,255,0.2)”, borderRadius: 10, cursor: “pointer”, textAlign: “center”, fontSize: 12, color: “rgba(255,255,255,0.5)” } },
 React.createElement(“input”, { type: “file”, accept: “image/*”, style: { display: “none” }, onChange: handleThumb }),
 thumbnail ? “Change thumbnail” : “Upload thumbnail”)),
 React.createElement(“button”, { onClick: () => setStep(2), style: primaryBtn(”#c9a84c”) }, “Continue \u2192”)));
-// ?? Step 2: Details & Publish ??
+// – Step 2: Details & Publish –
 return (React.createElement(“div”, { style: { padding: “16px 16px 80px” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 18 } },
 React.createElement(“button”, { onClick: () => setStep(1), style: { background: “none”, border: “none”, color: “rgba(255,255,255,0.5)”, fontSize: 20, cursor: “pointer” } }, “\u2190”),
@@ -1259,7 +1259,7 @@ React.createElement(“input”, { value: tagIn, onChange: e => setTagIn(e.targe
 addTag(); }, placeholder: “Add tag\u2026”, style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }),
 React.createElement(“button”, { onClick: addTag, style: { padding: “0 14px”, background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.3)”, borderRadius: 12, color: “#c9a84c”, fontWeight: 700, fontSize: 18, cursor: “pointer” } }, “+”)),
 React.createElement(Label, null, “VISIBILITY”),
-React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 14 } }, [[“🌍”, “public”, “Everyone”], [“👥”, “followers”, “Followers”], [“🔒”, “private”, “Only me”]].map(([icon, val, label]) => (React.createElement(“button”, { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: “9px 4px”, background: visibility === val ? “rgba(201,168,76,0.15)” : “rgba(255,255,255,0.4)”, border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: “pointer”, textAlign: “center” } },
+React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 14 } }, [[”\u1f30d”, “public”, “Everyone”], [”\u1f465”, “followers”, “Followers”], [”\u1f512”, “private”, “Only me”]].map(([icon, val, label]) => (React.createElement(“button”, { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: “9px 4px”, background: visibility === val ? “rgba(201,168,76,0.15)” : “rgba(255,255,255,0.4)”, border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: “pointer”, textAlign: “center” } },
 React.createElement(“div”, { style: { fontSize: 16, marginBottom: 2 } }, icon),
 label)))),
 React.createElement(“div”, { style: { background: “rgba(255,255,255,0.3)”, borderRadius: 14, padding: “2px 0”, marginBottom: 16 } }, [[“Open for Collaboration”, “Let others request to work with you”, collab, () => setCollab(p => !p)],
@@ -1270,9 +1270,9 @@ React.createElement(“div”, { style: { fontSize: 10, color: “rgba(255,255,2
 React.createElement(Toggle, { on: val, onToggle: fn }))))),
 React.createElement(“button”, { onClick: () => publish(false), style: primaryBtn(”#c9a84c”) }, “\uD83D\uDE80 Publish to Feed”),
 React.createElement(“button”, { onClick: () => publish(true), style: Object.assign(Object.assign({}, primaryBtn(“rgba(255,255,255,0.1)”)), { color: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.15)” }) }, “\uD83D\uDCBE Save to Profile Only”),
-React.createElement(“button”, { onClick: () => show(“Draft saved ✓”), style: ghostBtn }, “Save as Draft”)));
+React.createElement(“button”, { onClick: () => show(“Draft saved \u2713”), style: ghostBtn }, “Save as Draft”)));
 }
-// ??? Audio Post Tab ???????????????????????????????????????????????????
+// — Audio Post Tab —————————————————
 function AudioPostTab({ show, setTab }) {
 const [mode, setMode] = useState(“upload”); // upload | record
 const [audioFile, setAudioFile] = useState(null);
@@ -1341,7 +1341,7 @@ setRecTime(0);
 recTimer.current = setInterval(() => setRecTime(t => t + 1), 1000);
 }
 catch (e) {
-show(“🎙 Mic access denied - check browser permissions”);
+show(”\u1f399 Mic access denied - check browser permissions”);
 }
 };
 const stopRecording = () => {
@@ -1364,11 +1364,11 @@ cancelAnimationFrame(animRef.current);
 }, []);
 const publish = async (saveToProfile = false) => {
 if (!title.trim()) {
-show(“⚠️ Add a title first”);
+show(”\u26a0\ufe0f Add a title first”);
 return;
 }
 if (saveToProfile) {
-show(“💾 Saved to your profile media!”);
+show(”\u1f4be Saved to your profile media!”);
 }
 else {
 // Save audio post to Supabase
@@ -1376,13 +1376,13 @@ const { data: { user } } = await supabase.auth.getUser();
 if (user) {
 supabase.from(“posts”).insert({ user_id: user.id, type: “audio”, title, caption, tags, visibility, collab_open: collab });
 }
-show(“🎵 Audio posted to your feed!”);
+show(”\u1f3b5 Audio posted to your feed!”);
 setTimeout(() => setTab(0), 600);
 }
 };
 return (React.createElement(“div”, { style: { padding: “18px 16px 80px” } },
 React.createElement(“div”, { style: { fontSize: 20, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 14 } }, “Post Audio”),
-React.createElement(“div”, { style: { display: “flex”, background: “rgba(255,255,255,0.6)”, borderRadius: 12, padding: 3, marginBottom: 18 } }, [[“upload”, “📁 Upload”], [“record”, “🎙 Record”]].map(([m, l]) => (React.createElement(“button”, { key: m, onClick: () => setMode(m), style: { flex: 1, padding: “9px”, background: mode === m ? “#c9a84c” : “none”, border: “none”, borderRadius: 10, color: mode === m ? “#1a0a2e” : “rgba(255,255,255,0.5)”, fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: “pointer” } }, l)))),
+React.createElement(“div”, { style: { display: “flex”, background: “rgba(255,255,255,0.6)”, borderRadius: 12, padding: 3, marginBottom: 18 } }, [[“upload”, “\u1f4c1 Upload”], [“record”, “\u1f399 Record”]].map(([m, l]) => (React.createElement(“button”, { key: m, onClick: () => setMode(m), style: { flex: 1, padding: “9px”, background: mode === m ? “#c9a84c” : “none”, border: “none”, borderRadius: 10, color: mode === m ? “#1a0a2e” : “rgba(255,255,255,0.5)”, fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: “pointer” } }, l)))),
 mode === “upload” ? (React.createElement(“label”, { style: { display: “flex”, alignItems: “center”, justifyContent: “center”, gap: 12, padding: “22px”, background: audioFile ? “rgba(201,168,76,0.08)” : “rgba(255,255,255,0.4)”, border: `1px dashed ${audioFile ? "#c9a84c" : "rgba(255,255,255,0.2)"}`, borderRadius: 16, cursor: “pointer”, marginBottom: 16 } },
 React.createElement(“input”, { type: “file”, accept: “audio/*”, style: { display: “none” }, onChange: e => {
 var _a;
@@ -1393,10 +1393,10 @@ setAudioFile(f);
 setAudioURL(URL.createObjectURL(f));
 setTitle(f.name.replace(/.[^.]+$/, “”).replace(/[-*]/g, “ “));
 } }),
-React.createElement(“span”, { style: { fontSize: 32 } }, audioFile ? “🎵” : “🎙”),
+React.createElement(“span”, { style: { fontSize: 32 } }, audioFile ? “\u1f3b5” : “\u1f399”),
 React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontSize: 14, fontWeight: 700, color: audioFile ? “#c9a84c” : “rgba(255,255,255,0.7)” } }, audioFile ? audioFile.name : “Tap to upload audio”),
-React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.35)”, marginTop: 2 } }, audioFile ? “Audio ready” : “MP3 · WAV · AAC · M4A”)))) : (React.createElement(“div”, { style: { background: “linear-gradient(160deg,#1a0a2e,#0d0515)”, borderRadius: 16, padding: “20px”, marginBottom: 16, display: “flex”, flexDirection: “column”, alignItems: “center” } },
+React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.35)”, marginTop: 2 } }, audioFile ? “Audio ready” : “MP3 \u00b7 WAV \u00b7 AAC \u00b7 M4A”)))) : (React.createElement(“div”, { style: { background: “linear-gradient(160deg,#1a0a2e,#0d0515)”, borderRadius: 16, padding: “20px”, marginBottom: 16, display: “flex”, flexDirection: “column”, alignItems: “center” } },
 React.createElement(“div”, { style: { display: “flex”, gap: 1.5, height: 64, alignItems: “flex-end”, width: “100%”, marginBottom: 16 } }, waveData.map((h, i) => (React.createElement(“div”, { key: i, style: { flex: 1, borderRadius: 2, height: `${h}%`, background: recording ? `linear-gradient(to top,#c9a84c,#e8a87c)` : “rgba(255,255,255,0.15)”, transition: recording ? “none” : “height 0.3s”, transformOrigin: “bottom” } })))),
 React.createElement(“div”, { style: { fontSize: 28, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, color: recording ? “#ef4444” : “rgba(255,255,255,0.4)”, marginBottom: 16, letterSpacing: “0.05em” } }, fmt(recTime)),
 !recording ? (React.createElement(“button”, { onClick: startRecording, style: { width: 72, height: 72, borderRadius: “50%”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “4px solid rgba(255,255,255,0.2)”, fontSize: 30, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\uD83C\uDF99”)) : (React.createElement(“button”, { onClick: stopRecording, style: { width: 72, height: 72, borderRadius: “50%”, background: “#ef4444”, border: “4px solid rgba(255,255,255,0.3)”, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center”, animation: “liveDot 1s infinite” } },
@@ -1404,7 +1404,7 @@ React.createElement(“div”, { style: { width: 24, height: 24, background: “
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 10 } }, recording ? “Recording - tap to stop” : “Tap to start recording”),
 audioURL && !recording && (React.createElement(“div”, { style: { marginTop: 14, width: “100%”, background: “rgba(255,255,255,0.6)”, borderRadius: 12, padding: “12px 14px”, display: “flex”, alignItems: “center”, gap: 10 } },
 React.createElement(“audio”, { ref: audioRef, src: audioURL, onEnded: () => setPlaying(false) }),
-React.createElement(“button”, { onClick: togglePlay, style: { width: 36, height: 36, borderRadius: “50%”, background: “#c9a84c”, border: “none”, color: “#1a0a2e”, fontSize: 16, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, playing ? “⏸” : “▶”),
+React.createElement(“button”, { onClick: togglePlay, style: { width: 36, height: 36, borderRadius: “50%”, background: “#c9a84c”, border: “none”, color: “#1a0a2e”, fontSize: 16, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, playing ? “\u23f8” : “\u25b6”),
 React.createElement(“div”, { style: { flex: 1 } },
 React.createElement(“div”, { style: { fontSize: 12, fontWeight: 700, color: “rgba(255,255,255,0.8)” } }, “Recording preview”),
 React.createElement(“div”, { style: { fontSize: 10, color: “rgba(255,255,255,0.4)” } },
@@ -1414,7 +1414,7 @@ audioURL && mode === “upload” && (React.createElement(“div”, { style: { 
 React.createElement(“audio”, { ref: audioRef, src: audioURL, onEnded: () => setPlaying(false) }),
 React.createElement(“div”, { style: { display: “flex”, gap: 2, height: 48, alignItems: “flex-end”, marginBottom: 10 } }, Array.from({ length: 48 }).map((*, i) => (React.createElement(“div”, { key: i, className: playing ? “bar” : “”, style: { flex: 1, borderRadius: 2, height: `${15 + Math.abs(Math.sin(i * 0.4) * 70)}%`, background: “linear-gradient(to top,#c9a84c,#e8a87c88)”, transformOrigin: “bottom” } })))),
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: 10 } },
-React.createElement(“button”, { onClick: togglePlay, style: { width: 38, height: 38, borderRadius: “50%”, background: “#c9a84c”, border: “none”, color: “#1a0a2e”, fontSize: 16, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, playing ? “⏸” : “▶”),
+React.createElement(“button”, { onClick: togglePlay, style: { width: 38, height: 38, borderRadius: “50%”, background: “#c9a84c”, border: “none”, color: “#1a0a2e”, fontSize: 16, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, playing ? “\u23f8” : “\u25b6”),
 React.createElement(“div”, { style: { flex: 1, height: 3, background: “rgba(255,255,255,0.08)”, borderRadius: 2 } },
 React.createElement(“div”, { style: { width: playing ? “30%” : “0%”, height: “100%”, background: “#c9a84c”, borderRadius: 2, transition: “width 0.5s linear” } }))))),
 React.createElement(Label, null, “TITLE”),
@@ -1436,7 +1436,7 @@ React.createElement(“input”, { value: tagIn, onChange: e => setTagIn(e.targe
 addTag(); }, placeholder: “Add tag\u2026”, style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }),
 React.createElement(“button”, { onClick: addTag, style: { padding: “0 14px”, background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.3)”, borderRadius: 12, color: “#c9a84c”, fontWeight: 700, fontSize: 18, cursor: “pointer” } }, “+”)),
 React.createElement(Label, null, “VISIBILITY”),
-React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 14 } }, [[“🌍”, “public”, “Everyone”], [“👥”, “followers”, “Followers”], [“🔒”, “private”, “Only me”]].map(([icon, val, label]) => (React.createElement(“button”, { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: “9px 4px”, background: visibility === val ? “rgba(201,168,76,0.15)” : “rgba(255,255,255,0.4)”, border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: “pointer”, textAlign: “center” } },
+React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 14 } }, [[”\u1f30d”, “public”, “Everyone”], [”\u1f465”, “followers”, “Followers”], [”\u1f512”, “private”, “Only me”]].map(([icon, val, label]) => (React.createElement(“button”, { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: “9px 4px”, background: visibility === val ? “rgba(201,168,76,0.15)” : “rgba(255,255,255,0.4)”, border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: “pointer”, textAlign: “center” } },
 React.createElement(“div”, { style: { fontSize: 16, marginBottom: 2 } }, icon),
 label)))),
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, background: “rgba(255,255,255,0.3)”, borderRadius: 14, padding: “13px 16px”, marginBottom: 18 } },
@@ -1446,9 +1446,9 @@ React.createElement(“div”, { style: { fontSize: 10, color: “rgba(255,255,2
 React.createElement(Toggle, { on: collab, onToggle: () => setCollab(p => !p) })),
 React.createElement(“button”, { onClick: () => publish(false), style: primaryBtn(”#c9a84c”) }, “\uD83C\uDFB5 Post Audio”),
 React.createElement(“button”, { onClick: () => publish(true), style: Object.assign(Object.assign({}, primaryBtn(“rgba(255,255,255,0.1)”)), { color: “rgba(255,255,255,0.7)”, border: “1px solid rgba(255,255,255,0.15)” }) }, “\uD83D\uDCBE Save to Profile Only”),
-React.createElement(“button”, { onClick: () => show(“Draft saved ✓”), style: ghostBtn }, “Save as Draft”)));
+React.createElement(“button”, { onClick: () => show(“Draft saved \u2713”), style: ghostBtn }, “Save as Draft”)));
 }
-// ??? Poster Maker Tab ?????????????????????????????????????????????????
+// — Poster Maker Tab ———————————————––
 function PosterMakerTab({ show, setTab }) {
 const [pTheme, setPTheme] = useState(0);
 const [pTitle, setPTitle] = useState(“The Midnight Serenade”);
@@ -1499,10 +1499,10 @@ React.createElement(Label, null, “SHOW DETAILS”),
 React.createElement(“div”, { style: { background: “rgba(255,255,255,0.3)”, borderRadius: 14, padding: “14px 16px”, marginBottom: 14 } }, [[“BADGE”, pTag, setPTag, “e.g. WORLD PREMIERE”], [“TITLE”, pTitle, setPTitle, “Show title”], [“SUBTITLE”, pSub, setPSub, “e.g. An Original Musical”], [“DATE”, pDate, setPDate, “April 19, 2026”], [“VENUE”, pVenue, setPVenue, “Theatre name”], [“STARRING”, pCast, setPCast, “Lead cast (optional)”], [“DIRECTED BY”, pDirector, setPDirector, “Director (optional)”]].map(([l, v, s, ph]) => (React.createElement(“div”, { key: l, style: { marginBottom: 11 } },
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.3)”, letterSpacing: “0.1em”, marginBottom: 4 } }, l),
 React.createElement(“input”, { value: v, onChange: e => s(e.target.value), placeholder: ph, style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }))))),
-React.createElement(“button”, { onClick: () => show(“🖼 Poster saved to your camera roll!”), style: primaryBtn(pt.accent) }, “\u2B07 Download Poster”),
-React.createElement(“button”, { onClick: () => { show(“✓ Poster shared to your feed!”); setTab(0); }, style: ghostBtn }, “Share to Feed”)));
+React.createElement(“button”, { onClick: () => show(”\u1f5bc Poster saved to your camera roll!”), style: primaryBtn(pt.accent) }, “\u2B07 Download Poster”),
+React.createElement(“button”, { onClick: () => { show(”\u2713 Poster shared to your feed!”); setTab(0); }, style: ghostBtn }, “Share to Feed”)));
 }
-// ??? Lyrics Post Tab ??????????????????????????????????????????????????
+// — Lyrics Post Tab –––––––––––––––––––––––––
 function LyricsPostTab({ show, setTab }) {
 const [title, setTitle] = useState(””);
 const [lyrics, setLyrics] = useState(””);
@@ -1540,7 +1540,7 @@ title && React.createElement(“div”, { style: { fontFamily: “‘Cormorant G
 React.createElement(“div”, { style: { width: 28, height: 1, background: accentCol, margin: “0 auto 12px” } }),
 React.createElement(“div”, { style: { fontSize: 13, color: “rgba(255,255,255,0.82)”, lineHeight: 1.85, whiteSpace: “pre-line”, textAlign: “center”, fontFamily: “‘Cormorant Garamond’,serif”, fontStyle: “italic” } },
 lyrics.slice(0, 240),
-lyrics.length > 240 ? “\n…” : “”),
+lyrics.length > 240 ? “\n\u2026” : “”),
 React.createElement(“div”, { style: { marginTop: 10, textAlign: “center” } },
 React.createElement(“span”, { style: { fontSize: 9, color: accentCol, letterSpacing: “0.15em” } }, “\u2014 Alex Rivera”)))),
 React.createElement(Label, null, “SONG TITLE”),
@@ -1554,7 +1554,7 @@ React.createElement(“span”, { style: { color: “rgba(255,255,255,0.3)”, f
 “(”,
 charCount,
 “ chars)”)),
-React.createElement(“textarea”, { value: lyrics, onChange: e => setLyrics(e.target.value), rows: 10, style: Object.assign(Object.assign({}, inputSt), { resize: “vertical”, fontFamily: “‘Cormorant Garamond’,serif”, fontSize: 14, lineHeight: 1.85, marginBottom: 6 }), placeholder: “[Verse 1]\nWrite your opening lines here…\n\n[Chorus]\nYour hook…” }),
+React.createElement(“textarea”, { value: lyrics, onChange: e => setLyrics(e.target.value), rows: 10, style: Object.assign(Object.assign({}, inputSt), { resize: “vertical”, fontFamily: “‘Cormorant Garamond’,serif”, fontSize: 14, lineHeight: 1.85, marginBottom: 6 }), placeholder: “[Verse 1]\nWrite your opening lines here\u2026\n\n[Chorus]\nYour hook\u2026” }),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.25)”, marginBottom: 14 } }, “Tip: Use [Verse], [Chorus], [Bridge] labels for structure”),
 React.createElement(Label, null, “MOOD / STYLE”),
 React.createElement(“div”, { style: { display: “flex”, flexWrap: “wrap”, gap: 8, marginBottom: 14 } }, MOODS.map(m => (React.createElement(“button”, { key: m, onClick: () => setMood(m), style: { padding: “7px 14px”, background: mood === m ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.5)”, border: `1px solid ${mood === m ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: mood === m ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: mood === m ? 700 : 400, fontSize: 12, cursor: “pointer” } }, m)))),
@@ -1575,16 +1575,16 @@ React.createElement(“div”, { style: { fontSize: 13, fontWeight: 600 } }, “
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.35)” } }, “Others can add music or arrange this”)),
 React.createElement(Toggle, { on: collab, onToggle: () => setCollab(p => !p) })),
 React.createElement(“button”, { onClick: () => { if (!title.trim()) {
-show(“⚠️ Add a song title first”);
+show(”\u26a0\ufe0f Add a song title first”);
 return;
 } if (!lyrics.trim()) {
-show(“⚠️ Add some lyrics first”);
+show(”\u26a0\ufe0f Add some lyrics first”);
 return;
-} show(“✍️ Lyrics posted to your feed!”); setTab(0); }, style: primaryBtn(”#c9a84c”) }, “\u270D\uFE0F Post Lyrics”),
-React.createElement(“button”, { onClick: () => show(“📝 Draft saved ✓”), style: ghostBtn }, “Save as Draft”)));
+} show(”\u270d\ufe0f Lyrics posted to your feed!”); setTab(0); }, style: primaryBtn(”#c9a84c”) }, “\u270D\uFE0F Post Lyrics”),
+React.createElement(“button”, { onClick: () => show(”\u1f4dd Draft saved \u2713”), style: ghostBtn }, “Save as Draft”)));
 }
-// ??????????????????????????? DISCOVER ???????????????????????????????
-// ?? Discover data ????????????????????????????????????????????????????
+// ————————— DISCOVER —————————––
+// – Discover data ––––––––––––––––––––––––––
 const DISCOVER_PEOPLE = [
 { id: 1, name: “Sofia Chen”, handle: “@sofiac”, role: “Composer & Producer”, location: “New York, NY”, skills: [“Jazz”, “Orchestration”, “Piano”], accent: “#c9a84c”, following: false, avatar: “SC”, bio: “Award-winning composer. 3 off-Broadway credits. Looking for lyricists.” },
 { id: 2, name: “Marcus Bell”, handle: “@marcusb”, role: “Musical Director”, location: “Chicago, IL”, skills: [“Conducting”, “Vocal Direction”, “Piano”], accent: “#4cb8c4”, following: false, avatar: “MB”, bio: “Musical director with 10 years regional theatre. Available for new works.” },
@@ -1614,10 +1614,10 @@ const [saved, setSaved] = useState({});
 const [realUsers, setRealUsers] = useState([]);
 const [loadingUsers, setLoadingUsers] = useState(true);
 const tabs = [
-{ key: “people”, label: “👥 People” },
-{ key: “projects”, label: “🎭 Projects” },
-{ key: “calls”, label: “📣 Open Calls” },
-{ key: “shows”, label: “📍 Local Shows” },
+{ key: “people”, label: “\u1f465 People” },
+{ key: “projects”, label: “\u1f3ad Projects” },
+{ key: “calls”, label: “\u1f4e3 Open Calls” },
+{ key: “shows”, label: “\u1f4cd Local Shows” },
 ];
 // Load real users from Supabase profiles table
 useEffect(() => {
@@ -1668,7 +1668,7 @@ const toggleFollow = async (id) => {
 var _a;
 const wasFollowing = followed[id] || ((_a = DISCOVER_PEOPLE.find(p => p.id === id)) === null || _a === void 0 ? void 0 : _a.following);
 setFollowed(p => (Object.assign(Object.assign({}, p), { [id]: !wasFollowing })));
-show(wasFollowing ? “Unfollowed” : “Following! ✓”);
+show(wasFollowing ? “Unfollowed” : “Following! \u2713”);
 const { data: { user } } = await supabase.auth.getUser();
 if (!user)
 return;
@@ -1681,7 +1681,7 @@ supabase.from(“follows”).insert({ follower_id: user.id, following_id: String
 };
 const toggleSave = (id) => {
 setSaved(p => (Object.assign(Object.assign({}, p), { [id]: !p[id] })));
-show(saved[id] ? “Removed from saved” : “Saved! 🔖”);
+show(saved[id] ? “Removed from saved” : “Saved! \u1f516”);
 };
 return (React.createElement(“div”, { style: { height: “calc(100vh - 72px)”, display: “flex”, flexDirection: “column” } },
 React.createElement(“div”, { style: { padding: “14px 16px 0”, flexShrink: 0 } },
@@ -1714,8 +1714,8 @@ React.createElement(“button”, { onClick: () => toggleFollow(p.id), style: { 
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.55)”, lineHeight: 1.5, marginBottom: 10 } }, p.bio),
 React.createElement(“div”, { style: { display: “flex”, flexWrap: “wrap”, gap: 6, marginBottom: 12 } }, p.skills.map(s => (React.createElement(“span”, { key: s, style: { background: p.accent + “18”, border: `1px solid ${p.accent}33`, borderRadius: 20, padding: “3px 10px”, fontSize: 11, color: p.accent, fontWeight: 600 } }, s)))),
 React.createElement(“div”, { style: { display: “flex”, gap: 8 } },
-React.createElement(“button”, { onClick: () => show(`Message sent to ${p.name} ✓`), style: { flex: 1, padding: “9px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.7)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\uD83D\uDCAC Message”),
-React.createElement(“button”, { onClick: () => show(`Collab request sent to ${p.name}! 🎭`), style: { flex: 2, padding: “9px”, background: p.accent + “22”, border: `1px solid ${p.accent}44`, borderRadius: 10, color: p.accent, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\uD83C\uDFAD Request Collab”)))))),
+React.createElement(“button”, { onClick: () => show(`Message sent to ${p.name} \u2713`), style: { flex: 1, padding: “9px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.7)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\uD83D\uDCAC Message”),
+React.createElement(“button”, { onClick: () => show(`Collab request sent to ${p.name}! \u1f3ad`), style: { flex: 2, padding: “9px”, background: p.accent + “22”, border: `1px solid ${p.accent}44`, borderRadius: 10, color: p.accent, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\uD83C\uDFAD Request Collab”)))))),
 tab === “projects” && (filteredProjects.length === 0
 ? React.createElement(EmptyState, { query: query, type: “projects” })
 : filteredProjects.map(p => (React.createElement(“div”, { key: p.id, style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 18, overflow: “hidden”, marginBottom: 12 } },
@@ -1723,7 +1723,7 @@ React.createElement(“div”, { style: { background: `linear-gradient(135deg,${
 React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 16, fontFamily: “‘Cormorant Garamond’,serif” } }, p.title),
 React.createElement(“div”, { style: { fontSize: 11, color: p.accent, marginTop: 1 } }, p.type)),
-React.createElement(“button”, { onClick: () => toggleSave(p.id), style: { background: “none”, border: “none”, fontSize: 18, cursor: “pointer”, opacity: saved[p.id] ? 1 : 0.4 } }, saved[p.id] ? “🔖” : “🔖”)),
+React.createElement(“button”, { onClick: () => toggleSave(p.id), style: { background: “none”, border: “none”, fontSize: 18, cursor: “pointer”, opacity: saved[p.id] ? 1 : 0.4 } }, saved[p.id] ? “\u1f516” : “\u1f516”)),
 React.createElement(“div”, { style: { padding: “14px 16px” } },
 React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 10, flexWrap: “wrap” } },
 React.createElement(“span”, { style: { background: p.accent + “22”, color: p.accent, borderRadius: 20, padding: “3px 11px”, fontSize: 11, fontWeight: 700 } }, p.status),
@@ -1736,7 +1736,7 @@ p.members,
 “ members”)),
 React.createElement(“div”, { style: { fontSize: 13, color: “rgba(255,255,255,0.6)”, lineHeight: 1.55, marginBottom: 12 } }, p.desc),
 React.createElement(“div”, { style: { display: “flex”, gap: 8 } },
-React.createElement(“button”, { onClick: () => show(`Applied to ${p.title}! 🎭`), style: { flex: 2, padding: “10px”, background: `linear-gradient(135deg,${p.accent},${p.accent}cc)`, border: “none”, borderRadius: 10, color: “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “Apply to Join”),
+React.createElement(“button”, { onClick: () => show(`Applied to ${p.title}! \u1f3ad`), style: { flex: 2, padding: “10px”, background: `linear-gradient(135deg,${p.accent},${p.accent}cc)`, border: “none”, borderRadius: 10, color: “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “Apply to Join”),
 React.createElement(“button”, { onClick: () => show(“Link copied!”), style: { flex: 1, padding: “10px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u2197 Share”))))))),
 tab === “calls” && (filteredCalls.length === 0
 ? React.createElement(EmptyState, { query: query, type: “calls” })
@@ -1755,11 +1755,11 @@ c.paid && React.createElement(“span”, { style: { background: “rgba(74,222,
 c.remote && React.createElement(“span”, { style: { background: “rgba(96,165,250,0.15)”, color: “#60a5fa”, borderRadius: 20, padding: “2px 9px”, fontSize: 10, fontWeight: 700 } }, “\uD83D\uDCF9 Remote OK”)),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.55)”, lineHeight: 1.5, marginBottom: 12 } }, c.desc),
 React.createElement(“div”, { style: { display: “flex”, gap: 8 } },
-React.createElement(“button”, { onClick: () => show(`Applied to "${c.title}"! ✓`), style: { flex: 2, padding: “10px”, background: `linear-gradient(135deg,${c.accent},${c.accent}cc)`, border: “none”, borderRadius: 10, color: “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “Apply Now”),
-React.createElement(“button”, { onClick: () => toggleSave(“call-” + c.id), style: { flex: 1, padding: “10px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, saved[“call-” + c.id] ? “🔖 Saved” : “🔖 Save”)))))),
+React.createElement(“button”, { onClick: () => show(`Applied to "${c.title}"! \u2713`), style: { flex: 2, padding: “10px”, background: `linear-gradient(135deg,${c.accent},${c.accent}cc)`, border: “none”, borderRadius: 10, color: “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “Apply Now”),
+React.createElement(“button”, { onClick: () => toggleSave(“call-” + c.id), style: { flex: 1, padding: “10px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, saved[“call-” + c.id] ? “\u1f516 Saved” : “\u1f516 Save”)))))),
 tab === “shows” && React.createElement(LocalShowsPanel, { show: show }))));
 }
-// ?? Local Shows Panel ????????????????????????????????????????????????
+// – Local Shows Panel ————————————————
 const ZIP_REGEX = /^\d{5}$/;
 function LocalShowsPanel({ show }) {
 const [zip, setZip] = useState(””);
@@ -1882,7 +1882,7 @@ setLoading(false);
 };
 const toggleSave = (i) => {
 setSaved(p => (Object.assign(Object.assign({}, p), { [i]: !p[i] })));
-show(saved[i] ? “Removed from saved” : “Show saved! 🎭”);
+show(saved[i] ? “Removed from saved” : “Show saved! \u1f3ad”);
 };
 return (React.createElement(“div”, { style: { paddingBottom: 20 } },
 React.createElement(“div”, { style: { background: “linear-gradient(160deg,#1a0a2e,#2d1040)”, borderRadius: 18, padding: “20px 18px”, marginBottom: 18, position: “relative”, overflow: “hidden” } },
@@ -1895,7 +1895,7 @@ React.createElement(“div”, { style: { position: “relative”, flex: 1 } },
 React.createElement(“span”, { style: { position: “absolute”, left: 12, top: “50%”, transform: “translateY(-50%)”, fontSize: 14 } }, “\uD83D\uDCCD”),
 React.createElement(“input”, { value: zip, onChange: e => setZip(e.target.value.replace(/\D/g, “”).slice(0, 5)), onKeyDown: e => { if (e.key === “Enter”)
 searchShows(); }, placeholder: “Enter ZIP code”, maxLength: 5, style: Object.assign(Object.assign({}, inputSt), { paddingLeft: 36, marginBottom: 0, fontSize: 16, letterSpacing: “0.08em”, fontWeight: 700 }) })),
-React.createElement(“button”, { onClick: searchShows, disabled: loading, style: { padding: “0 20px”, background: loading ? “rgba(255,255,255,0.1)” : “linear-gradient(135deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 12, color: loading ? “rgba(255,255,255,0.4)” : “#1a0a2e”, fontWeight: 700, fontSize: 13, cursor: loading ? “not-allowed” : “pointer”, flexShrink: 0 } }, loading ? “…” : “Search”)),
+React.createElement(“button”, { onClick: searchShows, disabled: loading, style: { padding: “0 20px”, background: loading ? “rgba(255,255,255,0.1)” : “linear-gradient(135deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 12, color: loading ? “rgba(255,255,255,0.4)” : “#1a0a2e”, fontWeight: 700, fontSize: 13, cursor: loading ? “not-allowed” : “pointer”, flexShrink: 0 } }, loading ? “\u2026” : “Search”)),
 React.createElement(“div”, { style: { display: “flex”, gap: 6 } },
 React.createElement(“span”, { style: { fontSize: 11, color: “rgba(255,255,255,0.4)”, alignSelf: “center”, marginRight: 4 } }, “Within:”),
 [“10”, “25”, “50”].map(r => (React.createElement(“button”, { key: r, onClick: () => setRadius(r), style: { padding: “5px 12px”, background: radius === r ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.6)”, border: `1px solid ${radius === r ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: radius === r ? “#c9a84c” : “rgba(255,255,255,0.45)”, fontWeight: radius === r ? 700 : 400, fontSize: 11, cursor: “pointer” } },
@@ -1960,24 +1960,24 @@ s.nextShow))),
 React.createElement(“div”, { style: { display: “flex”, gap: 8 } },
 React.createElement(“button”, { disabled: s.soldOut, onClick: () => {
 if (s.soldOut) {
-show(“This show is sold out 😔”);
+show(“This show is sold out \u1f614”);
 return;
 }
 if (s.url) {
 window.open(s.url, “_blank”);
 }
 else {
-show(`Opening tickets for ${s.title}…`);
+show(`Opening tickets for ${s.title}\u2026`);
 }
-}, style: { flex: 2, padding: “11px”, background: s.soldOut ? “rgba(255,255,255,0.6)” : `linear-gradient(135deg,${s.accent},${s.accent}cc)`, border: “none”, borderRadius: 10, color: s.soldOut ? “rgba(255,255,255,0.3)” : “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: s.soldOut ? “not-allowed” : “pointer” } }, s.soldOut ? “Sold Out” : “🎟 Get Tickets”),
-React.createElement(“button”, { onClick: () => show(`Added ${s.title} to your calendar! 📅`), style: { flex: 1, padding: “11px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 11, cursor: “pointer” } }, “\uD83D\uDCC5 Save Date”)))))),
+}, style: { flex: 2, padding: “11px”, background: s.soldOut ? “rgba(255,255,255,0.6)” : `linear-gradient(135deg,${s.accent},${s.accent}cc)`, border: “none”, borderRadius: 10, color: s.soldOut ? “rgba(255,255,255,0.3)” : “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: s.soldOut ? “not-allowed” : “pointer” } }, s.soldOut ? “Sold Out” : “\u1f39f Get Tickets”),
+React.createElement(“button”, { onClick: () => show(`Added ${s.title} to your calendar! \u1f4c5`), style: { flex: 1, padding: “11px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.6)”, fontWeight: 700, fontSize: 11, cursor: “pointer” } }, “\uD83D\uDCC5 Save Date”)))))),
 React.createElement(“button”, { onClick: () => { setResults(null); setZip(””); }, style: { width: “100%”, padding: “12px”, background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 12, color: “rgba(255,255,255,0.5)”, fontWeight: 600, fontSize: 13, cursor: “pointer”, marginTop: 4 } }, “\uD83D\uDD0D Search a different ZIP”)))))));
 }
 const EmptyState = ({ query, type }) => (React.createElement(“div”, { style: { textAlign: “center”, padding: “56px 20px”, color: “rgba(255,255,255,0.3)” } },
 React.createElement(“div”, { style: { fontSize: 40, marginBottom: 12 } }, “\uD83D\uDD0D”),
 React.createElement(“div”, { style: { fontSize: 16, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 6 } }, query ? `No ${type} matching "${query}"` : `No ${type} found`),
 React.createElement(“div”, { style: { fontSize: 13 } }, “Try a different search term”)));
-// ???????????????????????????? AI ????????????????????????????????????
+// –––––––––––––– AI ————————————
 function AIScreen({ show }) {
 const [lyricIn, setLyricIn] = useState(””);
 const [lyricOut, setLyricOut] = useState(””);
@@ -2053,7 +2053,7 @@ React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 15 } }, “Lyric Enhancer”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.38)” } }, “Elevate your words with AI”))),
 React.createElement(“textarea”, { value: lyricIn, onChange: e => setLyricIn(e.target.value), rows: 4, style: Object.assign(Object.assign({}, inputSt), { resize: “none”, marginBottom: 12 }), placeholder: “Paste your lyrics here\u2026” }),
-React.createElement(“button”, { onClick: enhance, disabled: loadL, style: primaryBtn(”#c9a84c”, loadL) }, loadL ? “✦ Enhancing…” : “✦ Enhance Lyrics”),
+React.createElement(“button”, { onClick: enhance, disabled: loadL, style: primaryBtn(”#c9a84c”, loadL) }, loadL ? “\u2726 Enhancing\u2026” : “\u2726 Enhance Lyrics”),
 lyricOut && React.createElement(“div”, { style: { marginTop: 12, padding: “14px”, background: “rgba(0,0,0,0.35)”, borderRadius: 12, fontSize: 13, color: “rgba(255,255,255,0.82)”, lineHeight: 1.6, whiteSpace: “pre-line” } }, lyricOut)),
 React.createElement(“div”, { style: { background: “rgba(76,184,196,0.6)”, border: “1px solid rgba(76,184,196,0.2)”, borderRadius: 18, padding: “18px” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, gap: 10, marginBottom: 14 } },
@@ -2062,17 +2062,17 @@ React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 15 } }, “Scene Builder”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.38)” } }, “Generate dramatic scenes instantly”))),
 React.createElement(“input”, { value: sceneIn, onChange: e => setSceneIn(e.target.value), style: Object.assign(Object.assign({}, inputSt), { marginBottom: 12 }), placeholder: “Describe your scene: characters, setting, conflict\u2026” }),
-React.createElement(“button”, { onClick: build, disabled: loadS, style: primaryBtn(”#4cb8c4”, loadS) }, loadS ? “📜 Writing…” : “📜 Build Scene”),
+React.createElement(“button”, { onClick: build, disabled: loadS, style: primaryBtn(”#4cb8c4”, loadS) }, loadS ? “\u1f4dc Writing\u2026” : “\u1f4dc Build Scene”),
 sceneOut && React.createElement(“div”, { style: { marginTop: 12, padding: “14px”, background: “rgba(0,0,0,0.35)”, borderRadius: 12, fontSize: 13, color: “rgba(255,255,255,0.82)”, lineHeight: 1.6, whiteSpace: “pre-line” } }, sceneOut))));
 }
-// ???????????????????????????? STUDIO ????????????????????????????????
+// –––––––––––––– STUDIO ––––––––––––––––
 // Studio bundles AI, Casting, and Live into one tab with sub-navigation
 function StudioScreen({ show, onJoin, setLiveRoom }) {
 const [sub, setSub] = useState(“ai”);
 const STUDIO_SUBS = [
-{ key: “ai”, label: “✦ AI Studio” },
-{ key: “casting”, label: “🎭 Casting” },
-{ key: “live”, label: “● Live”, live: true },
+{ key: “ai”, label: “\u2726 AI Studio” },
+{ key: “casting”, label: “\u1f3ad Casting” },
+{ key: “live”, label: “\u25cf Live”, live: true },
 ];
 return (React.createElement(“div”, { style: { height: “calc(100vh - 72px)”, display: “flex”, flexDirection: “column” } },
 React.createElement(“div”, { style: { display: “flex”, background: “rgba(0,0,0,0.5)”, borderBottom: “1px solid rgba(255,255,255,0.08)”, flexShrink: 0 } }, STUDIO_SUBS.map(s => (React.createElement(“button”, { key: s.key, onClick: () => setSub(s.key), style: { flex: 1, padding: “12px 0”, background: “none”, border: “none”,
@@ -2090,13 +2090,13 @@ sub === “ai” && React.createElement(AIScreen, { show: show }),
 sub === “casting” && React.createElement(CastingScreen, { show: show }),
 sub === “live” && React.createElement(LiveScreen, { show: show, onJoin: onJoin }))));
 }
-// ??????????????????????????? PROFILE ????????????????????????????????
+// ————————— PROFILE ––––––––––––––––
 const INIT_PROFILE_MEDIA = [
 { id: 1, type: “photo”, url: “https://picsum.photos/id/1028/400/400”, caption: “Act II rehearsal” },
 { id: 2, type: “photo”, url: “https://picsum.photos/id/1060/400/400”, caption: “Sitzprobe night” },
 { id: 3, type: “photo”, url: “https://picsum.photos/id/1043/400/400”, caption: “Behind the scenes” },
 { id: 4, type: “video”, url: “”, caption: “Opening number run-through”, duration: “2:14” },
-{ id: 5, type: “photo”, url: “https://picsum.photos/id/1051/400/400”, caption: “Cast party 🎉” },
+{ id: 5, type: “photo”, url: “https://picsum.photos/id/1051/400/400”, caption: “Cast party \u1f389” },
 { id: 6, type: “video”, url: “”, caption: “Final dress rehearsal”, duration: “3:48” },
 ];
 const INIT_PROFILE_TAPES = [
@@ -2200,7 +2200,7 @@ const saveEdit = async () => {
 // Optimistically update UI immediately
 setProfile(Object.assign({}, draft));
 setSubPage(“main”);
-show(“Saving…”);
+show(“Saving\u2026”);
 const { data } = await supabase.auth.getUser();
 if (data.user) {
 const { error } = await supabase.from(“profiles”).update({
@@ -2214,11 +2214,11 @@ avatar_url: draft.avatar,
 banner_url: draft.banner,
 }).eq(“id”, data.user.id);
 if (error) {
-show(“❌ Save failed - try again”);
+show(”\u274c Save failed - try again”);
 return;
 }
 }
-show(“Profile updated ✓”);
+show(“Profile updated \u2713”);
 };
 const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
 const [media, setMedia] = useState([]); // loaded from Supabase
@@ -2238,11 +2238,11 @@ const tempId = Date.now() + Math.random();
 const caption = file.name.replace(/.[^.]+$/, “”);
 // Show immediately with local preview
 setMedia(p => [{ id: tempId, type: isVideo ? “video” : “photo”, url: localUrl, caption, uploading: true }, …p]);
-show(isVideo ? “🎬 Uploading video…” : “📸 Uploading photo…”);
+show(isVideo ? “\u1f3ac Uploading video\u2026” : “\u1f4f8 Uploading photo\u2026”);
 if (!user) {
 // Not logged in - keep local only
 setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
-show(“⚠️ Sign in to save media permanently”);
+show(”\u26a0\ufe0f Sign in to save media permanently”);
 continue;
 }
 const storageUrl = await uploadToStorage(file, “media”, user.id, (pct) => {
@@ -2262,12 +2262,12 @@ caption,
 if ((_a = row === null || row === void 0 ? void 0 : row[0]) === null || _a === void 0 ? void 0 : _a.id) {
 setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { id: row[0].id }) : m));
 }
-show(isVideo ? “🎬 Video saved!” : “📸 Photo saved!”);
+show(isVideo ? “\u1f3ac Video saved!” : “\u1f4f8 Photo saved!”);
 }
 else {
 // Upload failed - keep local preview but warn
 setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
-show(“⚠️ Upload failed - check your connection”);
+show(”\u26a0\ufe0f Upload failed - check your connection”);
 }
 }
 };
@@ -2282,11 +2282,11 @@ const tempId = Date.now();
 const title = file.name.replace(/.[^.]+$/, “”);
 const newTape = { id: tempId, title, date: new Date().toLocaleDateString(“en-US”, { month: “short”, year: “numeric” }), status: “pending”, duration: “0:0”, url: localUrl, uploading: true };
 setTapes(p => [newTape, …p]);
-show(“🎬 Uploading self tape…”);
+show(”\u1f3ac Uploading self tape\u2026”);
 const { data: { user } } = await supabase.auth.getUser();
 if (!user) {
 setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
-show(“⚠️ Sign in to save self tapes permanently”);
+show(”\u26a0\ufe0f Sign in to save self tapes permanently”);
 return;
 }
 const storageUrl = await uploadToStorage(file, “media”, user.id + “/tapes”, (pct) => {
@@ -2303,11 +2303,11 @@ media_url: storageUrl,
 if ((_b = row === null || row === void 0 ? void 0 : row[0]) === null || _b === void 0 ? void 0 : _b.id) {
 setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { id: row[0].id }) : t));
 }
-show(“🎬 Self tape saved!”);
+show(”\u1f3ac Self tape saved!”);
 }
 else {
 setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
-show(“⚠️ Upload failed - check your connection”);
+show(”\u26a0\ufe0f Upload failed - check your connection”);
 }
 };
 const removeMedia = async (id) => {
@@ -2323,7 +2323,7 @@ show(“Removed.”);
 const markTapeSent = async (id) => {
 setTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: “submitted” }) : t));
 supabase.from(“self_tapes”).update({ status: “submitted” }).eq(“id”, id);
-show(“Marked as submitted ✓”);
+show(“Marked as submitted \u2713”);
 };
 if (subPage === “edit”)
 return React.createElement(EditProfile, { draft: draft, setDraft: setDraft, onSave: saveEdit, onBack: () => setSubPage(“main”), show: show, profile: profile, setProfile: setProfile });
@@ -2343,11 +2343,11 @@ return;
 const localUrl = URL.createObjectURL(f);
 setProfile(p => (Object.assign(Object.assign({}, p), { banner: localUrl })));
 setDraft(p => (Object.assign(Object.assign({}, p), { banner: localUrl })));
-show(“⬆️ Uploading cover photo…”);
+show(”\u2b06\ufe0f Uploading cover photo\u2026”);
 // Upload to Supabase Storage
 const { data: { user } } = await supabase.auth.getUser();
 if (!user) {
-show(“⚠️ Sign in to save cover photo”);
+show(”\u26a0\ufe0f Sign in to save cover photo”);
 return;
 }
 const storageUrl = await uploadToStorage(f, “media”, user.id + “/banners”);
@@ -2356,7 +2356,7 @@ setProfile(p => (Object.assign(Object.assign({}, p), { banner: finalUrl })));
 setDraft(p => (Object.assign(Object.assign({}, p), { banner: finalUrl })));
 // Save to profiles table
 await supabase.from(“profiles”).update({ banner_url: finalUrl }).eq(“id”, user.id);
-show(“✓ Cover photo saved!”);
+show(”\u2713 Cover photo saved!”);
 } }),
 profile.banner
 ? React.createElement(“img”, { src: profile.banner, style: { width: “100%”, height: “100%”, objectFit: “cover” } })
@@ -2370,10 +2370,10 @@ return;
 const localUrl = URL.createObjectURL(f);
 setProfile(p => (Object.assign(Object.assign({}, p), { avatar: localUrl })));
 setDraft(p => (Object.assign(Object.assign({}, p), { avatar: localUrl })));
-show(“⬆️ Uploading profile photo…”);
+show(”\u2b06\ufe0f Uploading profile photo\u2026”);
 const { data: { user } } = await supabase.auth.getUser();
 if (!user) {
-show(“⚠️ Sign in to save profile photo”);
+show(”\u26a0\ufe0f Sign in to save profile photo”);
 return;
 }
 const storageUrl = await uploadToStorage(f, “avatars”, user.id);
@@ -2381,7 +2381,7 @@ const finalUrl = storageUrl || localUrl;
 setProfile(p => (Object.assign(Object.assign({}, p), { avatar: finalUrl })));
 setDraft(p => (Object.assign(Object.assign({}, p), { avatar: finalUrl })));
 await supabase.from(“profiles”).update({ avatar_url: finalUrl }).eq(“id”, user.id);
-show(“✓ Profile photo saved!”);
+show(”\u2713 Profile photo saved!”);
 } }),
 React.createElement(“div”, { style: { width: 76, height: 76, borderRadius: “50%”, border: “3px solid #c9a84c”, overflow: “hidden”, background: “rgba(201,168,76,0.2)”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontWeight: 700, fontSize: 26 } }, profile.avatar
 ? React.createElement(“img”, { src: profile.avatar, style: { width: “100%”, height: “100%”, objectFit: “cover” } })
@@ -2404,7 +2404,7 @@ profile.website),
 React.createElement(“div”, { style: { display: “flex”, gap: 0, background: “rgba(255,255,255,0.4)”, borderTop: “1px solid rgba(255,255,255,0.6)”, borderBottom: “1px solid rgba(255,255,255,0.6)”, marginBottom: 18 } }, [[“14”, “Projects”], [“62”, “Collabs”], [“248K”, “Views”], [”$1.2K”, “Earned”]].map(([n, l], i) => (React.createElement(“div”, { key: l, style: { flex: 1, textAlign: “center”, padding: “13px 6px”, borderRight: i < 3 ? “1px solid rgba(255,255,255,0.6)” : “none” } },
 React.createElement(“div”, { style: { fontSize: 17, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, n),
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.36)”, letterSpacing: “0.07em” } }, l))))),
-React.createElement(“div”, { style: { display: “flex”, borderBottom: “1px solid rgba(255,255,255,0.08)”, marginBottom: 0 } }, [[“media”, “📸 Photos & Media”], [“tapes”, “🎬 Self Tapes”]].map(([key, label]) => (React.createElement(“button”, { key: key, onClick: () => setBioTab(key), style: { flex: 1, padding: “11px 0”, background: “none”, border: “none”, color: bioTab === key ? “#c9a84c” : “rgba(255,255,255,0.38)”, fontWeight: bioTab === key ? 700 : 400, fontSize: 13, cursor: “pointer”, borderBottom: bioTab === key ? “2px solid #c9a84c” : “2px solid transparent” } }, label)))),
+React.createElement(“div”, { style: { display: “flex”, borderBottom: “1px solid rgba(255,255,255,0.08)”, marginBottom: 0 } }, [[“media”, “\u1f4f8 Photos & Media”], [“tapes”, “\u1f3ac Self Tapes”]].map(([key, label]) => (React.createElement(“button”, { key: key, onClick: () => setBioTab(key), style: { flex: 1, padding: “11px 0”, background: “none”, border: “none”, color: bioTab === key ? “#c9a84c” : “rgba(255,255,255,0.38)”, fontWeight: bioTab === key ? 700 : 400, fontSize: 13, cursor: “pointer”, borderBottom: bioTab === key ? “2px solid #c9a84c” : “2px solid transparent” } }, label)))),
 bioTab === “media” && (React.createElement(“div”, { style: { padding: “14px 12px 100px” } },
 React.createElement(“div”, { style: { display: “flex”, gap: 10, marginBottom: 14 } },
 React.createElement(“label”, { style: { flex: 1, display: “flex”, alignItems: “center”, justifyContent: “center”, gap: 8, padding: “11px”, background: “rgba(201,168,76,0.1)”, border: “1px dashed rgba(201,168,76,0.4)”, borderRadius: 12, cursor: “pointer”, color: “#c9a84c”, fontWeight: 700, fontSize: 13 } },
@@ -2422,7 +2422,7 @@ React.createElement(“span”, { style: { fontSize: 28 } }, “\uD83C\uDFAC”)
 React.createElement(“span”, { style: { fontSize: 10, color: “rgba(255,255,255,0.5)” } }, item.duration))),
 item.type === “video” && !item.uploading && (React.createElement(“div”, { style: { position: “absolute”, top: 5, left: 5, background: “rgba(0,0,0,0.7)”, borderRadius: 6, padding: “2px 6px”, fontSize: 9, color: “#fff”, fontWeight: 700 } }, “\u25B6 VIDEO”)),
 item.uploading && (React.createElement(“div”, { style: { position: “absolute”, inset: 0, background: “rgba(0,0,0,0.6)”, display: “flex”, alignItems: “center”, justifyContent: “center”, flexDirection: “column”, gap: 4 } },
-React.createElement(“div”, { style: { fontSize: 10, color: “#c9a84c”, fontWeight: 700 } }, item.progress ? item.progress + “%” : “⬆️”))),
+React.createElement(“div”, { style: { fontSize: 10, color: “#c9a84c”, fontWeight: 700 } }, item.progress ? item.progress + “%” : “\u2b06\ufe0f”))),
 React.createElement(“button”, { onClick: e => { e.stopPropagation(); removeMedia(item.id); }, style: { position: “absolute”, top: 4, right: 4, width: 22, height: 22, background: “rgba(0,0,0,0.65)”, border: “none”, borderRadius: “50%”, color: “#fff”, fontSize: 13, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center”, lineHeight: 1 } }, “\u00D7”)))),
 media.length === 0 && (React.createElement(“div”, { style: { gridColumn: “1/-1”, textAlign: “center”, padding: “48px 0”, color: “rgba(255,255,255,0.25)” } },
 React.createElement(“div”, { style: { fontSize: 36, marginBottom: 10 } }, “\uD83D\uDCF8”),
@@ -2456,18 +2456,18 @@ React.createElement(“div”, { style: { fontWeight: 700, fontSize: 14, fontFam
 React.createElement(“span”, { style: { fontSize: 10, fontWeight: 700, padding: “3px 9px”, borderRadius: 20, flexShrink: 0, marginLeft: 8,
 background: t.status === “submitted” ? “rgba(74,222,128,0.15)” : “rgba(251,146,60,0.15)”,
 color: t.status === “submitted” ? “#4ade80” : “#fb923c”
-} }, t.status === “submitted” ? “✓ Sent” : “⏳ Pending”)),
+} }, t.status === “submitted” ? “\u2713 Sent” : “\u23f3 Pending”)),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.4)”, marginTop: 4 } },
 t.date,
 “ \u00B7 “,
 t.duration))),
 React.createElement(“div”, { style: { display: “flex”, gap: 8, marginTop: 12 } },
-React.createElement(“button”, { onClick: () => show(“▶ Playing tape… (Demo)”), style: { flex: 1, padding: “9px”, background: “rgba(255,255,255,0.5)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.7)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u25B6 Preview”),
-React.createElement(“button”, { onClick: () => show(“📋 Tape link copied!”), style: { flex: 1, padding: “9px”, background: “rgba(201,168,76,0.1)”, border: “1px solid rgba(201,168,76,0.2)”, borderRadius: 10, color: “#c9a84c”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u2197 Share”),
+React.createElement(“button”, { onClick: () => show(”\u25b6 Playing tape\u2026 (Demo)”), style: { flex: 1, padding: “9px”, background: “rgba(255,255,255,0.5)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.7)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u25B6 Preview”),
+React.createElement(“button”, { onClick: () => show(”\u1f4cb Tape link copied!”), style: { flex: 1, padding: “9px”, background: “rgba(201,168,76,0.1)”, border: “1px solid rgba(201,168,76,0.2)”, borderRadius: 10, color: “#c9a84c”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u2197 Share”),
 t.status === “pending” && (React.createElement(“button”, { onClick: () => markTapeSent(t.id), style: { flex: 1, padding: “9px”, background: “rgba(74,222,128,0.1)”, border: “1px solid rgba(74,222,128,0.2)”, borderRadius: 10, color: “#4ade80”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “Mark Sent”)),
 React.createElement(“button”, { onClick: () => removeTape(t.id), style: { width: 36, height: 36, background: “rgba(239,68,68,0.1)”, border: “1px solid rgba(239,68,68,0.2)”, borderRadius: 10, color: “#f87171”, fontSize: 16, cursor: “pointer” } }, “\uD83D\uDDD1”))))))),
 React.createElement(“div”, { style: { padding: “0 16px 100px” } },
-React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr”, gap: 10, marginTop: 8 } }, [[“🔒”, “Privacy”, “privacy”]].map(([icon, label, page]) => (React.createElement(“button”, { key: page, onClick: () => setSubPage(page), style: { padding: “12px”, background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 14, color: “rgba(255,255,255,0.7)”, cursor: “pointer”, fontWeight: 600, fontSize: 13 } },
+React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr”, gap: 10, marginTop: 8 } }, [[”\u1f512”, “Privacy”, “privacy”]].map(([icon, label, page]) => (React.createElement(“button”, { key: page, onClick: () => setSubPage(page), style: { padding: “12px”, background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 14, color: “rgba(255,255,255,0.7)”, cursor: “pointer”, fontWeight: 600, fontSize: 13 } },
 icon,
 “ “,
 label))))),
@@ -2506,8 +2506,8 @@ React.createElement(“div”, { style: { position: “absolute”, bottom: 2, r
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.4)”, marginTop: 8 } }, “Tap to change photo”)),
 field(“DISPLAY NAME”, “name”, false, “Your stage name”),
 field(“HANDLE”, “handle”, false, “@yourhandle”),
-field(“ROLE / TITLE”, “role”, false, “Composer, Lyricist, Actor…”),
-field(“BIO”, “bio”, true, “Tell your story…”),
+field(“ROLE / TITLE”, “role”, false, “Composer, Lyricist, Actor\u2026”),
+field(“BIO”, “bio”, true, “Tell your story\u2026”),
 field(“LOCATION”, “location”, false, “City, State”),
 field(“WEBSITE”, “website”, false, “yoursite.com”),
 React.createElement(“button”, { onClick: onSave, style: primaryBtn(”#c9a84c”) }, “Save Changes”),
@@ -2549,22 +2549,22 @@ React.createElement(“div”, { style: { display: “flex”, gap: 10, marginBo
 React.createElement(“div”, { style: { fontSize: 9, fontWeight: 700, letterSpacing: “0.13em”, color: “rgba(255,255,255,0.3)”, marginBottom: 10 } }, “PLAYBACK QUALITY”),
 React.createElement(“div”, { style: { display: “flex”, gap: 10, marginBottom: 20 } }, [[“Auto”, “auto”], [“SD”, “sd”], [“HD”, “hd”]].map(([l, v]) => (React.createElement(“button”, { key: v, onClick: () => { setQuality(v); show(`Quality set to ${l}`); }, style: { flex: 1, padding: “11px”, background: quality === v ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.5)”, border: `1px solid ${quality === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: quality === v ? “#c9a84c” : “rgba(255,255,255,0.6)”, fontWeight: quality === v ? 700 : 400, fontSize: 13, cursor: “pointer” } }, l)))),
 React.createElement(“div”, { style: { fontSize: 9, fontWeight: 700, letterSpacing: “0.13em”, color: “rgba(255,255,255,0.3)”, marginBottom: 10 } }, “ACCOUNT”),
-React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, gap: 10, marginBottom: 24 } }, [[“Change Password”, “password”], [“Linked Accounts”, “links”], [“Download My Data”, “data”]].map(([l, k]) => (React.createElement(“button”, { key: k, onClick: () => show(`Opening ${l}…`), style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 12, color: “rgba(255,255,255,0.8)”, fontWeight: 500, fontSize: 13, cursor: “pointer”, textAlign: “left”, display: “flex”, justifyContent: “space-between”, alignItems: “center” } },
+React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, gap: 10, marginBottom: 24 } }, [[“Change Password”, “password”], [“Linked Accounts”, “links”], [“Download My Data”, “data”]].map(([l, k]) => (React.createElement(“button”, { key: k, onClick: () => show(`Opening ${l}\u2026`), style: { width: “100%”, padding: “13px 16px”, background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 12, color: “rgba(255,255,255,0.8)”, fontWeight: 500, fontSize: 13, cursor: “pointer”, textAlign: “left”, display: “flex”, justifyContent: “space-between”, alignItems: “center” } },
 l,
 React.createElement(“span”, { style: { opacity: 0.4, fontSize: 16 } }, “\u203A”))))),
 React.createElement(“button”, { onClick: async () => { await supabase.auth.signOut(); show(“Logged out”); }, style: Object.assign(Object.assign({}, ghostBtn), { color: “#f87171”, borderColor: “rgba(239,68,68,0.3)” }) }, “Log Out”)));
 }
-// ??????????????????????????? LIVE ???????????????????????????????????
+// ————————— LIVE ———————————–
 const LIVE_CHAT_SEEDS = [
-{ user: “MelodyMaker”, text: “This is incredible!! 🎶”, emoji: “MM” },
-{ user: “TheatreKid99”, text: “The harmonics on that last section 😭”, emoji: “TK” },
-{ user: “JazzFan2026”, text: “Can we get sheet music for this? 🙏”, emoji: “JF” },
-{ user: “BwayBound”, text: “I’ve been waiting for this collab ✨”, emoji: “BB” },
-{ user: “StageMom”, text: “My daughter would LOVE this 🎭”, emoji: “SM” },
-{ user: “PitOrchestra”, text: “That modulation!! ❤️‍🔥”, emoji: “PO” },
-{ user: “CastingAgent”, text: “Incredible talent here 👏”, emoji: “CA” },
+{ user: “MelodyMaker”, text: “This is incredible!! \u1f3b6”, emoji: “MM” },
+{ user: “TheatreKid99”, text: “The harmonics on that last section \u1f62d”, emoji: “TK” },
+{ user: “JazzFan2026”, text: “Can we get sheet music for this? \u1f64f”, emoji: “JF” },
+{ user: “BwayBound”, text: “I’ve been waiting for this collab \u2728”, emoji: “BB” },
+{ user: “StageMom”, text: “My daughter would LOVE this \u1f3ad”, emoji: “SM” },
+{ user: “PitOrchestra”, text: “That modulation!! \u2764\ufe0f\u200d\u1f525”, emoji: “PO” },
+{ user: “CastingAgent”, text: “Incredible talent here \u1f44f”, emoji: “CA” },
 { user: “NewMusicalFan”, text: “When’s the next session?”, emoji: “NM” },
-{ user: “VocalCoach”, text: “Impeccable breath control 🌟”, emoji: “VC” },
+{ user: “VocalCoach”, text: “Impeccable breath control \u1f31f”, emoji: “VC” },
 { user: “Composer99”, text: “What key are you in?”, emoji: “C9” },
 ];
 function LiveScreen({ show, onJoin }) {
@@ -2575,7 +2575,7 @@ React.createElement(“div”, { style: { position: “relative”, zIndex: 1, t
 React.createElement(“div”, { style: { fontSize: 36, marginBottom: 8 } }, “\uD83C\uDF99\uFE0F”),
 React.createElement(“div”, { style: { fontSize: 18, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif”, marginBottom: 4 } }, “Go Live”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.5)”, marginBottom: 14 } }, “Share your rehearsal, workshop, or premiere in real time”),
-React.createElement(“button”, { onClick: () => show(“🔴 Going live… (Demo - browser mic access needed)”), style: { padding: “11px 28px”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “none”, borderRadius: 20, color: “#fff”, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “\u25CF Start Broadcasting”))),
+React.createElement(“button”, { onClick: () => show(”\u1f534 Going live\u2026 (Demo - browser mic access needed)”), style: { padding: “11px 28px”, background: “linear-gradient(135deg,#ef4444,#c9a84c)”, border: “none”, borderRadius: 20, color: “#fff”, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “\u25CF Start Broadcasting”))),
 React.createElement(“div”, { style: { fontSize: 10, fontWeight: 700, letterSpacing: “0.12em”, color: “rgba(255,255,255,0.3)”, marginBottom: 12 } }, “LIVE NOW”),
 LIVE_ROOMS.map(room => (React.createElement(“div”, { key: room.id, onClick: () => onJoin(room), style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 16, padding: “14px 16px”, marginBottom: 12, cursor: “pointer” } },
 React.createElement(“div”, { style: { display: “flex”, justifyContent: “space-between”, alignItems: “flex-start”, marginBottom: 10 } },
@@ -2599,8 +2599,8 @@ const [raised, setRaised] = useState(false);
 const [viewers, setViewers] = useState(room.listeners);
 const [chatInput, setChatInput] = useState(””);
 const [chatMsgs, setChatMsgs] = useState([
-{ id: 1, user: “MelodyMaker”, text: “Just joined! 🎶”, accent: “#c9a84c”, self: false },
-{ id: 2, user: “TheatreKid99”, text: “Sound is perfect tonight ✨”, accent: “#4cb8c4”, self: false },
+{ id: 1, user: “MelodyMaker”, text: “Just joined! \u1f3b6”, accent: “#c9a84c”, self: false },
+{ id: 2, user: “TheatreKid99”, text: “Sound is perfect tonight \u2728”, accent: “#4cb8c4”, self: false },
 ]);
 const [reactions, setReactions] = useState([]);
 const chatEndRef = useRef(null);
@@ -2681,7 +2681,7 @@ React.createElement(“div”, { style: { textAlign: “center”, zIndex: 2 } }
 React.createElement(“div”, { style: { width: 80, height: 80, margin: “0 auto 8px”, background: `linear-gradient(135deg,${room.accent}44,${room.accent}22)`, borderRadius: “50%”, border: `3px solid ${room.accent}`, display: “flex”, alignItems: “center”, justifyContent: “center”, fontWeight: 700, fontSize: 28, animation: “speaking 2s ease-in-out infinite alternate” } }, “\uD83C\uDFA4”),
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 13, fontFamily: “‘Cormorant Garamond’,serif” } }, room.host),
 React.createElement(“div”, { style: { fontSize: 10, color: room.accent } }, “Speaking”)),
-React.createElement(“div”, { style: { display: “flex”, gap: 14, zIndex: 2, marginTop: 16 } }, [“🎹”, “🎸”, “🥁”].map((e, i) => (React.createElement(“div”, { key: i, style: { textAlign: “center” } },
+React.createElement(“div”, { style: { display: “flex”, gap: 14, zIndex: 2, marginTop: 16 } }, [”\u1f3b9”, “\u1f3b8”, “\u1f941”].map((e, i) => (React.createElement(“div”, { key: i, style: { textAlign: “center” } },
 React.createElement(“div”, { style: { width: 44, height: 44, background: “rgba(255,255,255,0.08)”, borderRadius: “50%”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontSize: 20 } }, e)))))),
 React.createElement(“div”, { style: { flex: 1, overflowY: “auto”, padding: “8px 14px 4px”, display: “flex”, flexDirection: “column”, gap: 6 } },
 chatMsgs.map(m => (React.createElement(“div”, { key: m.id, style: { display: “flex”, alignItems: “flex-start”, gap: 7 } },
@@ -2690,22 +2690,22 @@ React.createElement(“div”, { style: { maxWidth: “85%” } },
 React.createElement(“span”, { style: { fontSize: 10, fontWeight: 700, color: m.self ? “#c9a84c” : m.accent, marginRight: 5 } }, m.user),
 React.createElement(“span”, { style: { fontSize: 12, color: “rgba(255,255,255,0.82)”, lineHeight: 1.4 } }, m.text))))),
 React.createElement(“div”, { ref: chatEndRef })),
-React.createElement(“div”, { style: { display: “flex”, gap: 6, padding: “6px 14px”, background: “rgba(0,0,0,0.3)”, flexShrink: 0 } }, [“❤️”, “🔥”, “🎶”, “👏”, “✨”, “😭”].map(e => (React.createElement(“button”, { key: e, onClick: () => sendReaction(e), style: { flex: 1, padding: “6px 0”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, fontSize: 16, cursor: “pointer” } }, e)))),
+React.createElement(“div”, { style: { display: “flex”, gap: 6, padding: “6px 14px”, background: “rgba(0,0,0,0.3)”, flexShrink: 0 } }, [”\u2764\ufe0f”, “\u1f525”, “\u1f3b6”, “\u1f44f”, “\u2728”, “\u1f62d”].map(e => (React.createElement(“button”, { key: e, onClick: () => sendReaction(e), style: { flex: 1, padding: “6px 0”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, fontSize: 16, cursor: “pointer” } }, e)))),
 React.createElement(“div”, { style: { padding: “8px 12px 12px”, background: “linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.9))”, display: “flex”, gap: 8, alignItems: “center”, flexShrink: 0 } },
 React.createElement(“input”, { value: chatInput, onChange: e => setChatInput(e.target.value), onKeyDown: e => { if (e.key === “Enter”)
 sendChat(); }, placeholder: “Say something\u2026”, style: { flex: 1, padding: “10px 14px”, background: “rgba(255,255,255,0.08)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 22, color: “#fff”, fontSize: 13, outline: “none” } }),
 React.createElement(“button”, { onClick: sendChat, style: { width: 38, height: 38, background: room.accent, border: “none”, borderRadius: “50%”, color: “#1a0a2e”, fontWeight: 700, fontSize: 16, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” } }, “\u2191”)),
 React.createElement(“div”, { style: { background: “linear-gradient(0deg,rgba(18,7,36,0.99),rgba(8,4,14,0.97))”, padding: “10px 16px 24px”, display: “flex”, justifyContent: “space-around”, flexShrink: 0 } }, [
-{ icon: micOn ? “🎙” : “🔇”, label: micOn ? “Mic” : “Muted”, active: micOn, fn: () => { setMicOn(p => !p); show(micOn ? “🔇 Muted” : “🎙 Mic on”); } },
-{ icon: camOn ? “📹” : “📷”, label: camOn ? “Cam” : “Off”, active: camOn, fn: () => { setCamOn(p => !p); show(camOn ? “📷 Cam off” : “📹 Cam on”); } },
-{ icon: “✋”, label: raised ? “✓ Hand” : “Raise”, active: raised, fn: () => { setRaised(p => !p); show(raised ? “Hand lowered” : “✋ Hand raised!”); } },
-{ icon: “🎵”, label: “Note”, fn: () => show(“🎵 Shared a music note!”) },
-{ icon: “↗”, label: “Share”, fn: () => show(“Link copied!”) },
+{ icon: micOn ? “\u1f399” : “\u1f507”, label: micOn ? “Mic” : “Muted”, active: micOn, fn: () => { setMicOn(p => !p); show(micOn ? “\u1f507 Muted” : “\u1f399 Mic on”); } },
+{ icon: camOn ? “\u1f4f9” : “\u1f4f7”, label: camOn ? “Cam” : “Off”, active: camOn, fn: () => { setCamOn(p => !p); show(camOn ? “\u1f4f7 Cam off” : “\u1f4f9 Cam on”); } },
+{ icon: “\u270b”, label: raised ? “\u2713 Hand” : “Raise”, active: raised, fn: () => { setRaised(p => !p); show(raised ? “Hand lowered” : “\u270b Hand raised!”); } },
+{ icon: “\u1f3b5”, label: “Note”, fn: () => show(”\u1f3b5 Shared a music note!”) },
+{ icon: “\u2197”, label: “Share”, fn: () => show(“Link copied!”) },
 ].map((c, i) => (React.createElement(“button”, { key: i, onClick: c.fn, style: { background: “none”, border: “none”, cursor: “pointer”, display: “flex”, flexDirection: “column”, alignItems: “center”, gap: 4 } },
 React.createElement(“div”, { style: { width: 42, height: 42, borderRadius: 13, display: “flex”, alignItems: “center”, justifyContent: “center”, background: c.active ? room.accent + “33” : “rgba(255,255,255,0.08)”, fontSize: 18, border: c.active ? `1px solid ${room.accent}55` : “none” } }, c.icon),
 React.createElement(“span”, { style: { fontSize: 9, color: “rgba(255,255,255,0.4)” } }, c.label)))))));
 }
-// ??????????????????????????? INBOX ??????????????????????????????????
+// ————————— INBOX –––––––––––––––––
 function InboxOverlay({ messages, setMessages, onClose, show }) {
 const [thread, setThread] = useState(null);
 const [input, setInput] = useState(””);
@@ -2813,7 +2813,7 @@ React.createElement(“span”, { style: { fontSize: 10, color: “rgba(255,255,
 React.createElement(“div”, { style: { fontSize: 12, color: m.unread > 0 ? “rgba(255,255,255,0.72)” : “rgba(255,255,255,0.35)”, overflow: “hidden”, textOverflow: “ellipsis”, whiteSpace: “nowrap” } }, (_a = m.msgs[m.msgs.length - 1]) === null || _a === void 0 ? void 0 : _a.text))));
 })))));
 }
-// ???????????????????????????? CASTING ????????????????????????????????
+// –––––––––––––– CASTING ––––––––––––––––
 function CastingScreen({ show }) {
 const [sub, setSub] = useState(“calls”);
 // FIX 1: persisted casting data
@@ -2830,7 +2830,7 @@ const uid = data.user.id;
 // Load self tapes from DB
 const { data: tapes } = await supabase.from(“self_tapes”).select(”*”).eq(“user_id”, uid).order(“created_at”, { ascending: false });
 if (tapes && tapes.length > 0) {
-setSelfTapes(tapes.map(t => ({ id: t.id, show: t.title, scene: t.scene || “”, deadline: t.deadline || “”, submitTo: t.submit_to || “”, status: t.status || “pending”, emoji: “📹” })));
+setSelfTapes(tapes.map(t => ({ id: t.id, show: t.title, scene: t.scene || “”, deadline: t.deadline || “”, submitTo: t.submit_to || “”, status: t.status || “pending”, emoji: “\u1f4f9” })));
 }
 });
 }, []);
@@ -2838,10 +2838,10 @@ const [callFilter, setCallFilter] = useState(“all”);
 const [audFilter, setAudFilter] = useState(“upcoming”);
 const [modal, setModal] = useState(null);
 const SUBS = [
-{ key: “calls”, label: “📣 Calls” },
-{ key: “auditions”, label: “⭐ Auditions” },
-{ key: “selftapes”, label: “📹 Self Tapes” },
-{ key: “resume”, label: “📄 Résumé” },
+{ key: “calls”, label: “\u1f4e3 Calls” },
+{ key: “auditions”, label: “\u2b50 Auditions” },
+{ key: “selftapes”, label: “\u1f4f9 Self Tapes” },
+{ key: “resume”, label: “\u1f4c4 R\u00e9sum\u00e9” },
 ];
 const filteredCalls = castingCalls.filter(c => callFilter === “all” ? true :
 callFilter === “lead” ? c.type === “Lead” :
@@ -2850,8 +2850,8 @@ callFilter === “remote” ? c.selftape :
 callFilter === “paid” ? c.comp === “Paid” : true);
 const filteredAuditions = auditions.filter(a => a.status === audFilter);
 const addCall = (data) => { setCastingCalls(p => [Object.assign(Object.assign({}, data), { id: Date.now(), posted: “Just now” }), …p]); };
-const addAudition = (data) => { setAuditions(p => [Object.assign(Object.assign({}, data), { id: Date.now(), emoji: “🎭” }), …p]); };
-const addTape = (data) => { setSelfTapes(p => [Object.assign(Object.assign({}, data), { id: Date.now(), emoji: “📹” }), …p]); };
+const addAudition = (data) => { setAuditions(p => [Object.assign(Object.assign({}, data), { id: Date.now(), emoji: “\u1f3ad” }), …p]); };
+const addTape = (data) => { setSelfTapes(p => [Object.assign(Object.assign({}, data), { id: Date.now(), emoji: “\u1f4f9” }), …p]); };
 const markAudStatus = (id, status) => { setAuditions(p => p.map(a => a.id === id ? Object.assign(Object.assign({}, a), { status }) : a)); };
 const markTapeSubmitted = (id) => { setSelfTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: “submitted” }) : t)); };
 const removeAud = (id) => { setAuditions(p => p.filter(a => a.id !== id)); show(“Removed.”); };
@@ -2859,8 +2859,8 @@ const removeTape = (id) => { setSelfTapes(p => p.filter(t => t.id !== id)); show
 const removeCredit = (i) => { setCredits(p => p.filter((*, j) => j !== i)); };
 const addCredit = (c) => { setCredits(p => [c, …p]); };
 const trackFromCall = (show_t, role) => {
-setAuditions(p => [{ id: Date.now(), show: show_t, role, company: “From Casting Call”, date: “TBA”, location: “TBA”, prep: “”, status: “upcoming”, emoji: “🎭” }, …p]);
-show(`"${role}" added to Auditions! ⭐`);
+setAuditions(p => [{ id: Date.now(), show: show_t, role, company: “From Casting Call”, date: “TBA”, location: “TBA”, prep: “”, status: “upcoming”, emoji: “\u1f3ad” }, …p]);
+show(`"${role}" added to Auditions! \u2b50`);
 setSub(“auditions”);
 };
 return (React.createElement(“div”, { style: { height: “100%”, display: “flex”, flexDirection: “column” } },
@@ -2872,7 +2872,7 @@ React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontSize: 24, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, “Casting Calls”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.38)”, marginTop: 2 } }, “Open roles near you & remote”)),
 React.createElement(“button”, { onClick: () => setModal(“post-call”), style: { padding: “9px 16px”, background: “linear-gradient(135deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 12, color: “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “+ Post”)),
-React.createElement(“div”, { style: { display: “flex”, gap: 8, overflowX: “auto”, marginBottom: 18, paddingBottom: 4 } }, [[“all”, “All”], [“lead”, “Lead”], [“ensemble”, “Ensemble”], [“remote”, “Remote 📹”], [“paid”, “Paid 💰”]].map(([v, l]) => (React.createElement(“button”, { key: v, onClick: () => setCallFilter(v), style: { flexShrink: 0, padding: “6px 14px”, background: callFilter === v ? “#c9a84c” : “rgba(255,255,255,0.6)”, border: `1px solid ${callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, color: callFilter === v ? “#1a0a2e” : “rgba(255,255,255,0.6)”, fontWeight: callFilter === v ? 700 : 400, fontSize: 12, cursor: “pointer” } }, l)))),
+React.createElement(“div”, { style: { display: “flex”, gap: 8, overflowX: “auto”, marginBottom: 18, paddingBottom: 4 } }, [[“all”, “All”], [“lead”, “Lead”], [“ensemble”, “Ensemble”], [“remote”, “Remote \u1f4f9”], [“paid”, “Paid \u1f4b0”]].map(([v, l]) => (React.createElement(“button”, { key: v, onClick: () => setCallFilter(v), style: { flexShrink: 0, padding: “6px 14px”, background: callFilter === v ? “#c9a84c” : “rgba(255,255,255,0.6)”, border: `1px solid ${callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, color: callFilter === v ? “#1a0a2e” : “rgba(255,255,255,0.6)”, fontWeight: callFilter === v ? 700 : 400, fontSize: 12, cursor: “pointer” } }, l)))),
 filteredCalls.map(c => (React.createElement(“div”, { key: c.id, style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 18, overflow: “hidden”, marginBottom: 16 } },
 React.createElement(“div”, { style: { background: `linear-gradient(135deg,#1a0a2e,#2d1040)`, padding: “14px 16px”, display: “flex”, alignItems: “center”, gap: 12 } },
 React.createElement(“span”, { style: { fontSize: 28 } }, c.emoji),
@@ -2898,7 +2898,7 @@ React.createElement(“strong”, { style: { color: “rgba(255,255,255,0.8)” 
 c.prep),
 React.createElement(“div”, { style: { display: “flex”, gap: 10 } },
 React.createElement(“button”, { onClick: () => { trackFromCall(c.title, c.role); }, style: { flex: 1, padding: “11px”, background: “linear-gradient(135deg,#1a0a2e,#c9a84c22)”, border: “1px solid #c9a84c44”, borderRadius: 12, color: “#c9a84c”, fontWeight: 700, fontSize: 13, cursor: “pointer” } }, “\u2B50 Track Audition”),
-React.createElement(“button”, { onClick: () => show(“Saved! 🔖”), style: { width: 42, height: 42, background: “rgba(255,255,255,0.5)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 12, color: “rgba(255,255,255,0.5)”, fontSize: 18, cursor: “pointer” } }, “\uD83D\uDD16”),
+React.createElement(“button”, { onClick: () => show(“Saved! \u1f516”), style: { width: 42, height: 42, background: “rgba(255,255,255,0.5)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 12, color: “rgba(255,255,255,0.5)”, fontSize: 18, cursor: “pointer” } }, “\uD83D\uDD16”),
 React.createElement(“button”, { onClick: () => show(“Link copied!”), style: { width: 42, height: 42, background: “rgba(255,255,255,0.5)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 12, color: “rgba(255,255,255,0.5)”, fontSize: 18, cursor: “pointer” } }, “\u2197”)))))))),
 sub === “auditions” && (React.createElement(“div”, { style: { padding: “18px 16px 60px” } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 14 } },
@@ -2906,7 +2906,7 @@ React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontSize: 24, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, “My Auditions”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.38)”, marginTop: 2 } }, “Track every audition you have”)),
 React.createElement(“button”, { onClick: () => setModal(“add-audition”), style: { padding: “9px 16px”, background: “linear-gradient(135deg,#c9a84c,#e8a87c)”, border: “none”, borderRadius: 12, color: “#1a0a2e”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “+ Add”)),
-React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 18 } }, [[“upcoming”, “Upcoming”], [“callback”, “Callbacks 🌟”], [“completed”, “Completed ✓”]].map(([v, l]) => (React.createElement(“button”, { key: v, onClick: () => setAudFilter(v), style: { flex: 1, padding: “8px 0”, background: audFilter === v ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.5)”, border: `1px solid ${audFilter === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: audFilter === v ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: audFilter === v ? 700 : 400, fontSize: 11, cursor: “pointer” } }, l)))),
+React.createElement(“div”, { style: { display: “flex”, gap: 8, marginBottom: 18 } }, [[“upcoming”, “Upcoming”], [“callback”, “Callbacks \u1f31f”], [“completed”, “Completed \u2713”]].map(([v, l]) => (React.createElement(“button”, { key: v, onClick: () => setAudFilter(v), style: { flex: 1, padding: “8px 0”, background: audFilter === v ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.5)”, border: `1px solid ${audFilter === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: audFilter === v ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: audFilter === v ? 700 : 400, fontSize: 11, cursor: “pointer” } }, l)))),
 filteredAuditions.length === 0 ? (React.createElement(“div”, { style: { textAlign: “center”, padding: “48px 0”, color: “rgba(255,255,255,0.3)” } },
 React.createElement(“div”, { style: { fontSize: 40, marginBottom: 12 } }, “\uD83C\uDF1F”),
 React.createElement(“div”, { style: { fontFamily: “‘Cormorant Garamond’,serif”, fontSize: 18, marginBottom: 6 } },
@@ -2922,7 +2922,7 @@ React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 15, fontFamily: “‘Cormorant Garamond’,serif” } }, a.show),
 React.createElement(“div”, { style: { fontSize: 12, color: “#c9a84c”, fontWeight: 700 } }, a.role),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.38)” } }, a.company)),
-React.createElement(“span”, { style: { padding: “3px 10px”, borderRadius: 20, fontSize: 10, fontWeight: 700, background: a.status === “callback” ? “rgba(251,191,36,0.15)” : a.status === “completed” ? “rgba(74,222,128,0.15)” : “rgba(96,165,250,0.15)”, color: a.status === “callback” ? “#fbbf24” : a.status === “completed” ? “#4ade80” : “#60a5fa” } }, a.status === “callback” ? “🌟 Callback” : a.status === “completed” ? “✓ Done” : “Upcoming”)),
+React.createElement(“span”, { style: { padding: “3px 10px”, borderRadius: 20, fontSize: 10, fontWeight: 700, background: a.status === “callback” ? “rgba(251,191,36,0.15)” : a.status === “completed” ? “rgba(74,222,128,0.15)” : “rgba(96,165,250,0.15)”, color: a.status === “callback” ? “#fbbf24” : a.status === “completed” ? “#4ade80” : “#60a5fa” } }, a.status === “callback” ? “\u1f31f Callback” : a.status === “completed” ? “\u2713 Done” : “Upcoming”)),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.45)”, marginTop: 8, display: “flex”, flexDirection: “column”, gap: 3 } },
 React.createElement(“span”, null,
 “\uD83D\uDD50 “,
@@ -2955,7 +2955,7 @@ React.createElement(“div”, { style: { width: 52, height: 52, borderRadius: 1
 React.createElement(“div”, { style: { flex: 1, minWidth: 0 } },
 React.createElement(“div”, { style: { display: “flex”, justifyContent: “space-between”, alignItems: “flex-start” } },
 React.createElement(“div”, { style: { fontWeight: 700, fontSize: 15, fontFamily: “‘Cormorant Garamond’,serif” } }, t.show),
-React.createElement(“span”, { style: { padding: “3px 10px”, borderRadius: 20, fontSize: 10, fontWeight: 700, background: t.status === “submitted” ? “rgba(74,222,128,0.15)” : “rgba(251,146,60,0.15)”, color: t.status === “submitted” ? “#4ade80” : “#fb923c” } }, t.status === “submitted” ? “✓ Sent” : “⏳ Pending”)),
+React.createElement(“span”, { style: { padding: “3px 10px”, borderRadius: 20, fontSize: 10, fontWeight: 700, background: t.status === “submitted” ? “rgba(74,222,128,0.15)” : “rgba(251,146,60,0.15)”, color: t.status === “submitted” ? “#4ade80” : “#fb923c” } }, t.status === “submitted” ? “\u2713 Sent” : “\u23f3 Pending”)),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.5)”, marginTop: 4 } }, t.scene),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.45)”, marginTop: 6, display: “flex”, flexDirection: “column”, gap: 2 } },
 React.createElement(“span”, null,
@@ -2965,7 +2965,7 @@ React.createElement(“span”, null,
 “\u2709\uFE0F “,
 t.submitTo)))),
 React.createElement(“div”, { style: { display: “flex”, gap: 8, marginTop: 12 } },
-React.createElement(“button”, { onClick: () => show(“▶ Playing preview… (Demo)”), style: { flex: 1, padding: “9px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.7)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u25B6 Preview”),
+React.createElement(“button”, { onClick: () => show(”\u25b6 Playing preview\u2026 (Demo)”), style: { flex: 1, padding: “9px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.1)”, borderRadius: 10, color: “rgba(255,255,255,0.7)”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u25B6 Preview”),
 t.status === “pending” && React.createElement(“button”, { onClick: () => markTapeSubmitted(t.id), style: { flex: 1, padding: “9px”, background: “rgba(74,222,128,0.1)”, border: “1px solid rgba(74,222,128,0.25)”, borderRadius: 10, color: “#4ade80”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “Mark Sent \u2713”),
 React.createElement(“button”, { onClick: () => removeTape(t.id), style: { width: 38, height: 38, background: “rgba(239,68,68,0.1)”, border: “1px solid rgba(239,68,68,0.2)”, borderRadius: 10, color: “#f87171”, fontSize: 16, cursor: “pointer” } }, “\uD83D\uDDD1”))))))),
 sub === “resume” && (React.createElement(“div”, { style: { padding: “18px 16px 60px” } },
@@ -2973,7 +2973,7 @@ React.createElement(“div”, { style: { display: “flex”, alignItems: “ce
 React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontSize: 24, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, “R\u00E9sum\u00E9”),
 React.createElement(“div”, { style: { fontSize: 12, color: “rgba(255,255,255,0.38)”, marginTop: 2 } }, “Your theatre CV, always ready to share”)),
-React.createElement(“button”, { onClick: () => show(“📋 Résumé link copied!”), style: { padding: “9px 16px”, background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.3)”, borderRadius: 12, color: “#c9a84c”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u2197 Share”)),
+React.createElement(“button”, { onClick: () => show(”\u1f4cb R\u00e9sum\u00e9 link copied!”), style: { padding: “9px 16px”, background: “rgba(201,168,76,0.15)”, border: “1px solid rgba(201,168,76,0.3)”, borderRadius: 12, color: “#c9a84c”, fontWeight: 700, fontSize: 12, cursor: “pointer” } }, “\u2197 Share”)),
 React.createElement(“div”, { style: { background: “linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)”, borderRadius: 18, padding: “20px”, marginBottom: 18 } },
 React.createElement(“div”, { style: { display: “flex”, gap: 14, alignItems: “center”, marginBottom: 16 } },
 React.createElement(“div”, { style: { width: 60, height: 60, borderRadius: 16, background: “rgba(201,168,76,0.2)”, border: “2px solid #c9a84c”, display: “flex”, alignItems: “center”, justifyContent: “center”, fontWeight: 700, fontSize: 22 } }, “AR”),
@@ -2984,7 +2984,7 @@ React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,2
 React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr 1fr”, gap: 10 } }, [[“14”, “Shows”], [“6”, “Lead Roles”], [“8yr”, “Experience”]].map(([n, l]) => (React.createElement(“div”, { key: l, style: { background: “rgba(255,255,255,0.08)”, borderRadius: 12, padding: “10px 0”, textAlign: “center” } },
 React.createElement(“div”, { style: { fontSize: 18, fontWeight: 700, fontFamily: “‘Cormorant Garamond’,serif” } }, n),
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.45)”, letterSpacing: “0.06em” } }, l)))))),
-React.createElement(ResumeSection, { title: “Training”, onAdd: () => setModal(“add-training”) }, [{ title: “B.F.A. Musical Theatre”, sub: “San Diego State · 2018” }, { title: “Vocal Performance”, sub: “Pacific Conservatory · 2015-2019” }].map((t, i) => (React.createElement(“div”, { key: i, style: { padding: “10px 0”, borderBottom: “1px solid rgba(255,255,255,0.5)” } },
+React.createElement(ResumeSection, { title: “Training”, onAdd: () => setModal(“add-training”) }, [{ title: “B.F.A. Musical Theatre”, sub: “San Diego State \u00b7 2018” }, { title: “Vocal Performance”, sub: “Pacific Conservatory \u00b7 2015-2019” }].map((t, i) => (React.createElement(“div”, { key: i, style: { padding: “10px 0”, borderBottom: “1px solid rgba(255,255,255,0.5)” } },
 React.createElement(“div”, { style: { fontSize: 13, fontWeight: 600 } }, t.title),
 React.createElement(“div”, { style: { fontSize: 11, color: “rgba(255,255,255,0.38)” } }, t.sub))))),
 React.createElement(ResumeSection, { title: “Theatre Credits”, onAdd: () => setModal(“add-credit”) }, credits.map((c, i) => (React.createElement(“div”, { key: i, style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, padding: “10px 0”, borderBottom: “1px solid rgba(255,255,255,0.5)” } },
@@ -3004,12 +3004,12 @@ React.createElement(ResumeSection, { title: “Skills & Special”, onAdd: () =>
 React.createElement(“div”, { style: { display: “flex”, flexWrap: “wrap”, gap: 8, paddingTop: 4 } }, [“Piano”, “Guitar”, “Mezzo-Soprano”, “Dance: Jazz & Ballet”, “Stage Combat”, “Dialects: British, French”].map(s => (React.createElement(“span”, { key: s, style: { background: “rgba(201,168,76,0.12)”, border: “1px solid rgba(201,168,76,0.25)”, borderRadius: 20, padding: “4px 12px”, fontSize: 12, color: “rgba(255,255,255,0.7)” } }, s))))),
 React.createElement(ResumeSection, { title: “Representation”, onAdd: () => show(“Rep editor coming soon”) },
 React.createElement(“div”, { style: { fontSize: 13, color: “rgba(255,255,255,0.35)”, fontStyle: “italic”, padding: “8px 0” } }, “No representation added yet”))))),
-modal === “post-call” && React.createElement(PostCastingModal, { onClose: () => setModal(null), onSubmit: (d) => { addCall(d); setModal(null); show(`"${d.title}" casting call posted! 🎭`); } }),
-modal === “add-audition” && React.createElement(AddAuditionModal, { onClose: () => setModal(null), onSubmit: (d) => { addAudition(d); setModal(null); show(`Audition saved! ⭐`); } }),
-modal === “new-tape” && React.createElement(NewTapeModal, { onClose: () => setModal(null), onSubmit: (d) => { addTape(d); setModal(null); show(“Self tape saved! 🎬”); } }),
-modal === “add-credit” && React.createElement(AddCreditModal, { onClose: () => setModal(null), onSubmit: (d) => { addCredit(d); setModal(null); show(“Credit added ✓”); } })));
+modal === “post-call” && React.createElement(PostCastingModal, { onClose: () => setModal(null), onSubmit: (d) => { addCall(d); setModal(null); show(`"${d.title}" casting call posted! \u1f3ad`); } }),
+modal === “add-audition” && React.createElement(AddAuditionModal, { onClose: () => setModal(null), onSubmit: (d) => { addAudition(d); setModal(null); show(`Audition saved! \u2b50`); } }),
+modal === “new-tape” && React.createElement(NewTapeModal, { onClose: () => setModal(null), onSubmit: (d) => { addTape(d); setModal(null); show(“Self tape saved! \u1f3ac”); } }),
+modal === “add-credit” && React.createElement(AddCreditModal, { onClose: () => setModal(null), onSubmit: (d) => { addCredit(d); setModal(null); show(“Credit added \u2713”); } })));
 }
-// ?? Casting sub-components ????????????????????????????????????????????????????
+// – Casting sub-components ––––––––––––––––––––––––––
 const Tag = ({ label, color }) => (React.createElement(“span”, { style: { background: color ? color + “18” : “rgba(255,255,255,0.7)”, border: `1px solid ${color ? color + "44" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, padding: “3px 10px”, fontSize: 11, fontWeight: 600, color: color || “rgba(255,255,255,0.65)” } }, label));
 const ResumeSection = ({ title, onAdd, children }) => (React.createElement(“div”, { style: { background: “rgba(255,255,255,0.4)”, border: “1px solid rgba(255,255,255,0.08)”, borderRadius: 16, padding: “16px”, marginBottom: 14 } },
 React.createElement(“div”, { style: { display: “flex”, alignItems: “center”, justifyContent: “space-between”, marginBottom: 10 } },
@@ -3032,7 +3032,7 @@ if (!f.date.trim()) {
 alert(“Please enter a date and location.”);
 return;
 }
-onSubmit(Object.assign(Object.assign({}, f), { emoji: “🎭”, company: “You”, location: f.date }));
+onSubmit(Object.assign(Object.assign({}, f), { emoji: “\u1f3ad”, company: “You”, location: f.date }));
 } },
 React.createElement(CField, { label: “PRODUCTION TITLE” },
 React.createElement(“input”, { value: f.title, onChange: e => u(“title”, e.target.value), style: Object.assign(Object.assign({}, darkInput), { borderColor: f.title ? “rgba(255,255,255,0.12)” : “rgba(239,68,68,0.5)” }), placeholder: “e.g. Into the Woods (required)” })),
@@ -3097,7 +3097,7 @@ React.createElement(“input”, { value: f.location, onChange: e => u(“locati
 React.createElement(CField, { label: “WHAT TO PREPARE” },
 React.createElement(“textarea”, { value: f.prep, onChange: e => u(“prep”, e.target.value), rows: 2, style: Object.assign(Object.assign({}, darkInput), { resize: “none” }), placeholder: “16 bars + sides from Act 1” })),
 React.createElement(CField, { label: “STATUS” },
-React.createElement(“div”, { style: { display: “flex”, gap: 8 } }, [[“upcoming”, “Upcoming”], [“callback”, “Callback 🌟”], [“completed”, “Done ✓”]].map(([v, l]) => (React.createElement(“button”, { key: v, onClick: () => u(“status”, v), style: { flex: 1, padding: “8px”, background: f.status === v ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.5)”, border: `1px solid ${f.status === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, color: f.status === v ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: f.status === v ? 700 : 400, fontSize: 11, cursor: “pointer” } }, l)))))));
+React.createElement(“div”, { style: { display: “flex”, gap: 8 } }, [[“upcoming”, “Upcoming”], [“callback”, “Callback \u1f31f”], [“completed”, “Done \u2713”]].map(([v, l]) => (React.createElement(“button”, { key: v, onClick: () => u(“status”, v), style: { flex: 1, padding: “8px”, background: f.status === v ? “rgba(201,168,76,0.2)” : “rgba(255,255,255,0.5)”, border: `1px solid ${f.status === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, color: f.status === v ? “#c9a84c” : “rgba(255,255,255,0.5)”, fontWeight: f.status === v ? 700 : 400, fontSize: 11, cursor: “pointer” } }, l)))))));
 }
 function NewTapeModal({ onClose, onSubmit }) {
 const [f, setF] = useState({ show: “”, scene: “”, deadline: “”, submitTo: “” });
@@ -3152,7 +3152,7 @@ const CField = ({ label, children }) => (React.createElement(“div”, null,
 React.createElement(“div”, { style: { fontSize: 9, color: “rgba(255,255,255,0.32)”, letterSpacing: “0.12em”, marginBottom: 6 } }, label),
 children));
 const darkInput = { width: “100%”, padding: “11px 14px”, background: “rgba(255,255,255,0.6)”, border: “1px solid rgba(255,255,255,0.12)”, borderRadius: 12, color: “#fff”, fontSize: 13, outline: “none” };
-// ??????????????????????? REUSABLE COMPONENTS ????????????????????????????????
+// ———————– REUSABLE COMPONENTS ––––––––––––––––
 function Sheet({ children, onClose, height = “72vh” }) {
 return (React.createElement(“div”, { onClick: onClose, style: { position: “fixed”, inset: 0, background: “rgba(0,0,0,0.76)”, zIndex: 100, display: “flex”, alignItems: “flex-end”, justifyContent: “center” } },
 React.createElement(“div”, { onClick: e => e.stopPropagation(), className: “overlay-enter”, style: { background: “#120920”, borderRadius: “20px 20px 0 0”, width: “100%”, maxWidth: 480, height, display: “flex”, flexDirection: “column”, padding: “16px 20px”, border: “1px solid rgba(255,255,255,0.1)”, borderBottom: “none” } },
