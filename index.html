@@ -6,48 +6,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>StageLab</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#08080f" />
   <style>
-    body { background: #08080f; color: #fff; font-family: monospace; padding: 20px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; }
     #root { width: 100vw; height: 100dvh; }
-    #err { background: #ff000033; border: 1px solid red; padding: 16px; border-radius: 8px; margin-top: 20px; font-size: 12px; word-break: break-all; }
+    input, textarea, button { font-family: inherit; }
+    #status { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); color:#c9a84c; font-family:monospace; font-size:13px; text-align:center; }
+    #err { position:fixed; top:20px; left:10px; right:10px; background:#ff000033; border:1px solid red; padding:12px; border-radius:8px; font-family:monospace; font-size:11px; color:#fff; word-break:break-all; display:none; z-index:9999; }
   </style>
 </head>
 <body>
-  <div id="status" style="color:#c9a84c;font-size:14px;">Loading React...</div>
-  <div id="err" style="display:none"></div>
+  <div id="status">Loading StageLab...</div>
+  <div id="err"></div>
   <div id="root"></div>
-
   <script>
-    window.onerror = function(msg, src, line, col, err) {
-      document.getElementById('status').textContent = 'ERROR';
-      var d = document.getElementById('err');
-      d.style.display = 'block';
-      d.textContent = 'Error: ' + msg + '\nFile: ' + src + '\nLine: ' + line + ':' + col;
-      return false;
-    };
-    window.onunhandledrejection = function(e) {
-      document.getElementById('status').textContent = 'PROMISE ERROR';
-      var d = document.getElementById('err');
-      d.style.display = 'block';
-      d.textContent = 'Promise error: ' + (e.reason && e.reason.message || e.reason);
+    window.onerror = function(msg,src,line,col,err) {
+      document.getElementById('err').style.display='block';
+      document.getElementById('err').textContent = msg + ' (line '+line+')';
     };
   </script>
-
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"
-    onload="document.getElementById('status').textContent='React loaded, loading ReactDOM...'"
-    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load React from unpkg'">
-  </script>
-
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
-    onload="document.getElementById('status').textContent='ReactDOM loaded, loading app...'"
-    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load ReactDOM from unpkg'">
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"
+    onload="document.getElementById('status').textContent='React ✓ Loading ReactDOM...'"
+    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed: react from jsdelivr'"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"
+    onload="document.getElementById('status').textContent='ReactDOM ✓ Loading app...'"
+    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed: react-dom from jsdelivr'"></script>
   <script src="app.js"
-    onload="document.getElementById('status').textContent='App loaded!'"
-    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load app.js - file may be missing or too large'">
-  </script>
-
+    onload="document.getElementById('status').style.display='none'"
+    onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Failed to load app.js'"></script>
 </body>
 </html>
