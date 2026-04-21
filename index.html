@@ -10,7 +10,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; }
-    #root { width: 100vw; height: 100dvh; }
+    #root { width: 100vw; height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
     input, textarea, button { font-family: inherit; }
   </style>
 </head>
@@ -432,7 +432,7 @@ function AuthScreen({ onEnter, onOnboard }) {
                 React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
             error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
             React.createElement("button", { onClick: submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: 20 } }, loading ? "\u2026" : mode === 0 ? "Sign In" : "Create Account"),
-            React.createElement("button", { onClick: () => onEnter(null), style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 12, cursor: "pointer", letterSpacing: "0.05em" } }, "Skip for now \u2022 Demo mode")),
+            React.createElement("button", { onClick: () => onEnter(null), style: { width: "100%", padding: "13px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 14, color: "#c9a84c", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em", marginTop: 4 } }, "\uD83C\uDFAD Continue in Demo Mode")),
         toast && React.createElement(Toast, { msg: toast })));
 }
 const AInput = ({ placeholder, type = "text" }) => (React.createElement("input", { type: type, placeholder: placeholder, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }));
@@ -667,7 +667,7 @@ function MainApp({ tab, setTab, session }) {
     return (React.createElement("div", { style: { background: "#08080f", minHeight: "100vh", display: "flex", flexDirection: "column", color: "#fff" } },
         React.createElement("style", null, CSS),
         React.createElement("header", { style: { background: "linear-gradient(180deg,rgba(8,4,14,0.98),rgba(18,7,36,0.98))", borderBottom: "1px solid rgba(255,255,255,0.7)", position: "sticky", top: 0, zIndex: 100 } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: 480, margin: "0 auto", padding: "10px 16px 9px" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: 480, margin: "0 auto", padding: "max(10px, env(safe-area-inset-top)) 16px 9px" } },
                 React.createElement(SLogo, { size: 32, showText: true, textSize: 17 }),
                 React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
                     React.createElement("button", { onClick: () => setShowInbox(true), style: { background: "rgba(255,255,255,0.7)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", position: "relative", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } },
@@ -3234,15 +3234,6 @@ var container = document.getElementById('root');
 var root = ReactDOM.createRoot(container);
 root.render(React.createElement(StageLab));
 
-  </script>
-  <script>
-    window.onerror = function(msg,src,line,col,err) {
-      var d = document.createElement('div');
-      d.style.cssText = 'position:fixed;inset:20px;background:#1a0000;border:2px solid #ef4444;padding:20px;border-radius:12px;font-family:monospace;font-size:12px;color:#fca5a5;z-index:99999;overflow:auto;white-space:pre-wrap;';
-      d.textContent = 'Error: ' + msg + ' line ' + line + '\n' + (err && err.stack ? err.stack : '');
-      document.body.appendChild(d);
-      return true;
-    };
   </script>
 </body>
 </html>
