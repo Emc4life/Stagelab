@@ -427,15 +427,15 @@ function AuthScreen({ onEnter, onOnboard }) {
         React.createElement("div", { style: { width: "100%", maxWidth: 380 } },
             React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.15)", marginBottom: 22 } }, ["Sign In", "Sign Up"].map((t, i) => (React.createElement("button", { key: t, onClick: () => { setMode(i); setError(""); }, style: { flex: 1, background: "none", border: "none", color: mode === i ? "#c9a84c" : "rgba(255,255,255,0.4)", fontWeight: mode === i ? 700 : 400, fontSize: 13, padding: "10px 0", borderBottom: mode === i ? "2px solid #c9a84c" : "2px solid transparent", cursor: "pointer", letterSpacing: "0.05em" } }, t)))),
             React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 11, marginBottom: 14 } },
-                mode === 1 && (React.createElement("input", { value: name, onChange: e => setName(e.target.value), placeholder: "Full name", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
-                React.createElement("input", { value: email, onChange: e => setEmail(e.target.value), placeholder: "Email address", type: "email", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }),
-                React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
+                mode === 1 && (React.createElement("input", { value: name, onChange: e => setName(e.target.value), placeholder: "Full name", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
+                React.createElement("input", { value: email, onChange: e => setEmail(e.target.value), placeholder: "Email address", type: "email", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }),
+                React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
             error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
             React.createElement("button", { onClick: submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: 20 } }, loading ? "\u2026" : mode === 0 ? "Sign In" : "Create Account"),
             React.createElement("button", { onClick: () => onEnter(null), style: { width: "100%", padding: "13px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 14, color: "#c9a84c", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em", marginTop: 4 } }, "\uD83C\uDFAD Continue in Demo Mode")),
         toast && React.createElement(Toast, { msg: toast })));
 }
-const AInput = ({ placeholder, type = "text" }) => (React.createElement("input", { type: type, placeholder: placeholder, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }));
+const AInput = ({ placeholder, type = "text" }) => (React.createElement("input", { type: type, placeholder: placeholder, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }));
 // --------------------------- ONBOARD -------------------------------
 const ROLES = ["Actor", "Singer", "Dancer", "Composer", "Lyricist", "Musical Director", "Director", "Choreographer", "Playwright", "Producer", "Stage Manager", "Designer", "Pit Musician", "Other"];
 const SKILLS_LIST = ["Soprano", "Mezzo", "Alto", "Tenor", "Baritone", "Bass", "Jazz", "Classical", "Contemporary", "Hip-Hop", "Tap", "Ballet", "Character", "Improv", "Piano", "Guitar", "Violin", "Conducting"];
@@ -565,13 +565,13 @@ function OnboardScreen({ onDone, session }) {
                 React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 } }, "Tell the community what you do in musical theatre"),
                 React.createElement("div", { style: { marginBottom: 20 } },
                     React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "YOUR NAME"),
-                    React.createElement("input", { value: name, onChange: e => setName(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", marginBottom: 14 }, placeholder: "Your stage name" }),
+                    React.createElement("input", { value: name, onChange: e => setName(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", marginBottom: 14 }, placeholder: "Your stage name" }),
                     React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "HANDLE"),
                     React.createElement("div", { style: { position: "relative" } },
                         React.createElement("span", { style: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.4)", fontSize: 15 } }, "@"),
-                        React.createElement("input", { value: handle, onChange: e => setHandle(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase()), style: { width: "100%", padding: "13px 16px 13px 28px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none" }, placeholder: "yourhandle" }))),
+                        React.createElement("input", { value: handle, onChange: e => setHandle(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase()), style: { width: "100%", padding: "13px 16px 13px 28px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none" }, placeholder: "yourhandle" }))),
                 React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "PRIMARY ROLE"),
-                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 } }, ROLES.map(r => (React.createElement("button", { key: r, onClick: () => setRole(r), style: { padding: "10px 16px", background: role === r ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.6)", border: `1px solid ${role === r ? "transparent" : "rgba(255,255,255,0.12)"}`, borderRadius: 24, color: role === r ? "#1a0a2e" : "rgba(255,255,255,0.7)", fontWeight: role === r ? 700 : 400, fontSize: 13, cursor: "pointer", transition: "all 0.15s" } }, r)))),
+                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 } }, ROLES.map(r => (React.createElement("button", { key: r, onClick: () => setRole(r), style: { padding: "10px 16px", background: role === r ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: `1px solid ${role === r ? "transparent" : "rgba(255,255,255,0.12)"}`, borderRadius: 24, color: role === r ? "#1a0a2e" : "rgba(255,255,255,0.7)", fontWeight: role === r ? 700 : 400, fontSize: 13, cursor: "pointer", transition: "all 0.15s" } }, r)))),
                 React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } },
                     "SKILLS & VOICE TYPE ",
                     React.createElement("span", { style: { color: "rgba(255,255,255,0.3)", fontWeight: 400 } }, "(pick all that apply)")),
@@ -580,13 +580,13 @@ function OnboardScreen({ onDone, session }) {
                 React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "About you"),
                 React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 } }, "Help collaborators find and connect with you"),
                 React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 } }, "BIO"),
-                React.createElement("textarea", { value: bio, onChange: e => setBio(e.target.value), rows: 5, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", resize: "none", marginBottom: 20, lineHeight: 1.6 }, placeholder: "Tell your story \u2014 your training, credits, what you're working on, what you're looking for\u2026" }),
+                React.createElement("textarea", { value: bio, onChange: e => setBio(e.target.value), rows: 5, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", resize: "none", marginBottom: 20, lineHeight: 1.6 }, placeholder: "Tell your story \u2014 your training, credits, what you're working on, what you're looking for\u2026" }),
                 React.createElement("div", { style: { textAlign: "right", fontSize: 11, color: bio.length > 300 ? "#f87171" : "rgba(255,255,255,0.3)", marginTop: -16, marginBottom: 20 } },
                     bio.length,
                     "/300"),
                 React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 } }, "LOCATION"),
-                React.createElement("input", { value: location, onChange: e => setLocation(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", marginBottom: 24 }, placeholder: "City, State (e.g. San Diego, CA)" }),
-                (bio || location) && (React.createElement("div", { style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px", marginBottom: 8 } },
+                React.createElement("input", { value: location, onChange: e => setLocation(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", marginBottom: 24 }, placeholder: "City, State (e.g. San Diego, CA)" }),
+                (bio || location) && (React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px", marginBottom: 8 } },
                     React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 8 } }, "PROFILE PREVIEW"),
                     React.createElement("div", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, name || "Your Name"),
                     React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8 } }, role || "Your Role"),
@@ -629,7 +629,7 @@ function OnboardScreen({ onDone, session }) {
                             setSaving(false);
                             onDone();
                         }, style: { marginTop: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "Skip photo for now"))),
-                React.createElement("div", { style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px" } },
+                React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px" } },
                     React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 12 } }, "YOUR PROFILE SUMMARY"),
                     React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center" } },
                         React.createElement("div", { style: { width: 52, height: 52, borderRadius: "50%", border: "2px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.15)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, avatar ? React.createElement("img", { src: avatar, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 22 } }, "\uD83D\uDC64")),
@@ -666,15 +666,15 @@ function MainApp({ tab, setTab, session }) {
     const totalUnread = messages.reduce((a, m) => a + m.unread, 0);
     return (React.createElement("div", { style: { background: "#08080f", minHeight: "100vh", display: "flex", flexDirection: "column", color: "#fff" } },
         React.createElement("style", null, CSS),
-        React.createElement("header", { style: { background: "linear-gradient(180deg,rgba(8,4,14,0.98),rgba(18,7,36,0.98))", borderBottom: "1px solid rgba(255,255,255,0.7)", position: "sticky", top: 0, zIndex: 100 } },
+        React.createElement("header", { style: { background: "linear-gradient(180deg,rgba(8,4,14,0.98),rgba(18,7,36,0.98))", borderBottom: "1px solid rgba(255,255,255,0.07)", position: "sticky", top: 0, zIndex: 100 } },
             React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: 480, margin: "0 auto", padding: "max(10px, env(safe-area-inset-top)) 16px 9px" } },
                 React.createElement(SLogo, { size: 32, showText: true, textSize: 17 }),
                 React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
-                    React.createElement("button", { onClick: () => setShowInbox(true), style: { background: "rgba(255,255,255,0.7)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", position: "relative", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } },
+                    React.createElement("button", { onClick: () => setShowInbox(true), style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", position: "relative", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } },
                         "\u2709",
                         totalUnread > 0 && (React.createElement("span", { style: { position: "absolute", top: 4, right: 4, minWidth: 16, height: 16, background: "#c9a84c", borderRadius: 8, fontSize: 9, fontWeight: 700, color: "#1a0a2e", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #08080f", padding: "0 3px" } }, totalUnread))),
-                    React.createElement("button", { onClick: () => show("\uD83D\uDD14 You're all caught up"), style: { background: "rgba(255,255,255,0.7)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83D\uDD14")))),
-        React.createElement("nav", { style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))", borderTop: "1px solid rgba(255,255,255,0.7)", display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))" } }, NAV.map((n, i) => (React.createElement("button", { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", minWidth: 44, minHeight: 44 } },
+                    React.createElement("button", { onClick: () => show("\uD83D\uDD14 You're all caught up"), style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83D\uDD14")))),
+        React.createElement("nav", { style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))" } }, NAV.map((n, i) => (React.createElement("button", { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", minWidth: 44, minHeight: 44 } },
             React.createElement("div", { style: { width: tab === i ? 28 : 22, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : "50%", background: tab === i ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: tab === i ? 18 : 16, transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)", position: "relative" } },
                 React.createElement("span", { style: { color: n.live ? (tab === i ? "#1a0a2e" : "#ef4444") : (tab === i ? "#1a0a2e" : "rgba(255,255,255,0.55)"), animation: n.live && tab !== i ? "liveDot 1.5s infinite" : "none" } }, n.icon),
                 n.label === "Live" && tab !== i && React.createElement("span", { style: { position: "absolute", top: -2, right: -2, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: "1.5px solid #08080f", animation: "liveDot 1.5s infinite" } })),
@@ -918,7 +918,7 @@ function CommentsModal({ vid, comments, onAdd, onClose }) {
             React.createElement("div", { ref: endRef })),
         React.createElement("div", { style: { paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10 } },
             React.createElement("input", { value: text, onChange: e => setText(e.target.value), onKeyDown: e => { if (e.key === "Enter")
-                    submit(); }, placeholder: "Add a comment\u2026", style: { flex: 1, padding: "10px 13px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" } }),
+                    submit(); }, placeholder: "Add a comment\u2026", style: { flex: 1, padding: "10px 13px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" } }),
             React.createElement("button", { onClick: submit, style: { padding: "10px 16px", background: vid.accent, color: "#1a0a2e", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Post"))));
 }
 // -- Gift Modal ------------------------------------------------------
@@ -996,7 +996,7 @@ function CreatorModal({ vid, onSubscribe, onClose }) {
                 "Subscribe to ",
                 vid.creator.split(" ")[0]),
             React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 12 } }, "RECENT WORKS"),
-            [vid.title, "Workshop session - Act I finale", "Chord progressions for 'The Last Light'"].map((w, i) => (React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", padding: "11px 13px", background: "rgba(255,255,255,0.4)", borderRadius: 12, marginBottom: 8, gap: 10 } },
+            [vid.title, "Workshop session - Act I finale", "Chord progressions for 'The Last Light'"].map((w, i) => (React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", padding: "11px 13px", background: "rgba(255,255,255,0.04)", borderRadius: 12, marginBottom: 8, gap: 10 } },
                 React.createElement("span", { style: { color: vid.accent, fontSize: 16 } }, vid.note),
                 React.createElement("span", { style: { fontSize: 13 } }, w),
                 i === 0 && React.createElement("span", { style: { marginLeft: "auto", background: vid.accent + "22", color: vid.accent, borderRadius: 10, padding: "2px 8px", fontSize: 10, fontWeight: 700 } }, "NEW")))))));
@@ -1205,7 +1205,7 @@ function VideoPostTab({ show, setTab }) {
     if (step === 0)
         return (React.createElement("div", { style: { padding: "18px 16px 80px" } },
             React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 14 } }, "Post a Video"),
-            React.createElement("div", { style: { display: "flex", background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 3, marginBottom: 18 } }, [["upload", "\uD83D\uDCC1 Upload"], ["record", "\uD83D\uDCF9 Record"]].map(([m, l]) => (React.createElement("button", { key: m, onClick: () => setMode(m), style: { flex: 1, padding: "9px", background: mode === m ? "#c9a84c" : "none", border: "none", borderRadius: 10, color: mode === m ? "#1a0a2e" : "rgba(255,255,255,0.5)", fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
+            React.createElement("div", { style: { display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: 3, marginBottom: 18 } }, [["upload", "\uD83D\uDCC1 Upload"], ["record", "\uD83D\uDCF9 Record"]].map(([m, l]) => (React.createElement("button", { key: m, onClick: () => setMode(m), style: { flex: 1, padding: "9px", background: mode === m ? "#c9a84c" : "none", border: "none", borderRadius: 10, color: mode === m ? "#1a0a2e" : "rgba(255,255,255,0.5)", fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
             mode === "upload" ? (React.createElement(React.Fragment, null,
                 React.createElement("label", { style: { display: "block", width: "100%", aspectRatio: "16/9", background: "linear-gradient(160deg,#1a0a2e,#0d0515)", border: "2px dashed rgba(201,168,76,0.35)", borderRadius: 16, cursor: "pointer", position: "relative", overflow: "hidden", marginBottom: 16 } },
                     React.createElement("input", { type: "file", accept: "video/*", style: { display: "none" }, onChange: handleFile }),
@@ -1214,7 +1214,7 @@ function VideoPostTab({ show, setTab }) {
                         React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#c9a84c" } }, "Tap to select video"),
                         React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "MP4 \u00B7 MOV \u00B7 up to 2GB"))),
                 React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "QUICK PICK"),
-                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [["\uD83C\uDFA4", "Performance", "Share your act"], ["\uD83C\uDFB9", "Rehearsal", "Raw & unedited"], ["\uD83C\uDFAD", "Workshop", "Teaching moment"], ["\uD83C\uDF1F", "Original Work", "Your creation"]].map(([emoji, label, sub]) => (React.createElement("label", { key: label, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } },
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [["\uD83C\uDFA4", "Performance", "Share your act"], ["\uD83C\uDFB9", "Rehearsal", "Raw & unedited"], ["\uD83C\uDFAD", "Workshop", "Teaching moment"], ["\uD83C\uDF1F", "Original Work", "Your creation"]].map(([emoji, label, sub]) => (React.createElement("label", { key: label, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } },
                     React.createElement("input", { type: "file", accept: "video/*", style: { display: "none" }, onChange: handleFile }),
                     React.createElement("span", { style: { fontSize: 22 } }, emoji),
                     React.createElement("div", null,
@@ -1231,7 +1231,7 @@ function VideoPostTab({ show, setTab }) {
                         React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#fff" } },
                             "REC ",
                             fmt(recTime))))),
-                React.createElement("div", { style: { display: "flex", gap: 14, alignItems: "center" } }, !recording ? (React.createElement("button", { onClick: startRecording, style: { width: 68, height: 68, borderRadius: "50%", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "4px solid rgba(255,255,255,0.2)", fontSize: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u23FA")) : (React.createElement("button", { onClick: stopRecording, style: { width: 68, height: 68, borderRadius: "50%", background: "#ef4444", border: "4px solid rgba(255,255,255,0.3)", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: "liveDot 1s infinite" } }, "\u23F9"))),
+                React.createElement("div", { style: { display: "flex", gap: 14, alignItems: "center" } }, !recording ? (React.createElement("button", { onClick: startRecording, style: { width: 68, height: 68, borderRadius: "50%", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "4px solid rgba(255,255,255,0.2)", fontSize: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u23FA")) : (React.createElement("button", { onClick: stopRecording, style: { width: 68, height: 68, borderRadius: "50%", background: "#ef4444", border: "4px solid rgba(255,255,255,0.03)", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: "liveDot 1s infinite" } }, "\u23F9"))),
                 React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 10, textAlign: "center" } }, recording ? `Recording\u2026 ${fmt(recTime)}` : "Tap \u23fa to start recording")))));
     // -- Step 1: Edit --
     if (step === 1)
@@ -1247,8 +1247,8 @@ function VideoPostTab({ show, setTab }) {
                     } }, style: { position: "absolute", inset: 0, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } },
                     React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 } }, "\u25B6"))),
             React.createElement(Label, null, "TRIM"),
-            React.createElement("div", { style: { background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
-                React.createElement("div", { style: { height: 36, background: "rgba(255,255,255,0.6)", borderRadius: 8, position: "relative", marginBottom: 12, overflow: "hidden" } },
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+                React.createElement("div", { style: { height: 36, background: "rgba(255,255,255,0.06)", borderRadius: 8, position: "relative", marginBottom: 12, overflow: "hidden" } },
                     React.createElement("div", { style: { position: "absolute", left: `${(trim.start / 120) * 100}%`, right: `${((120 - trim.end) / 120) * 100}%`, top: 0, bottom: 0, background: "rgba(201,168,76,0.25)", border: "1px solid rgba(201,168,76,0.6)" } }),
                     React.createElement("div", { style: { position: "absolute", inset: "5px 0", display: "flex", gap: 1, padding: "0 3px", opacity: 0.35 } }, Array.from({ length: 50 }).map((_, i) => React.createElement("div", { key: i, style: { flex: 1, borderRadius: 1, height: `${20 + Math.sin(i * 0.5) * 60}%`, background: "#c9a84c", alignSelf: "flex-end" } }))),
                     React.createElement("div", { style: { position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 700 } },
@@ -1258,7 +1258,7 @@ function VideoPostTab({ show, setTab }) {
                     React.createElement(SliderRow, { label: "Start", value: trim.start, min: 0, max: trim.end - 1, accent: "#c9a84c", unit: "s", onChange: v => setTrim(p => (Object.assign(Object.assign({}, p), { start: v }))) }),
                     React.createElement(SliderRow, { label: "End", value: trim.end, min: trim.start + 1, max: 120, accent: "#4cb8c4", unit: "s", onChange: v => setTrim(p => (Object.assign(Object.assign({}, p), { end: v }))) }))),
             React.createElement(Label, null, "FILTERS"),
-            React.createElement("div", { style: { background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
                 [["Brightness", filters.brightness, "brightness", "#c9a84c"], ["Contrast", filters.contrast, "contrast", "#4cb8c4"], ["Saturation", filters.saturation, "saturation", "#e8a87c"]].map(([l, v, k, a]) => (React.createElement(SliderRow, { key: k, label: l, value: v, min: 0, max: 200, accent: a, unit: "%", onChange: val => setFilters(p => (Object.assign(Object.assign({}, p), { [k]: val }))) }))),
                 React.createElement("button", { onClick: () => setFilters({ brightness: 100, contrast: 100, saturation: 100 }), style: { background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 11, cursor: "pointer", marginTop: 4 } }, "\u21BA Reset")),
             React.createElement(Label, null, "SPEED"),
@@ -1266,12 +1266,12 @@ function VideoPostTab({ show, setTab }) {
                 s,
                 "x"))),
             React.createElement(Label, null, "VOLUME"),
-            React.createElement("div", { style: { background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
                 React.createElement(SliderRow, { label: "Volume", value: volume, min: 0, max: 100, accent: "#a084e8", unit: "%", onChange: setVolume })),
             React.createElement(Label, null, "THUMBNAIL"),
             React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", marginBottom: 14 } },
                 React.createElement("div", { style: { width: 80, height: 48, borderRadius: 10, overflow: "hidden", background: "#1a0a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 } }, thumbnail ? React.createElement("img", { src: thumbnail, style: { width: "100%", height: "100%", objectFit: "cover" } }) : "\uD83D\uDDBC"),
-                React.createElement("label", { style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.5)", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, cursor: "pointer", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.5)" } },
+                React.createElement("label", { style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.05)", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, cursor: "pointer", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.5)" } },
                     React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: handleThumb }),
                     thumbnail ? "Change thumbnail" : "Upload thumbnail")),
             React.createElement("button", { onClick: () => setStep(2), style: primaryBtn("#c9a84c") }, "Continue \u2192")));
@@ -1300,8 +1300,8 @@ function VideoPostTab({ show, setTab }) {
         React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, [["\uD83C\uDF0D", "public", "Everyone"], ["\uD83D\uDC65", "followers", "Followers"], ["\uD83D\uDD12", "private", "Only me"]].map(([icon, val, label]) => (React.createElement("button", { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: "9px 4px", background: visibility === val ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.4)", border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: "pointer", textAlign: "center" } },
             React.createElement("div", { style: { fontSize: 16, marginBottom: 2 } }, icon),
             label)))),
-        React.createElement("div", { style: { background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "2px 0", marginBottom: 16 } }, [["Open for Collaboration", "Let others request to work with you", collab, () => setCollab(p => !p)],
-            ["Allow Comments", "Others can comment", allowComments, () => setAllowComments(p => !p)]].map(([label, sub, val, fn]) => (React.createElement("div", { key: label, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.4)" } },
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "2px 0", marginBottom: 16 } }, [["Open for Collaboration", "Let others request to work with you", collab, () => setCollab(p => !p)],
+            ["Allow Comments", "Others can comment", allowComments, () => setAllowComments(p => !p)]].map(([label, sub, val, fn]) => (React.createElement("div", { key: label, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)" } },
             React.createElement("div", null,
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, label),
                 React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)" } }, sub)),
@@ -1420,7 +1420,7 @@ function AudioPostTab({ show, setTab }) {
     };
     return (React.createElement("div", { style: { padding: "18px 16px 80px" } },
         React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 14 } }, "Post Audio"),
-        React.createElement("div", { style: { display: "flex", background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 3, marginBottom: 18 } }, [["upload", "\uD83D\uDCC1 Upload"], ["record", "\uD83C\uDF99 Record"]].map(([m, l]) => (React.createElement("button", { key: m, onClick: () => setMode(m), style: { flex: 1, padding: "9px", background: mode === m ? "#c9a84c" : "none", border: "none", borderRadius: 10, color: mode === m ? "#1a0a2e" : "rgba(255,255,255,0.5)", fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
+        React.createElement("div", { style: { display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: 3, marginBottom: 18 } }, [["upload", "\uD83D\uDCC1 Upload"], ["record", "\uD83C\uDF99 Record"]].map(([m, l]) => (React.createElement("button", { key: m, onClick: () => setMode(m), style: { flex: 1, padding: "9px", background: mode === m ? "#c9a84c" : "none", border: "none", borderRadius: 10, color: mode === m ? "#1a0a2e" : "rgba(255,255,255,0.5)", fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
         mode === "upload" ? (React.createElement("label", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "22px", background: audioFile ? "rgba(201,168,76,0.08)" : "rgba(255,255,255,0.4)", border: `1px dashed ${audioFile ? "#c9a84c" : "rgba(255,255,255,0.2)"}`, borderRadius: 16, cursor: "pointer", marginBottom: 16 } },
             React.createElement("input", { type: "file", accept: "audio/*", style: { display: "none" }, onChange: e => {
                     var _a;
@@ -1437,10 +1437,10 @@ function AudioPostTab({ show, setTab }) {
                 React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 } }, audioFile ? "Audio ready" : "MP3 \u00b7 WAV \u00b7 AAC \u00b7 M4A")))) : (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#0d0515)", borderRadius: 16, padding: "20px", marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "center" } },
             React.createElement("div", { style: { display: "flex", gap: 1.5, height: 64, alignItems: "flex-end", width: "100%", marginBottom: 16 } }, waveData.map((h, i) => (React.createElement("div", { key: i, style: { flex: 1, borderRadius: 2, height: `${h}%`, background: recording ? `linear-gradient(to top,#c9a84c,#e8a87c)` : "rgba(255,255,255,0.15)", transition: recording ? "none" : "height 0.3s", transformOrigin: "bottom" } })))),
             React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", color: recording ? "#ef4444" : "rgba(255,255,255,0.4)", marginBottom: 16, letterSpacing: "0.05em" } }, fmt(recTime)),
-            !recording ? (React.createElement("button", { onClick: startRecording, style: { width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "4px solid rgba(255,255,255,0.2)", fontSize: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83C\uDF99")) : (React.createElement("button", { onClick: stopRecording, style: { width: 72, height: 72, borderRadius: "50%", background: "#ef4444", border: "4px solid rgba(255,255,255,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: "liveDot 1s infinite" } },
+            !recording ? (React.createElement("button", { onClick: startRecording, style: { width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "4px solid rgba(255,255,255,0.2)", fontSize: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83C\uDF99")) : (React.createElement("button", { onClick: stopRecording, style: { width: 72, height: 72, borderRadius: "50%", background: "#ef4444", border: "4px solid rgba(255,255,255,0.03)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: "liveDot 1s infinite" } },
                 React.createElement("div", { style: { width: 24, height: 24, background: "#fff", borderRadius: 4 } }))),
             React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 10 } }, recording ? "Recording - tap to stop" : "Tap to start recording"),
-            audioURL && !recording && (React.createElement("div", { style: { marginTop: 14, width: "100%", background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 } },
+            audioURL && !recording && (React.createElement("div", { style: { marginTop: 14, width: "100%", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 } },
                 React.createElement("audio", { ref: audioRef, src: audioURL, onEnded: () => setPlaying(false) }),
                 React.createElement("button", { onClick: togglePlay, style: { width: 36, height: 36, borderRadius: "50%", background: "#c9a84c", border: "none", color: "#1a0a2e", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, playing ? "\u23f8" : "\u25b6"),
                 React.createElement("div", { style: { flex: 1 } },
@@ -1462,7 +1462,7 @@ function AudioPostTab({ show, setTab }) {
         React.createElement(Label, null, "TYPE"),
         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 } }, TYPES.map(t => React.createElement("button", { key: t, onClick: () => setType(t), style: { padding: "6px 12px", background: type === t ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${type === t ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: type === t ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: type === t ? 700 : 400, fontSize: 11, cursor: "pointer" } }, t))),
         React.createElement(Label, null, "VOLUME"),
-        React.createElement("div", { style: { background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
             React.createElement(SliderRow, { label: "Volume", value: volume, min: 0, max: 100, accent: "#a084e8", unit: "%", onChange: setVolume })),
         React.createElement(Label, null, "TAGS"),
         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 } }, tags.map((t, i) => React.createElement("span", { key: t, style: { background: "rgba(201,168,76,0.14)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 20, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center", gap: 5 } },
@@ -1477,7 +1477,7 @@ function AudioPostTab({ show, setTab }) {
         React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, [["\uD83C\uDF0D", "public", "Everyone"], ["\uD83D\uDC65", "followers", "Followers"], ["\uD83D\uDD12", "private", "Only me"]].map(([icon, val, label]) => (React.createElement("button", { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: "9px 4px", background: visibility === val ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.4)", border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: "pointer", textAlign: "center" } },
             React.createElement("div", { style: { fontSize: 16, marginBottom: 2 } }, icon),
             label)))),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "13px 16px", marginBottom: 18 } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "13px 16px", marginBottom: 18 } },
             React.createElement("div", null,
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, "Open for Collaboration"),
                 React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)" } }, "Invite others to add to this track")),
@@ -1527,14 +1527,14 @@ function PosterMakerTab({ show, setTab }) {
         React.createElement(Label, null, "THEME"),
         React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
             POSTER_THEMES.map((t, i) => (React.createElement("button", { key: t.name, onClick: () => { setPTheme(i); setBgImg(null); }, style: { flex: 1, height: 38, borderRadius: 10, background: t.bg, border: `2px solid ${pTheme === i && !bgImg ? t.accent : "transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, pTheme === i && !bgImg && React.createElement("span", { style: { color: t.accent, fontSize: 14 } }, "\u2713")))),
-            React.createElement("label", { style: { width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.7)", border: `2px solid ${bgImg ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }, title: "Custom background photo" },
+            React.createElement("label", { style: { width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: `2px solid ${bgImg ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }, title: "Custom background photo" },
                 React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: handleBgImg }),
                 "\uD83D\uDDBC"),
-            React.createElement("label", { style: { width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.7)", border: `2px solid ${logoImg ? "#4cb8c4" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }, title: "Add logo/crest" },
+            React.createElement("label", { style: { width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: `2px solid ${logoImg ? "#4cb8c4" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }, title: "Add logo/crest" },
                 React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: handleLogoImg }),
                 "\u269C\uFE0F")),
         React.createElement(Label, null, "SHOW DETAILS"),
-        React.createElement("div", { style: { background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } }, [["BADGE", pTag, setPTag, "e.g. WORLD PREMIERE"], ["TITLE", pTitle, setPTitle, "Show title"], ["SUBTITLE", pSub, setPSub, "e.g. An Original Musical"], ["DATE", pDate, setPDate, "April 19, 2026"], ["VENUE", pVenue, setPVenue, "Theatre name"], ["STARRING", pCast, setPCast, "Lead cast (optional)"], ["DIRECTED BY", pDirector, setPDirector, "Director (optional)"]].map(([l, v, s, ph]) => (React.createElement("div", { key: l, style: { marginBottom: 11 } },
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } }, [["BADGE", pTag, setPTag, "e.g. WORLD PREMIERE"], ["TITLE", pTitle, setPTitle, "Show title"], ["SUBTITLE", pSub, setPSub, "e.g. An Original Musical"], ["DATE", pDate, setPDate, "April 19, 2026"], ["VENUE", pVenue, setPVenue, "Theatre name"], ["STARRING", pCast, setPCast, "Lead cast (optional)"], ["DIRECTED BY", pDirector, setPDirector, "Director (optional)"]].map(([l, v, s, ph]) => (React.createElement("div", { key: l, style: { marginBottom: 11 } },
             React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", marginBottom: 4 } }, l),
             React.createElement("input", { value: v, onChange: e => s(e.target.value), placeholder: ph, style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }))))),
         React.createElement("button", { onClick: () => show("\uD83D\uDDBC Poster saved to your camera roll!"), style: primaryBtn(pt.accent) }, "\u2B07 Download Poster"),
@@ -1569,7 +1569,7 @@ function LyricsPostTab({ show, setTab }) {
         React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 16, alignItems: "center" } },
             React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" } }, "ACCENT"),
             ACCENTS.map(c => (React.createElement("button", { key: c, onClick: () => setAccentCol(c), style: { width: 26, height: 26, borderRadius: "50%", background: c, border: `3px solid ${accentCol === c ? "#fff" : "transparent"}`, cursor: "pointer", flexShrink: 0 } }))),
-            React.createElement("button", { onClick: () => setShowPrev(p => !p), style: { marginLeft: "auto", padding: "5px 12px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" } },
+            React.createElement("button", { onClick: () => setShowPrev(p => !p), style: { marginLeft: "auto", padding: "5px 12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" } },
                 showPrev ? "Hide" : "Show",
                 " preview")),
         showPrev && (title || lyrics) && (React.createElement("div", { style: { background: POSTER_THEMES[theme].bg, borderRadius: 16, padding: "20px 18px", marginBottom: 16, border: `1px solid ${accentCol}33`, position: "relative", overflow: "hidden" } },
@@ -1583,7 +1583,7 @@ function LyricsPostTab({ show, setTab }) {
                 React.createElement("span", { style: { fontSize: 9, color: accentCol, letterSpacing: "0.15em" } }, "\u2014 Alex Rivera")))),
         React.createElement(Label, null, "SONG TITLE"),
         React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), style: Object.assign(Object.assign({}, inputSt), { marginBottom: 14 }), placeholder: "Song or poem title\u2026" }),
-        React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" } }, STRUCTURES.map(s => (React.createElement("button", { key: s, onClick: () => insertSection(s), style: { padding: "5px 12px", background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" } },
+        React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" } }, STRUCTURES.map(s => (React.createElement("button", { key: s, onClick: () => insertSection(s), style: { padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" } },
             "+ ",
             s)))),
         React.createElement(Label, null,
@@ -1607,7 +1607,7 @@ function LyricsPostTab({ show, setTab }) {
             React.createElement("input", { value: tagIn, onChange: e => setTagIn(e.target.value), onKeyDown: e => { if (e.key === "Enter")
                     addTag(); }, placeholder: "Add a tag\u2026", style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }),
             React.createElement("button", { onClick: addTag, style: { padding: "0 16px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 18, cursor: "pointer" } }, "+")),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.3)", borderRadius: 14, padding: "13px 16px", marginBottom: 20 } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "13px 16px", marginBottom: 20 } },
             React.createElement("div", null,
                 React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, "Open for Collaboration"),
                 React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "Others can add music or arrange this")),
@@ -1737,7 +1737,7 @@ function DiscoverScreen({ show }) {
                     React.createElement("div", { style: { fontSize: 13 } }, "Loading people\u2026"))
                 : filteredPeople.length === 0
                     ? React.createElement(EmptyState, { query: query, type: "people" })
-                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
                         React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 10 } },
                             React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg,${p.accent}44,${p.accent}22)`, border: `2px solid ${p.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, flexShrink: 0 } }, p.avatar),
                             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -1752,12 +1752,12 @@ function DiscoverScreen({ show }) {
                         React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 10 } }, p.bio),
                         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 } }, p.skills.map(s => (React.createElement("span", { key: s, style: { background: p.accent + "18", border: `1px solid ${p.accent}33`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: p.accent, fontWeight: 600 } }, s)))),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
-                            React.createElement("button", { onClick: () => show(`Message sent to ${p.name} \u2713`), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDCAC Message"),
+                            React.createElement("button", { onClick: () => show(`Message sent to ${p.name} \u2713`), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDCAC Message"),
                             React.createElement("button", { onClick: () => show(`Collab request sent to ${p.name}! \uD83C\uDFAD`), style: { flex: 2, padding: "9px", background: p.accent + "22", border: `1px solid ${p.accent}44`, borderRadius: 10, color: p.accent, fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83C\uDFAD Request Collab")))))),
             tab === "projects" && (filteredProjects.length === 0
                 ? React.createElement(EmptyState, { query: query, type: "projects" })
-                : filteredProjects.map(p => (React.createElement("div", { key: p.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, overflow: "hidden", marginBottom: 12 } },
-                    React.createElement("div", { style: { background: `linear-gradient(135deg,${p.accent}22,${p.accent}0a)`, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+                : filteredProjects.map(p => (React.createElement("div", { key: p.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, overflow: "hidden", marginBottom: 12 } },
+                    React.createElement("div", { style: { background: `linear-gradient(135deg,${p.accent}22,${p.accent}0a)`, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" } },
                         React.createElement("div", null,
                             React.createElement("div", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, p.title),
                             React.createElement("div", { style: { fontSize: 11, color: p.accent, marginTop: 1 } }, p.type)),
@@ -1765,20 +1765,20 @@ function DiscoverScreen({ show }) {
                     React.createElement("div", { style: { padding: "14px 16px" } },
                         React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" } },
                             React.createElement("span", { style: { background: p.accent + "22", color: p.accent, borderRadius: 20, padding: "3px 11px", fontSize: 11, fontWeight: 700 } }, p.status),
-                            React.createElement("span", { style: { background: "rgba(255,255,255,0.6)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 11px", fontSize: 11 } },
+                            React.createElement("span", { style: { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 11px", fontSize: 11 } },
                                 "\uD83D\uDCCD ",
                                 p.location),
-                            React.createElement("span", { style: { background: "rgba(255,255,255,0.6)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 11px", fontSize: 11 } },
+                            React.createElement("span", { style: { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 11px", fontSize: 11 } },
                                 "\uD83D\uDC65 ",
                                 p.members,
                                 " members")),
                         React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.55, marginBottom: 12 } }, p.desc),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
                             React.createElement("button", { onClick: () => show(`Applied to ${p.title}! \uD83C\uDFAD`), style: { flex: 2, padding: "10px", background: `linear-gradient(135deg,${p.accent},${p.accent}cc)`, border: "none", borderRadius: 10, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Apply to Join"),
-                            React.createElement("button", { onClick: () => show("Link copied!"), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u2197 Share"))))))),
+                            React.createElement("button", { onClick: () => show("Link copied!"), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u2197 Share"))))))),
             tab === "calls" && (filteredCalls.length === 0
                 ? React.createElement(EmptyState, { query: query, type: "calls" })
-                : filteredCalls.map(c => (React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                : filteredCalls.map(c => (React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
                     React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 } },
                         React.createElement("div", { style: { flex: 1, minWidth: 0, marginRight: 10 } },
                             React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.3 } }, c.title),
@@ -1794,7 +1794,7 @@ function DiscoverScreen({ show }) {
                     React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 } }, c.desc),
                     React.createElement("div", { style: { display: "flex", gap: 8 } },
                         React.createElement("button", { onClick: () => show(`Applied to "${c.title}"! \u2713`), style: { flex: 2, padding: "10px", background: `linear-gradient(135deg,${c.accent},${c.accent}cc)`, border: "none", borderRadius: 10, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Apply Now"),
-                        React.createElement("button", { onClick: () => toggleSave("call-" + c.id), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, saved["call-" + c.id] ? "\uD83D\uDD16 Saved" : "\uD83D\uDD16 Save")))))),
+                        React.createElement("button", { onClick: () => toggleSave("call-" + c.id), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, saved["call-" + c.id] ? "\uD83D\uDD16 Saved" : "\uD83D\uDD16 Save")))))),
             tab === "shows" && React.createElement(LocalShowsPanel, { show: show }))));
 }
 // -- Local Shows Panel ------------------------------------------------
@@ -1936,7 +1936,7 @@ function LocalShowsPanel({ show }) {
                     React.createElement("button", { onClick: searchShows, disabled: loading, style: { padding: "0 20px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 13, cursor: loading ? "not-allowed" : "pointer", flexShrink: 0 } }, loading ? "\u2026" : "Search")),
                 React.createElement("div", { style: { display: "flex", gap: 6 } },
                     React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", alignSelf: "center", marginRight: 4 } }, "Within:"),
-                    ["10", "25", "50"].map(r => (React.createElement("button", { key: r, onClick: () => setRadius(r), style: { padding: "5px 12px", background: radius === r ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.6)", border: `1px solid ${radius === r ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: radius === r ? "#c9a84c" : "rgba(255,255,255,0.45)", fontWeight: radius === r ? 700 : 400, fontSize: 11, cursor: "pointer" } },
+                    ["10", "25", "50"].map(r => (React.createElement("button", { key: r, onClick: () => setRadius(r), style: { padding: "5px 12px", background: radius === r ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.06)", border: `1px solid ${radius === r ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: radius === r ? "#c9a84c" : "rgba(255,255,255,0.45)", fontWeight: radius === r ? 700 : 400, fontSize: 11, cursor: "pointer" } },
                         r,
                         " mi")))))),
         error && (React.createElement("div", { style: { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, padding: "12px 14px", marginBottom: 14, fontSize: 13, color: "#f87171" } },
@@ -1966,11 +1966,11 @@ function LocalShowsPanel({ show }) {
                 " \u00B7 WITHIN ",
                 radius,
                 " MILES"),
-            results.map((s, i) => (React.createElement("div", { key: i, style: { background: "rgba(255,255,255,0.4)", border: `1px solid ${s.accent}33`, borderRadius: 18, overflow: "hidden", marginBottom: 14 } },
+            results.map((s, i) => (React.createElement("div", { key: i, style: { background: "rgba(255,255,255,0.04)", border: `1px solid ${s.accent}33`, borderRadius: 18, overflow: "hidden", marginBottom: 14 } },
                 s.image && (React.createElement("div", { style: { height: 120, overflow: "hidden", position: "relative" } },
                     React.createElement("img", { src: s.image, alt: s.title, style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
                     React.createElement("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 60%)" } }))),
-                React.createElement("div", { style: { background: s.image ? `rgba(0,0,0,0.2)` : `linear-gradient(135deg,${s.accent}18,${s.accent}08)`, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.6)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 } },
+                React.createElement("div", { style: { background: s.image ? `rgba(0,0,0,0.2)` : `linear-gradient(135deg,${s.accent}18,${s.accent}08)`, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 } },
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" } },
                             React.createElement("span", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, s.title),
@@ -1981,7 +1981,7 @@ function LocalShowsPanel({ show }) {
                     React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 } },
                         React.createElement("span", { style: { background: s.accent + "22", color: s.accent, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 700 } }, s.type),
                         s.pro && React.createElement("span", { style: { background: "rgba(201,168,76,0.15)", color: "#c9a84c", borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 700 } }, "\u2B50 Professional"),
-                        React.createElement("span", { style: { background: "rgba(255,255,255,0.6)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 10px", fontSize: 10 } }, s.tickets)),
+                        React.createElement("span", { style: { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 10px", fontSize: 10 } }, s.tickets)),
                     React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.55, marginBottom: 10 } }, s.description),
                     React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 } },
                         React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12 } },
@@ -2008,8 +2008,8 @@ function LocalShowsPanel({ show }) {
                                     show(`Opening tickets for ${s.title}\u2026`);
                                 }
                             }, style: { flex: 2, padding: "11px", background: s.soldOut ? "rgba(255,255,255,0.6)" : `linear-gradient(135deg,${s.accent},${s.accent}cc)`, border: "none", borderRadius: 10, color: s.soldOut ? "rgba(255,255,255,0.3)" : "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: s.soldOut ? "not-allowed" : "pointer" } }, s.soldOut ? "Sold Out" : "\uD83C\uDF9F Get Tickets"),
-                        React.createElement("button", { onClick: () => show(`Added ${s.title} to your calendar! \uD83D\uDCC5`), style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "\uD83D\uDCC5 Save Date")))))),
-            React.createElement("button", { onClick: () => { setResults(null); setZip(""); }, style: { width: "100%", padding: "12px", background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontWeight: 600, fontSize: 13, cursor: "pointer", marginTop: 4 } }, "\uD83D\uDD0D Search a different ZIP")))))));
+                        React.createElement("button", { onClick: () => show(`Added ${s.title} to your calendar! \uD83D\uDCC5`), style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "\uD83D\uDCC5 Save Date")))))),
+            React.createElement("button", { onClick: () => { setResults(null); setZip(""); }, style: { width: "100%", padding: "12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontWeight: 600, fontSize: 13, cursor: "pointer", marginTop: 4 } }, "\uD83D\uDD0D Search a different ZIP")))))));
 }
 const EmptyState = ({ query, type }) => (React.createElement("div", { style: { textAlign: "center", padding: "56px 20px", color: "rgba(255,255,255,0.3)" } },
     React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\uD83D\uDD0D"),
@@ -2434,12 +2434,12 @@ function ProfileScreen({ show }) {
                     profile.location)),
             React.createElement("div", { style: { display: "flex", gap: 8 } },
                 React.createElement("button", { onClick: () => setSubPage("edit"), style: { padding: "8px 14px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 10, color: "#c9a84c", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Edit"),
-                React.createElement("button", { onClick: () => setSubPage("settings"), style: { width: 34, height: 34, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontSize: 16, cursor: "pointer" } }, "\u2699"))),
+                React.createElement("button", { onClick: () => setSubPage("settings"), style: { width: 34, height: 34, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontSize: 16, cursor: "pointer" } }, "\u2699"))),
         React.createElement("div", { style: { padding: "0 18px 12px", fontSize: 13, color: "rgba(255,255,255,0.62)", lineHeight: 1.65 } }, profile.bio),
         profile.website && React.createElement("div", { style: { padding: "0 18px 14px", fontSize: 12, color: "#c9a84c" } },
             "\uD83D\uDD17 ",
             profile.website),
-        React.createElement("div", { style: { display: "flex", gap: 0, background: "rgba(255,255,255,0.4)", borderTop: "1px solid rgba(255,255,255,0.6)", borderBottom: "1px solid rgba(255,255,255,0.6)", marginBottom: 18 } }, [["14", "Projects"], ["62", "Collabs"], ["248K", "Views"], ["$1.2K", "Earned"]].map(([n, l], i) => (React.createElement("div", { key: l, style: { flex: 1, textAlign: "center", padding: "13px 6px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
+        React.createElement("div", { style: { display: "flex", gap: 0, background: "rgba(255,255,255,0.04)", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: 18 } }, [["14", "Projects"], ["62", "Collabs"], ["248K", "Views"], ["$1.2K", "Earned"]].map(([n, l], i) => (React.createElement("div", { key: l, style: { flex: 1, textAlign: "center", padding: "13px 6px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
             React.createElement("div", { style: { fontSize: 17, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, n),
             React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.36)", letterSpacing: "0.07em" } }, l))))),
         React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 0 } }, [["media", "\uD83D\uDCF8 Photos & Media"], ["tapes", "\uD83C\uDFAC Self Tapes"]].map(([key, label]) => (React.createElement("button", { key: key, onClick: () => setBioTab(key), style: { flex: 1, padding: "11px 0", background: "none", border: "none", color: bioTab === key ? "#c9a84c" : "rgba(255,255,255,0.38)", fontWeight: bioTab === key ? 700 : 400, fontSize: 13, cursor: "pointer", borderBottom: bioTab === key ? "2px solid #c9a84c" : "2px solid transparent" } }, label)))),
@@ -2485,7 +2485,7 @@ function ProfileScreen({ show }) {
                     "\u2713 Slate under 10 seconds")),
             tapes.length === 0 ? (React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.25)" } },
                 React.createElement("div", { style: { fontSize: 36, marginBottom: 10 } }, "\uD83C\uDFAC"),
-                React.createElement("div", { style: { fontSize: 14 } }, "No self tapes yet"))) : tapes.map(t => (React.createElement("div", { key: t.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12 } },
+                React.createElement("div", { style: { fontSize: 14 } }, "No self tapes yet"))) : tapes.map(t => (React.createElement("div", { key: t.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12 } },
                 React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start" } },
                     React.createElement("div", { style: { width: 52, height: 52, borderRadius: 12, background: "linear-gradient(135deg,#1a0f1f,#2d1040)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 } }, "\uD83C\uDFAC"),
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -2500,12 +2500,12 @@ function ProfileScreen({ show }) {
                             " \u00B7 ",
                             t.duration))),
                 React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
-                    React.createElement("button", { onClick: () => show("\u25b6 Playing tape\u2026 (Demo)"), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u25B6 Preview"),
+                    React.createElement("button", { onClick: () => show("\u25b6 Playing tape\u2026 (Demo)"), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u25B6 Preview"),
                     React.createElement("button", { onClick: () => show("\uD83D\uDCCB Tape link copied!"), style: { flex: 1, padding: "9px", background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 10, color: "#c9a84c", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u2197 Share"),
                     t.status === "pending" && (React.createElement("button", { onClick: () => markTapeSent(t.id), style: { flex: 1, padding: "9px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 10, color: "#4ade80", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Mark Sent")),
                     React.createElement("button", { onClick: () => removeTape(t.id), style: { width: 36, height: 36, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#f87171", fontSize: 16, cursor: "pointer" } }, "\uD83D\uDDD1"))))))),
         React.createElement("div", { style: { padding: "0 16px 100px" } },
-            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 } }, [["\uD83D\uDD12", "Privacy", "privacy"]].map(([icon, label, page]) => (React.createElement("button", { key: page, onClick: () => setSubPage(page), style: { padding: "12px", background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, color: "rgba(255,255,255,0.7)", cursor: "pointer", fontWeight: 600, fontSize: 13 } },
+            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 } }, [["\uD83D\uDD12", "Privacy", "privacy"]].map(([icon, label, page]) => (React.createElement("button", { key: page, onClick: () => setSubPage(page), style: { padding: "12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, color: "rgba(255,255,255,0.7)", cursor: "pointer", fontWeight: 600, fontSize: 13 } },
                 icon,
                 " ",
                 label))))),
@@ -2562,7 +2562,7 @@ function PrivacyPage({ privacy, setPrivacy, onBack, show }) {
     return (React.createElement(SubPage, { title: "Privacy & Security", onBack: onBack },
         sections.map(sec => (React.createElement("div", { key: sec.label, style: { marginBottom: 20 } },
             React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, sec.label),
-            React.createElement("div", { style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, overflow: "hidden" } }, sec.items.map(([label, key, desc], i) => (React.createElement("div", { key: key, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, overflow: "hidden" } }, sec.items.map(([label, key, desc], i) => (React.createElement("div", { key: key, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
                 React.createElement("div", null,
                     React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, label),
                     React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.36)", marginTop: 2 } }, desc)),
@@ -2579,7 +2579,7 @@ function SettingsPage({ onBack, show }) {
     const toggle = (key) => { setNotifs(p => (Object.assign(Object.assign({}, p), { [key]: !p[key] }))); show("Notification setting updated"); };
     return (React.createElement(SubPage, { title: "Settings", onBack: onBack },
         React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "NOTIFICATIONS"),
-        React.createElement("div", { style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, overflow: "hidden", marginBottom: 20 } }, [["Likes & reactions", "likes"], ["Comments", "comments"], ["Gift donations", "gifts"], ["New followers", "follows"], ["Collab requests", "collab"]].map(([label, key], i) => (React.createElement("div", { key: key, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, overflow: "hidden", marginBottom: 20 } }, [["Likes & reactions", "likes"], ["Comments", "comments"], ["Gift donations", "gifts"], ["New followers", "follows"], ["Collab requests", "collab"]].map(([label, key], i) => (React.createElement("div", { key: key, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
             React.createElement("span", { style: { fontSize: 13, fontWeight: 500 } }, label),
             React.createElement(Toggle, { on: notifs[key], onToggle: () => toggle(key) }))))),
         React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "APPEARANCE"),
@@ -2587,7 +2587,7 @@ function SettingsPage({ onBack, show }) {
         React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "PLAYBACK QUALITY"),
         React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 20 } }, [["Auto", "auto"], ["SD", "sd"], ["HD", "hd"]].map(([l, v]) => (React.createElement("button", { key: v, onClick: () => { setQuality(v); show(`Quality set to ${l}`); }, style: { flex: 1, padding: "11px", background: quality === v ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${quality === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: quality === v ? "#c9a84c" : "rgba(255,255,255,0.6)", fontWeight: quality === v ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
         React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "ACCOUNT"),
-        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 } }, [["Change Password", "password"], ["Linked Accounts", "links"], ["Download My Data", "data"]].map(([l, k]) => (React.createElement("button", { key: k, onClick: () => show(`Opening ${l}\u2026`), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500, fontSize: 13, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" } },
+        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 } }, [["Change Password", "password"], ["Linked Accounts", "links"], ["Download My Data", "data"]].map(([l, k]) => (React.createElement("button", { key: k, onClick: () => show(`Opening ${l}\u2026`), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500, fontSize: 13, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" } },
             l,
             React.createElement("span", { style: { opacity: 0.4, fontSize: 16 } }, "\u203A"))))),
         React.createElement("button", { onClick: async () => { await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
@@ -2615,7 +2615,7 @@ function LiveScreen({ show, onJoin }) {
                 React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14 } }, "Share your rehearsal, workshop, or premiere in real time"),
                 React.createElement("button", { onClick: () => show("\uD83D\uDD34 Going live\u2026 (Demo - browser mic access needed)"), style: { padding: "11px 28px", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "none", borderRadius: 20, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\u25CF Start Broadcasting"))),
         React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.3)", marginBottom: 12 } }, "LIVE NOW"),
-        LIVE_ROOMS.map(room => (React.createElement("div", { key: room.id, onClick: () => onJoin(room), style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, cursor: "pointer" } },
+        LIVE_ROOMS.map(room => (React.createElement("div", { key: room.id, onClick: () => onJoin(room), style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, cursor: "pointer" } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 } },
                 React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                     React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 3 } },
@@ -2728,7 +2728,7 @@ function LiveRoomOverlay({ room, onLeave, show }) {
                     React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: m.self ? "#c9a84c" : m.accent, marginRight: 5 } }, m.user),
                     React.createElement("span", { style: { fontSize: 12, color: "rgba(255,255,255,0.82)", lineHeight: 1.4 } }, m.text))))),
             React.createElement("div", { ref: chatEndRef })),
-        React.createElement("div", { style: { display: "flex", gap: 6, padding: "6px 14px", background: "rgba(0,0,0,0.3)", flexShrink: 0 } }, ["\u2764\ufe0f", "\uD83D\uDD25", "\uD83C\uDFB6", "\uD83D\uDC4F", "\u2728", "\uD83D\uDE2D"].map(e => (React.createElement("button", { key: e, onClick: () => sendReaction(e), style: { flex: 1, padding: "6px 0", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 16, cursor: "pointer" } }, e)))),
+        React.createElement("div", { style: { display: "flex", gap: 6, padding: "6px 14px", background: "rgba(0,0,0,0.3)", flexShrink: 0 } }, ["\u2764\ufe0f", "\uD83D\uDD25", "\uD83C\uDFB6", "\uD83D\uDC4F", "\u2728", "\uD83D\uDE2D"].map(e => (React.createElement("button", { key: e, onClick: () => sendReaction(e), style: { flex: 1, padding: "6px 0", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 16, cursor: "pointer" } }, e)))),
         React.createElement("div", { style: { padding: "8px 12px 12px", background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.9))", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 } },
             React.createElement("input", { value: chatInput, onChange: e => setChatInput(e.target.value), onKeyDown: e => { if (e.key === "Enter")
                     sendChat(); }, placeholder: "Say something\u2026", style: { flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 22, color: "#fff", fontSize: 13, outline: "none" } }),
@@ -2835,12 +2835,12 @@ function InboxOverlay({ messages, setMessages, onClose, show }) {
                         React.createElement("div", { style: { padding: "10px 14px", borderRadius: m.from === "me" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: m.from === "me" ? `linear-gradient(135deg,${conv.accent},${conv.accent}cc)` : "rgba(255,255,255,0.08)", color: m.from === "me" ? "#1a0a2e" : "#fff", fontSize: 14, lineHeight: 1.4 } }, m.text),
                         React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.26)", marginTop: 3, textAlign: m.from === "me" ? "right" : "left" } }, m.time))))),
                 React.createElement("div", { ref: endRef })),
-            React.createElement("div", { style: { padding: "10px 14px 28px", borderTop: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 10 } },
+            React.createElement("div", { style: { padding: "10px 14px 28px", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 10 } },
                 React.createElement("input", { value: input, onChange: e => setInput(e.target.value), onKeyDown: e => { if (e.key === "Enter")
-                        sendMsg(conv); }, placeholder: "Message\u2026", style: { flex: 1, padding: "11px 13px", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" } }),
+                        sendMsg(conv); }, placeholder: "Message\u2026", style: { flex: 1, padding: "11px 13px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" } }),
                 React.createElement("button", { onClick: () => sendMsg(conv), style: { padding: "11px 16px", background: conv.accent, color: "#1a0a2e", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Send")))) : (React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } }, messages.map(m => {
             var _a;
-            return (React.createElement("div", { key: m.id, onClick: () => { setThread(m.id); markRead(m.id); }, style: { display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", borderBottom: "1px solid rgba(255,255,255,0.5)", cursor: "pointer" } },
+            return (React.createElement("div", { key: m.id, onClick: () => { setThread(m.id); markRead(m.id); }, style: { display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer" } },
                 React.createElement("div", { style: { position: "relative", flexShrink: 0 } },
                     React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", background: m.accent + "33", border: `2px solid ${m.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 } }, m.avatar),
                     m.unread > 0 && React.createElement("div", { style: { position: "absolute", top: 0, right: 0, width: 18, height: 18, background: "#c9a84c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1a0a2e", border: "2px solid #08080f" } }, m.unread)),
@@ -2910,8 +2910,8 @@ function CastingScreen({ show }) {
                         React.createElement("div", { style: { fontSize: 24, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Casting Calls"),
                         React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 } }, "Open roles near you & remote")),
                     React.createElement("button", { onClick: () => setModal("post-call"), style: { padding: "9px 16px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "+ Post")),
-                React.createElement("div", { style: { display: "flex", gap: 8, overflowX: "auto", marginBottom: 18, paddingBottom: 4 } }, [["all", "All"], ["lead", "Lead"], ["ensemble", "Ensemble"], ["remote", "Remote \uD83D\uDCF9"], ["paid", "Paid \uD83D\uDCB0"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setCallFilter(v), style: { flexShrink: 0, padding: "6px 14px", background: callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.6)", border: `1px solid ${callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, color: callFilter === v ? "#1a0a2e" : "rgba(255,255,255,0.6)", fontWeight: callFilter === v ? 700 : 400, fontSize: 12, cursor: "pointer" } }, l)))),
-                filteredCalls.map(c => (React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, overflow: "hidden", marginBottom: 16 } },
+                React.createElement("div", { style: { display: "flex", gap: 8, overflowX: "auto", marginBottom: 18, paddingBottom: 4 } }, [["all", "All"], ["lead", "Lead"], ["ensemble", "Ensemble"], ["remote", "Remote \uD83D\uDCF9"], ["paid", "Paid \uD83D\uDCB0"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setCallFilter(v), style: { flexShrink: 0, padding: "6px 14px", background: callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.06)", border: `1px solid ${callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, color: callFilter === v ? "#1a0a2e" : "rgba(255,255,255,0.6)", fontWeight: callFilter === v ? 700 : 400, fontSize: 12, cursor: "pointer" } }, l)))),
+                filteredCalls.map(c => (React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, overflow: "hidden", marginBottom: 16 } },
                     React.createElement("div", { style: { background: `linear-gradient(135deg,#1a0a2e,#2d1040)`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 } },
                         React.createElement("span", { style: { fontSize: 28 } }, c.emoji),
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -2931,13 +2931,13 @@ function CastingScreen({ show }) {
                         React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 } },
                             "\uD83D\uDCCD ",
                             c.location),
-                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.4)", borderRadius: 10, padding: "10px 12px", marginBottom: 14, lineHeight: 1.5 } },
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", marginBottom: 14, lineHeight: 1.5 } },
                             React.createElement("strong", { style: { color: "rgba(255,255,255,0.8)" } }, "Prepare: "),
                             c.prep),
                         React.createElement("div", { style: { display: "flex", gap: 10 } },
                             React.createElement("button", { onClick: () => { trackFromCall(c.title, c.role); }, style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#1a0a2e,#c9a84c22)", border: "1px solid #c9a84c44", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\u2B50 Track Audition"),
-                            React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"),
-                            React.createElement("button", { onClick: () => show("Link copied!"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\u2197")))))))),
+                            React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"),
+                            React.createElement("button", { onClick: () => show("Link copied!"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\u2197")))))))),
             sub === "auditions" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
                 React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
                     React.createElement("div", null,
@@ -2951,7 +2951,7 @@ function CastingScreen({ show }) {
                         "No ",
                         audFilter,
                         " auditions"),
-                    React.createElement("div", { style: { fontSize: 13 } }, "Add one or track from a Casting Call"))) : filteredAuditions.map(a => (React.createElement("div", { key: a.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    React.createElement("div", { style: { fontSize: 13 } }, "Add one or track from a Casting Call"))) : filteredAuditions.map(a => (React.createElement("div", { key: a.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
                     React.createElement("div", { style: { display: "flex", gap: 12 } },
                         React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,#1a0a2e,#2d1040)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, a.emoji),
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -2968,7 +2968,7 @@ function CastingScreen({ show }) {
                                 React.createElement("span", null,
                                     "\uD83D\uDCCD ",
                                     a.location),
-                                a.prep && React.createElement("div", { style: { fontSize: 12, background: "rgba(255,255,255,0.4)", borderRadius: 10, padding: "8px 10px", marginTop: 4 } },
+                                a.prep && React.createElement("div", { style: { fontSize: 12, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "8px 10px", marginTop: 4 } },
                                     React.createElement("strong", null, "Prepare: "),
                                     a.prep)))),
                     React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
@@ -2987,7 +2987,7 @@ function CastingScreen({ show }) {
                 selfTapes.length === 0 ? (React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" } },
                     React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\uD83D\uDCF9"),
                     React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontSize: 18, marginBottom: 6 } }, "No self tapes yet"),
-                    React.createElement("div", { style: { fontSize: 13 } }, "Hit Record to add your first one"))) : selfTapes.map(t => (React.createElement("div", { key: t.id, style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    React.createElement("div", { style: { fontSize: 13 } }, "Hit Record to add your first one"))) : selfTapes.map(t => (React.createElement("div", { key: t.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
                     React.createElement("div", { style: { display: "flex", gap: 12 } },
                         React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,#1a0f1f,#2d1040)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, t.emoji),
                         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -3003,7 +3003,7 @@ function CastingScreen({ show }) {
                                     "\u2709\uFE0F ",
                                     t.submitTo)))),
                     React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
-                        React.createElement("button", { onClick: () => show("\u25b6 Playing preview\u2026 (Demo)"), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u25B6 Preview"),
+                        React.createElement("button", { onClick: () => show("\u25b6 Playing preview\u2026 (Demo)"), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u25B6 Preview"),
                         t.status === "pending" && React.createElement("button", { onClick: () => markTapeSubmitted(t.id), style: { flex: 1, padding: "9px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, color: "#4ade80", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Mark Sent \u2713"),
                         React.createElement("button", { onClick: () => removeTape(t.id), style: { width: 38, height: 38, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#f87171", fontSize: 16, cursor: "pointer" } }, "\uD83D\uDDD1"))))))),
             sub === "resume" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
@@ -3022,10 +3022,10 @@ function CastingScreen({ show }) {
                     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 } }, [["14", "Shows"], ["6", "Lead Roles"], ["8yr", "Experience"]].map(([n, l]) => (React.createElement("div", { key: l, style: { background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 0", textAlign: "center" } },
                         React.createElement("div", { style: { fontSize: 18, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, n),
                         React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.45)", letterSpacing: "0.06em" } }, l)))))),
-                React.createElement(ResumeSection, { title: "Training", onAdd: () => setModal("add-training") }, [{ title: "B.F.A. Musical Theatre", sub: "San Diego State \u00b7 2018" }, { title: "Vocal Performance", sub: "Pacific Conservatory \u00b7 2015-2019" }].map((t, i) => (React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.5)" } },
+                React.createElement(ResumeSection, { title: "Training", onAdd: () => setModal("add-training") }, [{ title: "B.F.A. Musical Theatre", sub: "San Diego State \u00b7 2018" }, { title: "Vocal Performance", sub: "Pacific Conservatory \u00b7 2015-2019" }].map((t, i) => (React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" } },
                     React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, t.title),
                     React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } }, t.sub))))),
-                React.createElement(ResumeSection, { title: "Theatre Credits", onAdd: () => setModal("add-credit") }, credits.map((c, i) => (React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.5)" } },
+                React.createElement(ResumeSection, { title: "Theatre Credits", onAdd: () => setModal("add-credit") }, credits.map((c, i) => (React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" } },
                     React.createElement("div", null,
                         React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } },
                             c.title,
@@ -3049,7 +3049,7 @@ function CastingScreen({ show }) {
 }
 // -- Casting sub-components ----------------------------------------------------
 const Tag = ({ label, color }) => (React.createElement("span", { style: { background: color ? color + "18" : "rgba(255,255,255,0.7)", border: `1px solid ${color ? color + "44" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600, color: color || "rgba(255,255,255,0.65)" } }, label));
-const ResumeSection = ({ title, onAdd, children }) => (React.createElement("div", { style: { background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", marginBottom: 14 } },
+const ResumeSection = ({ title, onAdd, children }) => (React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", marginBottom: 14 } },
     React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
         React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.4)" } }, title.toUpperCase()),
         React.createElement("button", { onClick: onAdd, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 8, padding: "4px 10px", color: "#c9a84c", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "+ Add")),
@@ -3183,18 +3183,18 @@ function CastingModal({ title, onClose, onSubmit, children }) {
                 React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 20, width: 30, height: 30, color: "rgba(255,255,255,0.6)", fontSize: 16, cursor: "pointer" } }, "\u00D7")),
             React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 } }, children),
             React.createElement("div", { style: { padding: "14px 20px 28px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10 } },
-                React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "13px", background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer" } }, "Cancel"),
+                React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "13px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer" } }, "Cancel"),
                 React.createElement("button", { onClick: onSubmit, style: { flex: 2, padding: "13px", background: "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 14, cursor: "pointer" } }, "Save")))));
 }
 const CField = ({ label, children }) => (React.createElement("div", null,
     React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", marginBottom: 6 } }, label),
     children));
-const darkInput = { width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" };
+const darkInput = { width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" };
 // ----------------------- REUSABLE COMPONENTS --------------------------------
 function Sheet({ children, onClose, height = "72vh" }) {
     return (React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.76)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
         React.createElement("div", { onClick: e => e.stopPropagation(), className: "overlay-enter", style: { background: "#120920", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, height, display: "flex", flexDirection: "column", padding: "16px 20px", border: "1px solid rgba(255,255,255,0.1)", borderBottom: "none" } },
-            React.createElement("div", { style: { width: 36, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 16px" } }),
+            React.createElement("div", { style: { width: 36, height: 4, background: "rgba(255,255,255,0.02)", borderRadius: 2, margin: "0 auto 16px" } }),
             children)));
 }
 function SubPage({ title, onBack, children }) {
@@ -3224,9 +3224,9 @@ function SliderRow({ label, value, min, max, accent, unit, onChange }) {
 const Label = ({ children }) => React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.35)", marginBottom: 8, marginTop: 16 } }, children);
 const Toast = ({ msg }) => React.createElement("div", { style: { position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "rgba(201,168,76,0.95)", color: "#1a0a2e", padding: "10px 20px", borderRadius: 24, fontWeight: 700, fontSize: 13, zIndex: 999, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" } }, msg);
 // Style helpers
-const inputSt = { width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none", marginBottom: 0 };
+const inputSt = { width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none", marginBottom: 0 };
 const primaryBtn = (accent, disabled = false) => ({ width: "100%", padding: "14px", background: disabled ? "rgba(255,255,255,0.1)" : accent, border: "none", borderRadius: 14, color: disabled ? "rgba(255,255,255,0.3)" : "#1a0a2e", fontWeight: 700, fontSize: 14, cursor: disabled ? "not-allowed" : "pointer", marginBottom: 10 });
-const ghostBtn = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer", marginBottom: 10 };
+const ghostBtn = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer", marginBottom: 10 };
 // Utility
 const clamp = (text) => text.length > 20 ? 22 : text.length > 14 ? 26 : 32;
 
