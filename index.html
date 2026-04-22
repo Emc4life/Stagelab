@@ -14,79 +14,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://dsegdddquztgkdwyzbai.supabase.co" crossorigin />
   <style>
-    /* Reset + core */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-    }
-    html {
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-      height: 100%;
-    }
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #08080f;
-      overscroll-behavior: none;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      text-rendering: optimizeLegibility;
-    }
-    body {
-      touch-action: pan-y;
-      position: fixed;
-      width: 100%;
-    }
-    #root {
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-    /* Prevent iOS zoom on input focus - inputs must be 16px+ */
-    input, textarea, select {
-      font-family: inherit;
-      font-size: 16px !important;
-      -webkit-appearance: none;
-      appearance: none;
-      border-radius: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; height: 100%; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; overscroll-behavior: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+    body { touch-action: pan-y; position: fixed; width: 100%; }
+    #root { width: 100vw; height: 100vh; height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+    input, textarea, select { font-family: inherit; font-size: 16px !important; -webkit-appearance: none; appearance: none; border-radius: 0; }
     input[type="range"] { appearance: auto; -webkit-appearance: auto; }
-    button {
-      font-family: inherit;
-      touch-action: manipulation;
-      -webkit-appearance: none;
-      appearance: none;
-      user-select: none;
-      -webkit-user-select: none;
-      cursor: pointer;
-    }
-    /* Smooth scrolling everywhere */
+    button { font-family: inherit; touch-action: manipulation; -webkit-appearance: none; appearance: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
     * { -webkit-overflow-scrolling: touch; }
-    /* Hide scrollbars on mobile */
     ::-webkit-scrollbar { width: 0; height: 0; }
-    /* Better focus for accessibility */
-    button:focus-visible, input:focus-visible, textarea:focus-visible {
-      outline: 2px solid #c9a84c;
-      outline-offset: 2px;
-    }
-    /* Prevent images from being dragged */
-    img { -webkit-user-drag: none; user-drag: none; pointer-events: auto; }
-    /* Video fills properly */
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #c9a84c; outline-offset: 2px; }
+    img { -webkit-user-drag: none; user-drag: none; }
     video { object-fit: cover; }
-    /* Active state feedback for buttons */
     button:active { opacity: 0.7; transform: scale(0.98); transition: transform 0.1s; }
-    /* Loading state */
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .loading { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
   </style>
 </head>
 <body>
@@ -493,7 +438,7 @@ function AuthScreen({ onEnter, onOnboard }) {
         }
         setLoading(false);
     };
-    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e 0%,#08040e 100%)", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", color: "#fff" } },
+    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e 0%,#08040e 100%)", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", color: "#fff", overflowY: "auto", WebkitOverflowScrolling: "touch" } },
         React.createElement("style", null, CSS),
         React.createElement("div", { style: { marginBottom: 20 } },
             React.createElement(SLogo, { size: 90 })),
@@ -623,7 +568,7 @@ function OnboardScreen({ onDone, session }) {
         onDone();
     };
     const STEPS = ["Your Role", "About You", "Profile Photo"];
-    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#08040e)", minHeight: "100dvh", display: "flex", flexDirection: "column", color: "#fff" } },
+    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#08040e)", height: "100dvh", display: "flex", flexDirection: "column", color: "#fff", overflow: "hidden" } },
         React.createElement("style", null, CSS),
         React.createElement("div", { style: { padding: "20px 24px 0" } },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
