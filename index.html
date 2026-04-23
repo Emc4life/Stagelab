@@ -554,12 +554,18 @@ function OnboardScreen({ onDone, session }) {
                 bio: (bio || "").trim(),
                 location: (location || "").trim(),
             };
-            // Only set avatar_url if we successfully uploaded
-            if (avatarUrl)
-                updateData.avatar_url = avatarUrl;
-            const { error } = await supabase.from("profiles").update(updateData).eq("id", uid);
-            if (error)
-                console.error("Profile update error:", error);
+            if (avatarUrl) updateData.avatar_url = avatarUrl;
+            // Try UPDATE first
+            const { error: updateErr } = await supabase.from("profiles").update(updateData).eq("id", uid);
+            if (updateErr) {
+                console.warn("Update failed, trying insert:", updateErr);
+                // Fallback: row might not exist yet, INSERT it
+                const { error: insertErr } = await supabase.from("profiles").insert({ id: uid, ...updateData });
+                if (insertErr) console.error("Insert also failed:", insertErr);
+            }
+            // Verify it saved by reading back
+            const { data: check } = await supabase.from("profiles").select("*").eq("id", uid).single();
+            console.log("Profile saved:", check);
         }
         catch (e) {
             console.error("Profile save exception:", e);
