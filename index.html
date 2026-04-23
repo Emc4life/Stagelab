@@ -4,32 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
   <title>StageLab</title>
-  <meta name="description" content="The social platform for musical theatre creators" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="StageLab" />
-  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#08080f" />
-  <meta name="format-detection" content="telephone=no" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://dsegdddquztgkdwyzbai.supabase.co" crossorigin />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
-    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; height: 100%; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; overscroll-behavior: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+    html { -webkit-text-size-adjust: 100%; height: 100%; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
     body { touch-action: pan-y; position: fixed; width: 100%; }
     #root { width: 100vw; height: 100vh; height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
     input, textarea, select { font-family: inherit; font-size: 16px !important; -webkit-appearance: none; appearance: none; border-radius: 0; }
     input[type="range"] { appearance: auto; -webkit-appearance: auto; }
-    button { font-family: inherit; touch-action: manipulation; -webkit-appearance: none; appearance: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+    button { font-family: inherit; touch-action: manipulation; -webkit-appearance: none; cursor: pointer; }
     * { -webkit-overflow-scrolling: touch; }
     ::-webkit-scrollbar { width: 0; height: 0; }
-    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #c9a84c; outline-offset: 2px; }
-    img { -webkit-user-drag: none; user-drag: none; }
-    video { object-fit: cover; }
     button:active { opacity: 0.7; transform: scale(0.98); transition: transform 0.1s; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .loading { animation: pulse 1.5s ease-in-out infinite; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .fade-in { animation: fadeIn 0.3s ease-out; }
   </style>
@@ -2170,404 +2162,273 @@ const INIT_PROFILE_TAPES = [
 ];
 function ProfileScreen({ show }) {
     const [subPage, setSubPage] = useState("main");
-    const [bioTab, setBioTab] = useState("media");
+    const [mediaTab, setMediaTab] = useState("videos"); // videos | liked | tapes
     const PROFILE_DEFAULT = {
         name: "", handle: "", bio: "", location: "", website: "", role: "", avatar: null, banner: null,
     };
     const [profile, setProfile] = useState(PROFILE_DEFAULT);
     const [draft, setDraft] = useState(PROFILE_DEFAULT);
-    // Load everything from Supabase - it is the single source of truth
+    const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
+    const [media, setMedia] = useState([]);
+    const [tapes, setTapes] = useState([]);
+    const [liked, setLiked] = useState([]);
+    const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0, likes: 0 });
+    const [lightbox, setLightbox] = useState(null);
+    // Load from Supabase
     useEffect(() => {
-        supabase.auth.getUser().then(async ({ data: authData }) => {
-            if (!authData.user)
-                return;
+        (async () => {
+            const { data: authData } = await supabase.auth.getUser();
+            if (!authData.user) return;
             const uid = authData.user.id;
-            // Profile - always use DB values, never stale localStorage
             const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).single();
             if (prof) {
                 const p = {
-                    name: prof.name || "",
-                    handle: prof.handle || "",
-                    bio: prof.bio || "",
-                    location: prof.location || "",
-                    website: prof.website || "",
-                    role: prof.role || "",
-                    avatar: prof.avatar_url || null,
-                    banner: prof.banner_url || null,
+                    name: prof.name || "", handle: prof.handle || "", bio: prof.bio || "",
+                    location: prof.location || "", website: prof.website || "", role: prof.role || "",
+                    avatar: prof.avatar_url || null, banner: prof.banner_url || null,
                 };
-                setProfile(p);
-                setDraft(p);
+                setProfile(p); setDraft(p);
             }
-            // Media grid - always fresh from DB
             const { data: mediaRows } = await supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (mediaRows) {
-                setMedia(mediaRows.length > 0
-                    ? mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption }))
-                    : []);
-            }
-            // Self tapes - always fresh from DB
+            if (mediaRows) setMedia(mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption })));
             const { data: tapeRows } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (tapeRows) {
-                setTapes(tapeRows.length > 0
-                    ? tapeRows.map(t => { var _a; return ({ id: t.id, title: t.title, date: ((_a = t.created_at) === null || _a === void 0 ? void 0 : _a.slice(0, 10)) || "", status: t.status || "pending", duration: "0:0" }); })
-                    : []);
-            }
-        });
+            if (tapeRows) setTapes(tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at||"").slice(0,10), status: t.status||"pending", url: t.media_url })));
+            const { data: followerRows } = await supabase.from("follows").select("follower_id").eq("following_id", uid);
+            const { data: followingRows } = await supabase.from("follows").select("following_id").eq("follower_id", uid);
+            const { data: postRows } = await supabase.from("posts").select("id,likes").eq("user_id", uid);
+            setStats({
+                posts: postRows?.length || 0,
+                followers: followerRows?.length || 0,
+                following: followingRows?.length || 0,
+                likes: (postRows || []).reduce((a, p) => a + (p.likes || 0), 0),
+            });
+        })();
     }, []);
-    // Upload file to Supabase Storage and return public URL
-    const uploadToStorage = async (file, bucket, folder, onProgress) => {
+    // Upload to Supabase Storage
+    const uploadToStorage = async (file, bucket, folder) => {
         const token = localStorage.getItem("sb_token");
-        if (!token) {
-            console.warn("No auth token for upload");
-            return null;
-        }
-        if (!file) {
-            console.warn("No file to upload");
-            return null;
-        }
-        // Sanitise filename
-        const rawExt = (file.name || "file").split(".").pop().toLowerCase() || "bin";
-        const ext = rawExt.length > 5 ? "bin" : rawExt;
-        const safeName = Date.now() + "." + ext;
-        const path = folder + "/" + safeName;
-        const url = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/" + bucket + "/" + path;
+        if (!token || !file) return null;
+        const ext = ((file.name || "file").split(".").pop() || "bin").toLowerCase().slice(0, 5);
+        const path = folder + "/" + Date.now() + "." + ext;
         try {
-            if (onProgress)
-                onProgress(10);
-            const res = await fetch(url, {
+            const res = await fetch(`${SUPA_URL}/storage/v1/object/${bucket}/${path}`, {
                 method: "POST",
-                headers: {
-                    "Authorization": "Bearer " + token,
-                    "Content-Type": file.type || "application/octet-stream",
-                    "x-upsert": "true",
-                    "Cache-Control": "3600",
-                },
+                headers: { "Authorization": "Bearer " + token, "Content-Type": file.type || "application/octet-stream", "x-upsert": "true" },
                 body: file,
             });
-            if (onProgress)
-                onProgress(90);
-            if (!res.ok) {
-                const errText = await res.text().catch(() => res.status);
-                console.error("Storage upload failed:", res.status, errText);
-                return null;
-            }
-            if (onProgress)
-                onProgress(100);
-            return "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/" + bucket + "/" + path;
-        }
-        catch (e) {
-            console.error("Storage upload error:", e);
-            return null;
-        }
+            if (!res.ok) { console.error("Upload failed", res.status, await res.text()); return null; }
+            return `${SUPA_URL}/storage/v1/object/public/${bucket}/${path}`;
+        } catch (e) { console.error("Upload error", e); return null; }
     };
+    // Save profile edits (called from EditProfile)
     const saveEdit = async () => {
-        // Optimistically update UI immediately
-        setProfile(Object.assign({}, draft));
-        setSubPage("main");
         show("Saving\u2026");
         const { data } = await supabase.auth.getUser();
-        if (data.user) {
-            const { error } = await supabase.from("profiles").update({
-                name: draft.name,
-                handle: draft.handle,
-                bio: draft.bio,
-                location: draft.location,
-                website: draft.website,
-                role: draft.role,
-                avatar_url: draft.avatar,
-                banner_url: draft.banner,
-            }).eq("id", data.user.id);
-            if (error) {
-                show("\u274c Save failed - try again");
-                return;
-            }
+        if (!data.user) { show("\u26a0\ufe0f Sign in to save"); return; }
+        const uid = data.user.id;
+        // If avatar is a data URI (newly picked), upload it first
+        let avatarUrl = draft.avatar;
+        if (draft.avatar && draft.avatar.startsWith("data:")) {
+            const [header, b64] = draft.avatar.split(",");
+            const mime = (header.match(/:(.*?);/) || [])[1] || "image/jpeg";
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mime });
+            blob.name = "avatar." + (mime.includes("png") ? "png" : "jpg");
+            const up = await uploadToStorage(blob, "avatars", uid);
+            if (up) avatarUrl = up;
         }
-        show("Profile updated \u2713");
+        // Same for banner
+        let bannerUrl = draft.banner;
+        if (draft.banner && draft.banner.startsWith("data:")) {
+            const [header, b64] = draft.banner.split(",");
+            const mime = (header.match(/:(.*?);/) || [])[1] || "image/jpeg";
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mime });
+            blob.name = "banner." + (mime.includes("png") ? "png" : "jpg");
+            const up = await uploadToStorage(blob, "media", uid + "/banners");
+            if (up) bannerUrl = up;
+        }
+        const payload = {
+            name: draft.name, handle: draft.handle, bio: draft.bio,
+            location: draft.location, website: draft.website, role: draft.role,
+            avatar_url: avatarUrl, banner_url: bannerUrl,
+        };
+        const { error } = await supabase.from("profiles").update(payload).eq("id", uid);
+        if (error) {
+            // Fallback to insert
+            const { error: insErr } = await supabase.from("profiles").insert({ id: uid, ...payload });
+            if (insErr) { show("\u274c Save failed"); return; }
+        }
+        const saved = { ...draft, avatar: avatarUrl, banner: bannerUrl };
+        setProfile(saved); setDraft(saved);
+        setSubPage("main");
+        show("\u2713 Profile saved");
     };
-    const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
-    const [media, setMedia] = useState([]); // loaded from Supabase
-    const [tapes, setTapes] = useState([]); // loaded from Supabase
-    const [lightbox, setLightbox] = useState(null); // item to fullscreen
-    // Upload photo/video to Supabase Storage
+    // Upload media (photos/videos)
     const handleMediaUpload = async (e) => {
-        var _a;
         const files = Array.from(e.target.files || []);
-        if (!files.length)
-            return;
+        if (!files.length) return;
         const { data: { user } } = await supabase.auth.getUser();
         for (const file of files) {
             const isVideo = file.type.startsWith("video/");
             const localUrl = URL.createObjectURL(file);
             const tempId = Date.now() + Math.random();
             const caption = file.name.replace(/\.[^.]+$/, "");
-            // Show immediately with local preview
             setMedia(p => [{ id: tempId, type: isVideo ? "video" : "photo", url: localUrl, caption, uploading: true }, ...p]);
             show(isVideo ? "\uD83C\uDFAC Uploading video\u2026" : "\uD83D\uDCF8 Uploading photo\u2026");
-            if (!user) {
-                // Not logged in - keep local only
-                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
-                show("\u26a0\ufe0f Sign in to save media permanently");
-                continue;
-            }
-            const storageUrl = await uploadToStorage(file, "media", user.id, (pct) => {
-                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { progress: pct }) : m));
-            });
+            if (!user) { show("\u26a0\ufe0f Sign in to save"); continue; }
+            const storageUrl = await uploadToStorage(file, "media", user.id);
             if (storageUrl) {
-                // Replace temp local URL with permanent storage URL
-                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { url: storageUrl, uploading: false, progress: null }) : m));
-                // Save to database
-                const { data: row } = await supabase.from("media").insert({
-                    user_id: user.id,
-                    type: isVideo ? "video" : "photo",
-                    url: storageUrl,
-                    caption,
-                });
-                // Update id to the real DB id
-                if ((_a = row === null || row === void 0 ? void 0 : row[0]) === null || _a === void 0 ? void 0 : _a.id) {
-                    setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { id: row[0].id }) : m));
-                }
-                show(isVideo ? "\uD83C\uDFAC Video saved!" : "\uD83D\uDCF8 Photo saved!");
+                setMedia(p => p.map(m => m.id === tempId ? { ...m, url: storageUrl, uploading: false } : m));
+                const { data: row } = await supabase.from("media").insert({ user_id: user.id, type: isVideo ? "video" : "photo", url: storageUrl, caption });
+                if (row?.[0]?.id) setMedia(p => p.map(m => m.id === tempId ? { ...m, id: row[0].id } : m));
+                show("\u2713 Saved");
+            } else {
+                setMedia(p => p.map(m => m.id === tempId ? { ...m, uploading: false } : m));
+                show("\u26a0\ufe0f Upload failed");
             }
-            else {
-                // Upload failed - keep local preview but warn
-                setMedia(p => p.map(m => m.id === tempId ? Object.assign(Object.assign({}, m), { uploading: false }) : m));
-                show("\u26a0\ufe0f Upload failed - check your connection");
-            }
-        }
-    };
-    // Upload self tape to Supabase Storage
-    const handleTapeUpload = async (e) => {
-        var _a, _b;
-        const file = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
-        if (!file)
-            return;
-        const localUrl = URL.createObjectURL(file);
-        const tempId = Date.now();
-        const title = file.name.replace(/\.[^.]+$/, "");
-        const newTape = { id: tempId, title, date: new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }), status: "pending", duration: "0:0", url: localUrl, uploading: true };
-        setTapes(p => [newTape, ...p]);
-        show("\uD83C\uDFAC Uploading self tape\u2026");
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
-            show("\u26a0\ufe0f Sign in to save self tapes permanently");
-            return;
-        }
-        const storageUrl = await uploadToStorage(file, "media", user.id + "/tapes", (pct) => {
-            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { progress: pct }) : t));
-        });
-        if (storageUrl) {
-            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false, progress: null, url: storageUrl }) : t));
-            const { data: row } = await supabase.from("self_tapes").insert({
-                user_id: user.id,
-                title,
-                status: "pending",
-                media_url: storageUrl,
-            });
-            if ((_b = row === null || row === void 0 ? void 0 : row[0]) === null || _b === void 0 ? void 0 : _b.id) {
-                setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { id: row[0].id }) : t));
-            }
-            show("\uD83C\uDFAC Self tape saved!");
-        }
-        else {
-            setTapes(p => p.map(t => t.id === tempId ? Object.assign(Object.assign({}, t), { uploading: false }) : t));
-            show("\u26a0\ufe0f Upload failed - check your connection");
         }
     };
     const removeMedia = async (id) => {
         setMedia(p => p.filter(m => m.id !== id));
-        supabase.from("media").delete().eq("id", id);
-        show("Removed.");
-    };
-    const removeTape = async (id) => {
-        setTapes(p => p.filter(t => t.id !== id));
-        supabase.from("self_tapes").delete().eq("id", id);
-        show("Removed.");
-    };
-    const markTapeSent = async (id) => {
-        setTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: "submitted" }) : t));
-        supabase.from("self_tapes").update({ status: "submitted" }).eq("id", id);
-        show("Marked as submitted \u2713");
+        await supabase.from("media").delete().eq("id", id);
+        show("Removed");
     };
     if (subPage === "edit")
-        return React.createElement(EditProfile, { draft: draft, setDraft: setDraft, onSave: saveEdit, onBack: () => setSubPage("main"), show: show, profile: profile, setProfile: setProfile });
+        return React.createElement(EditProfile, { draft, setDraft, onSave: saveEdit, onBack: () => setSubPage("main"), show, profile, setProfile });
     if (subPage === "settings")
-        return React.createElement(SettingsPage, { onBack: () => setSubPage("main"), show: show });
+        return React.createElement(SettingsPage, { onBack: () => setSubPage("main"), show });
     if (subPage === "privacy")
-        return React.createElement(PrivacyPage, { privacy: privacy, setPrivacy: setPrivacy, onBack: () => setSubPage("main"), show: show });
-    return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", overflowY: "auto", WebkitOverflowScrolling: "touch", position: "relative" } },
-        React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 160, position: "relative" } },
-            React.createElement("label", { style: { position: "absolute", inset: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } },
-                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: async (e) => {
-                        var _a;
-                        const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
-                        if (!f)
-                            return;
-                        // Show local preview immediately
-                        const localUrl = URL.createObjectURL(f);
-                        setProfile(p => (Object.assign(Object.assign({}, p), { banner: localUrl })));
-                        setDraft(p => (Object.assign(Object.assign({}, p), { banner: localUrl })));
-                        show("\u2b06\ufe0f Uploading cover photo\u2026");
-                        // Upload to Supabase Storage
-                        const { data: { user } } = await supabase.auth.getUser();
-                        if (!user) {
-                            show("\u26a0\ufe0f Sign in to save cover photo");
-                            return;
-                        }
-                        const storageUrl = await uploadToStorage(f, "media", user.id + "/banners");
-                        const finalUrl = storageUrl || localUrl;
-                        setProfile(p => (Object.assign(Object.assign({}, p), { banner: finalUrl })));
-                        setDraft(p => (Object.assign(Object.assign({}, p), { banner: finalUrl })));
-                        // Save to profiles table
-                        await supabase.from("profiles").update({ banner_url: finalUrl }).eq("id", user.id);
-                        show("\u2713 Cover photo saved!");
-                    } }),
-                profile.banner
-                    ? React.createElement("img", { loading: "lazy", decoding: "async", src: profile.banner, style: { width: "100%", height: "100%", objectFit: "cover" } })
-                    : React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.25)", letterSpacing: "0.08em" } }, "TAP TO ADD COVER PHOTO")),
-            React.createElement("label", { style: { position: "absolute", bottom: -36, left: 20, cursor: "pointer" } },
-                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: async (e) => {
-                        var _a;
-                        const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
-                        if (!f)
-                            return;
-                        const localUrl = URL.createObjectURL(f);
-                        setProfile(p => (Object.assign(Object.assign({}, p), { avatar: localUrl })));
-                        setDraft(p => (Object.assign(Object.assign({}, p), { avatar: localUrl })));
-                        show("\u2b06\ufe0f Uploading profile photo\u2026");
-                        const { data: { user } } = await supabase.auth.getUser();
-                        if (!user) {
-                            show("\u26a0\ufe0f Sign in to save profile photo");
-                            return;
-                        }
-                        const storageUrl = await uploadToStorage(f, "avatars", user.id);
-                        const finalUrl = storageUrl || localUrl;
-                        setProfile(p => (Object.assign(Object.assign({}, p), { avatar: finalUrl })));
-                        setDraft(p => (Object.assign(Object.assign({}, p), { avatar: finalUrl })));
-                        await supabase.from("profiles").update({ avatar_url: finalUrl }).eq("id", user.id);
-                        show("\u2713 Profile photo saved!");
-                    } }),
-                React.createElement("div", { style: { width: 76, height: 76, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 26 } }, profile.avatar
-                    ? React.createElement("img", { loading: "lazy", decoding: "async", src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
-                    : "AR"),
-                React.createElement("div", { style: { position: "absolute", bottom: 2, right: 2, width: 20, height: 20, background: "#c9a84c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 } }, "\uD83D\uDCF7"))),
-        React.createElement("div", { style: { padding: "48px 18px 16px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" } },
-            React.createElement("div", null,
-                React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, profile.name),
-                React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginTop: 1 } }, profile.role),
-                React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 1 } },
-                    "\uD83D\uDCCD ",
-                    profile.location)),
-            React.createElement("div", { style: { display: "flex", gap: 8 } },
-                React.createElement("button", { onClick: () => setSubPage("edit"), style: { padding: "8px 14px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 10, color: "#c9a84c", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Edit"),
-                React.createElement("button", { onClick: () => setSubPage("settings"), style: { width: 34, height: 34, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontSize: 16, cursor: "pointer" } }, "\u2699"))),
-        React.createElement("div", { style: { padding: "0 18px 12px", fontSize: 13, color: "rgba(255,255,255,0.62)", lineHeight: 1.65 } }, profile.bio),
-        profile.website && React.createElement("div", { style: { padding: "0 18px 14px", fontSize: 12, color: "#c9a84c" } },
-            "\uD83D\uDD17 ",
-            profile.website),
-        React.createElement("div", { style: { display: "flex", gap: 0, background: "rgba(255,255,255,0.04)", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: 18 } }, [["14", "Projects"], ["62", "Collabs"], ["248K", "Views"], ["$1.2K", "Earned"]].map(([n, l], i) => (React.createElement("div", { key: l, style: { flex: 1, textAlign: "center", padding: "13px 6px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
-            React.createElement("div", { style: { fontSize: 17, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, n),
-            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.36)", letterSpacing: "0.07em" } }, l))))),
-        React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 0 } }, [["media", "\uD83D\uDCF8 Photos & Media"], ["tapes", "\uD83C\uDFAC Self Tapes"]].map(([key, label]) => (React.createElement("button", { key: key, onClick: () => setBioTab(key), style: { flex: 1, padding: "11px 0", background: "none", border: "none", color: bioTab === key ? "#c9a84c" : "rgba(255,255,255,0.38)", fontWeight: bioTab === key ? 700 : 400, fontSize: 13, cursor: "pointer", borderBottom: bioTab === key ? "2px solid #c9a84c" : "2px solid transparent" } }, label)))),
-        bioTab === "media" && (React.createElement("div", { style: { padding: "14px 12px 100px" } },
-            React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 14 } },
-                React.createElement("label", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", background: "rgba(201,168,76,0.1)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 12, cursor: "pointer", color: "#c9a84c", fontWeight: 700, fontSize: 13 } },
-                    React.createElement("input", { type: "file", accept: "image/*,video/*", multiple: true, style: { display: "none" }, onChange: handleMediaUpload }),
-                    "\uD83D\uDCF8 Add Photo"),
-                React.createElement("label", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", background: "rgba(76,184,196,0.1)", border: "1px dashed rgba(76,184,196,0.4)", borderRadius: 12, cursor: "pointer", color: "#4cb8c4", fontWeight: 700, fontSize: 13 } },
-                    React.createElement("input", { type: "file", accept: "video/*", style: { display: "none" }, onChange: handleMediaUpload }),
-                    "\uD83C\uDFAC Add Video")),
-            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 3 } },
-                media.map(item => (React.createElement("div", { key: item.id, style: { position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "#1a0a2e", cursor: "pointer" }, onClick: () => setLightbox(item) },
-                    item.type === "photo"
-                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: item.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
-                        : (React.createElement("div", { style: { width: "100%", height: "100%", background: "linear-gradient(160deg,#1a0f1f,#2d1040)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 } },
-                            React.createElement("span", { style: { fontSize: 28 } }, "\uD83C\uDFAC"),
-                            React.createElement("span", { style: { fontSize: 10, color: "rgba(255,255,255,0.5)" } }, item.duration))),
-                    item.type === "video" && !item.uploading && (React.createElement("div", { style: { position: "absolute", top: 5, left: 5, background: "rgba(0,0,0,0.7)", borderRadius: 6, padding: "2px 6px", fontSize: 9, color: "#fff", fontWeight: 700 } }, "\u25B6 VIDEO")),
-                    item.uploading && (React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 4 } },
-                        React.createElement("div", { style: { fontSize: 10, color: "#c9a84c", fontWeight: 700 } }, item.progress ? item.progress + "%" : "\u2b06\ufe0f"))),
-                    React.createElement("button", { onClick: e => { e.stopPropagation(); removeMedia(item.id); }, style: { position: "absolute", top: 4, right: 4, width: 22, height: 22, background: "rgba(0,0,0,0.65)", border: "none", borderRadius: "50%", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 } }, "\u00D7")))),
-                media.length === 0 && (React.createElement("div", { style: { gridColumn: "1/-1", textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.25)" } },
-                    React.createElement("div", { style: { fontSize: 36, marginBottom: 10 } }, "\uD83D\uDCF8"),
-                    React.createElement("div", { style: { fontSize: 14 } }, "No photos or videos yet"),
-                    React.createElement("div", { style: { fontSize: 12, marginTop: 4 } }, "Tap Add Photo to get started")))))),
-        bioTab === "tapes" && (React.createElement("div", { style: { padding: "14px 16px 100px" } },
-            React.createElement("label", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", background: "linear-gradient(135deg,rgba(239,68,68,0.12),rgba(201,168,76,0.08))", border: "1px dashed rgba(239,68,68,0.4)", borderRadius: 14, cursor: "pointer", marginBottom: 16 } },
-                React.createElement("input", { type: "file", accept: "video/*", style: { display: "none" }, onChange: handleTapeUpload }),
-                React.createElement("span", { style: { fontSize: 20 } }, "\u23FA"),
-                React.createElement("div", null,
-                    React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "#fff" } }, "Upload Self Tape"),
-                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)" } }, "MP4, MOV, or any video file"))),
-            React.createElement("div", { style: { background: "rgba(201,168,76,0.7)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, padding: "12px 14px", marginBottom: 16 } },
-                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "#c9a84c", letterSpacing: "0.1em", marginBottom: 5 } }, "SELF TAPE TIPS"),
-                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 } },
-                    "\u2713 Slate first \u2014 name, role, representation",
-                    React.createElement("br", null),
-                    "\u2713 Plain background, good front lighting",
-                    React.createElement("br", null),
-                    "\u2713 Frame from mid-chest up",
-                    React.createElement("br", null),
-                    "\u2713 Slate under 10 seconds")),
-            tapes.length === 0 ? (React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.25)" } },
-                React.createElement("div", { style: { fontSize: 36, marginBottom: 10 } }, "\uD83C\uDFAC"),
-                React.createElement("div", { style: { fontSize: 14 } }, "No self tapes yet"))) : tapes.map(t => (React.createElement("div", { key: t.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12 } },
-                React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start" } },
-                    React.createElement("div", { style: { width: 52, height: 52, borderRadius: 12, background: "linear-gradient(135deg,#1a0f1f,#2d1040)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 } }, "\uD83C\uDFAC"),
-                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
-                            React.createElement("div", { style: { fontWeight: 700, fontSize: 14, fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.3 } }, t.title),
-                            React.createElement("span", { style: { fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 20, flexShrink: 0, marginLeft: 8,
-                                    background: t.status === "submitted" ? "rgba(74,222,128,0.15)" : "rgba(251,146,60,0.15)",
-                                    color: t.status === "submitted" ? "#4ade80" : "#fb923c"
-                                } }, t.status === "submitted" ? "\u2713 Sent" : "\u23f3 Pending")),
-                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4 } },
-                            t.date,
-                            " \u00B7 ",
-                            t.duration))),
-                React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
-                    React.createElement("button", { onClick: () => show("\u25b6 Playing tape\u2026 (Demo)"), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u25B6 Preview"),
-                    React.createElement("button", { onClick: () => show("\uD83D\uDCCB Tape link copied!"), style: { flex: 1, padding: "9px", background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 10, color: "#c9a84c", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u2197 Share"),
-                    t.status === "pending" && (React.createElement("button", { onClick: () => markTapeSent(t.id), style: { flex: 1, padding: "9px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 10, color: "#4ade80", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Mark Sent")),
-                    React.createElement("button", { onClick: () => removeTape(t.id), style: { width: 36, height: 36, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#f87171", fontSize: 16, cursor: "pointer" } }, "\uD83D\uDDD1"))))))),
-        React.createElement("div", { style: { padding: "0 16px 100px" } },
-            React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 } }, [["\uD83D\uDD12", "Privacy", "privacy"]].map(([icon, label, page]) => (React.createElement("button", { key: page, onClick: () => setSubPage(page), style: { padding: "12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, color: "rgba(255,255,255,0.7)", cursor: "pointer", fontWeight: 600, fontSize: 13 } },
-                icon,
-                " ",
-                label))))),
-        lightbox && (React.createElement("div", { onClick: () => setLightbox(null), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 300, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" } },
-            React.createElement("button", { onClick: () => setLightbox(null), style: { position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.12)", border: "none", borderRadius: "50%", width: 36, height: 36, color: "#fff", fontSize: 18, cursor: "pointer" } }, "\u00D7"),
-            lightbox.type === "photo"
-                ? React.createElement("img", { loading: "lazy", decoding: "async", src: lightbox.url, style: { maxWidth: "96vw", maxHeight: "80vh", borderRadius: 14, objectFit: "contain" } })
-                : React.createElement("div", { style: { width: "80vw", aspectRatio: "16/9", background: "#111", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 } }, "\uD83C\uDFAC"),
-            React.createElement("div", { style: { marginTop: 14, fontSize: 13, color: "rgba(255,255,255,0.6)", textAlign: "center" } }, lightbox.caption)))));
+        return React.createElement(PrivacyPage, { privacy, setPrivacy, onBack: () => setSubPage("main"), show });
+    // Helper to format counts like TikTok (1.2K, 45.7K, 1.2M)
+    const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(1) + "M" : n >= 1e3 ? (n/1e3).toFixed(1) + "K" : String(n);
+    // Filter media by tab
+    const visibleMedia = mediaTab === "videos" ? media.filter(m => m.type === "video")
+        : mediaTab === "tapes" ? tapes
+        : liked;
+    return React.createElement("div", { style: { height: "calc(100dvh - 72px)", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#08080f" } },
+        // Cover banner - view only (tap goes to Edit Profile)
+        React.createElement("div", { onClick: () => setSubPage("edit"), style: { background: profile.banner ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 140, position: "relative", cursor: "pointer", overflow: "hidden" } },
+            profile.banner && React.createElement("img", { loading: "lazy", decoding: "async", src: profile.banner, style: { width: "100%", height: "100%", objectFit: "cover" } }),
+            !profile.banner && React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", fontSize: 12, letterSpacing: "0.15em" } }, "EDIT PROFILE TO ADD COVER")
+        ),
+        // Avatar + stats row (TikTok style)
+        React.createElement("div", { style: { padding: "0 20px", marginTop: -44, position: "relative" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 18, marginBottom: 14 } },
+                React.createElement("div", { style: { width: 90, height: 90, borderRadius: "50%", border: "3px solid #08080f", background: profile.avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 32, color: "#1a0a2e", flexShrink: 0 } },
+                    profile.avatar
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : (profile.name || "U").slice(0, 2).toUpperCase()
+                ),
+                // Stats 3-up
+                React.createElement("div", { style: { display: "flex", flex: 1, justifyContent: "space-around", paddingBottom: 4 } },
+                    [["posts", "Posts"], ["followers", "Followers"], ["following", "Following"]].map(([k, l]) =>
+                        React.createElement("div", { key: k, style: { textAlign: "center" } },
+                            React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, fmt(stats[k])),
+                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.04em", marginTop: 2 } }, l)
+                        )
+                    )
+                )
+            ),
+            // Name + handle + role
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 2 } }, profile.name || "Your Name"),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 2 } }, profile.handle || "@handle"),
+            profile.role && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8, fontWeight: 600 } }, profile.role),
+            // Bio
+            profile.bio && React.createElement("div", { style: { fontSize: 13.5, color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginBottom: 8, whiteSpace: "pre-wrap" } }, profile.bio),
+            // Location / website
+            (profile.location || profile.website) && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 } },
+                profile.location && React.createElement("span", null, "\uD83D\uDCCD " + profile.location),
+                profile.website && React.createElement("a", { href: profile.website.startsWith("http") ? profile.website : "https://" + profile.website, target: "_blank", rel: "noopener", style: { color: "#c9a84c", textDecoration: "none" } }, "\uD83D\uDD17 " + profile.website)
+            ),
+            // Total likes badge
+            stats.likes > 0 && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 14 } }, "\u2764\uFE0F " + fmt(stats.likes) + " likes"),
+            // Action buttons
+            React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } },
+                React.createElement("button", { onClick: () => setSubPage("edit"), style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 8, color: "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Edit Profile"),
+                React.createElement("button", { onClick: () => setSubPage("settings"), style: { width: 44, padding: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 16, cursor: "pointer" } }, "\u2699\uFE0F")
+            )
+        ),
+        // Tabs
+        React.createElement("div", { style: { display: "flex", borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            [["videos", "\uD83C\uDFAC Videos"], ["tapes", "\uD83C\uDFAD Self Tapes"], ["liked", "\u2764\uFE0F Liked"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setMediaTab(k), style: { flex: 1, padding: "13px 0", background: "none", border: "none", borderBottom: mediaTab === k ? "2px solid #c9a84c" : "2px solid transparent", color: mediaTab === k ? "#c9a84c" : "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: mediaTab === k ? 700 : 500, cursor: "pointer", letterSpacing: "0.02em" } }, l)
+            )
+        ),
+        // Upload button (only on videos tab)
+        mediaTab === "videos" && React.createElement("label", { style: { display: "block", margin: "14px 16px", padding: "11px", background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, textAlign: "center", color: "#c9a84c", fontSize: 13, fontWeight: 600, cursor: "pointer" } },
+            React.createElement("input", { type: "file", accept: "image/*,video/*", multiple: true, onChange: handleMediaUpload, style: { display: "none" } }),
+            "\uD83D\uDCE4  Upload Photos or Videos"
+        ),
+        // Grid (3-col like TikTok)
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, padding: "0 0 80px" } },
+            visibleMedia.length === 0
+                ? React.createElement("div", { style: { gridColumn: "1 / -1", padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } },
+                    mediaTab === "videos" ? "No videos yet. Upload your first one above." :
+                    mediaTab === "tapes" ? "No self tapes yet. Upload from Studio \u2192 Casting \u2192 Self Tapes." :
+                    "Posts you like will show up here.")
+                : visibleMedia.map(m =>
+                    React.createElement("div", { key: m.id, onClick: () => setLightbox(m), style: { aspectRatio: "9/16", background: "#1a0a2e", position: "relative", overflow: "hidden", cursor: "pointer" } },
+                        m.type === "video" || m.url?.endsWith(".mp4") || m.url?.endsWith(".webm")
+                            ? React.createElement("video", { src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" }, playsInline: true, muted: true, preload: "metadata" })
+                            : m.url
+                                ? React.createElement("img", { loading: "lazy", decoding: "async", src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, opacity: 0.5 } }, m.type === "video" ? "\uD83C\uDFAC" : "\uD83C\uDFAD"),
+                        m.type === "video" && React.createElement("div", { style: { position: "absolute", bottom: 4, left: 4, background: "rgba(0,0,0,0.7)", padding: "2px 5px", borderRadius: 3, fontSize: 9, color: "#fff" } }, "\u25B6"),
+                        m.uploading && React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11 } }, "Uploading\u2026")
+                    )
+                )
+        ),
+        // Lightbox
+        lightbox && React.createElement("div", { onClick: () => setLightbox(null), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
+            lightbox.type === "video"
+                ? React.createElement("video", { src: lightbox.url, controls: true, autoPlay: true, playsInline: true, style: { maxWidth: "100%", maxHeight: "90vh" } })
+                : React.createElement("img", { src: lightbox.url, style: { maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" } }),
+            React.createElement("button", { onClick: (e) => { e.stopPropagation(); removeMedia(lightbox.id); setLightbox(null); }, style: { position: "absolute", top: 20, right: 20, background: "rgba(239,68,68,0.9)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDDD1 Delete")
+        )
+    );
 }
 function EditProfile({ draft, setDraft, onSave, onBack, show, profile, setProfile }) {
-    const field = (label, key, multiline = false, placeholder = "") => (React.createElement("div", { style: { marginBottom: 14 } },
+    const pickImage = (key) => (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = ev => {
+            setDraft(p => ({ ...p, [key]: ev.target.result }));
+        };
+        r.readAsDataURL(f);
+    };
+    const field = (label, key, multiline = false, placeholder = "") => React.createElement("div", { style: { marginBottom: 14 } },
         React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, label),
         multiline
-            ? React.createElement("textarea", { value: draft[key] || "", onChange: e => setDraft(p => (Object.assign(Object.assign({}, p), { [key]: e.target.value }))), rows: 3, style: Object.assign(Object.assign({}, inputSt), { resize: "none" }), placeholder: placeholder })
-            : React.createElement("input", { value: draft[key] || "", onChange: e => setDraft(p => (Object.assign(Object.assign({}, p), { [key]: e.target.value }))), style: inputSt, placeholder: placeholder })));
-    return (React.createElement(SubPage, { title: "Edit Profile", onBack: onBack },
+            ? React.createElement("textarea", { value: draft[key] || "", onChange: e => setDraft(p => ({ ...p, [key]: e.target.value })), rows: 3, style: { ...inputSt, resize: "none" }, placeholder })
+            : React.createElement("input", { value: draft[key] || "", onChange: e => setDraft(p => ({ ...p, [key]: e.target.value })), style: inputSt, placeholder })
+    );
+    return React.createElement(SubPage, { title: "Edit Profile", onBack },
+        // Cover photo
+        React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "COVER PHOTO"),
+        React.createElement("label", { style: { display: "block", marginBottom: 20, cursor: "pointer", position: "relative", borderRadius: 10, overflow: "hidden", background: draft.banner ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040)", height: 120 } },
+            React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: pickImage("banner") }),
+            draft.banner && React.createElement("img", { loading: "lazy", src: draft.banner, style: { width: "100%", height: "100%", objectFit: "cover" } }),
+            React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: draft.banner ? "rgba(0,0,0,0.3)" : "transparent", color: "#fff", fontSize: 12, letterSpacing: "0.1em" } }, draft.banner ? "\uD83D\uDCF7  CHANGE COVER" : "\uD83D\uDCF7  TAP TO ADD COVER")
+        ),
+        // Avatar
         React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 } },
             React.createElement("label", { style: { cursor: "pointer", position: "relative" } },
-                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => {
-                        var _a;
-                        const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
-                        if (!f)
-                            return;
-                        const r = new FileReader();
-                        r.onload = ev => {
-                            setDraft(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result })));
-                            setProfile(p => (Object.assign(Object.assign({}, p), { avatar: ev.target.result })));
-                        };
-                        r.readAsDataURL(f);
-                    } }),
-                React.createElement("div", { style: { width: 82, height: 82, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28 } }, (draft.avatar || profile.avatar)
-                    ? React.createElement("img", { loading: "lazy", decoding: "async", src: draft.avatar || profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
-                    : "AR"),
-                React.createElement("div", { style: { position: "absolute", bottom: 2, right: 2, width: 24, height: 24, background: "#c9a84c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 } }, "\uD83D\uDCF7")),
-            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8 } }, "Tap to change photo")),
+                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: pickImage("avatar") }),
+                React.createElement("div", { style: { width: 86, height: 86, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28 } },
+                    draft.avatar
+                        ? React.createElement("img", { loading: "lazy", src: draft.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : (draft.name || "U").slice(0, 2).toUpperCase()
+                ),
+                React.createElement("div", { style: { position: "absolute", bottom: 2, right: 2, width: 24, height: 24, background: "#c9a84c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 } }, "\uD83D\uDCF7")
+            ),
+            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8 } }, "Profile Photo")
+        ),
         field("DISPLAY NAME", "name", false, "Your stage name"),
         field("HANDLE", "handle", false, "@yourhandle"),
         field("ROLE / TITLE", "role", false, "Composer, Lyricist, Actor\u2026"),
@@ -2575,8 +2436,10 @@ function EditProfile({ draft, setDraft, onSave, onBack, show, profile, setProfil
         field("LOCATION", "location", false, "City, State"),
         field("WEBSITE", "website", false, "yoursite.com"),
         React.createElement("button", { onClick: onSave, style: primaryBtn("#c9a84c") }, "Save Changes"),
-        React.createElement("button", { onClick: onBack, style: ghostBtn }, "Cancel")));
+        React.createElement("button", { onClick: onBack, style: ghostBtn }, "Cancel")
+    );
 }
+
 function PrivacyPage({ privacy, setPrivacy, onBack, show }) {
     const toggle = (key) => { setPrivacy(p => (Object.assign(Object.assign({}, p), { [key]: !p[key] }))); show("Privacy setting updated"); };
     const sections = [
