@@ -22,8 +22,6 @@
     * { -webkit-overflow-scrolling: touch; }
     ::-webkit-scrollbar { width: 0; height: 0; }
     button:active { opacity: 0.7; transform: scale(0.98); transition: transform 0.1s; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .fade-in { animation: fadeIn 0.3s ease-out; }
   </style>
 </head>
 <body>
@@ -675,6 +673,7 @@ function MainApp({ tab, setTab, session }) {
     const [toast, setToast] = useState("");
     const [liveRoom, setLiveRoom] = useState(null);
     const [showInbox, setShowInbox] = useState(false);
+    const [viewingUser, setViewingUser] = useState(null); // view another user's profile
     // FIX 1: persisted state survives refresh
     const [videos, setVideos] = useState(INIT_VIDEOS); // seeded + DB loaded
     const [comments, setComments] = useState(INIT_COMMENTS); // seeded + DB loaded
@@ -698,17 +697,18 @@ function MainApp({ tab, setTab, session }) {
                 n.label === "Live" && tab !== i && React.createElement("span", { style: { position: "absolute", top: -2, right: -2, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: "1.5px solid #08080f", animation: "liveDot 1.5s infinite" } })),
             React.createElement("span", { style: { fontSize: 9, fontWeight: tab === i ? 700 : 400, color: tab === i ? "#c9a84c" : "rgba(255,255,255,0.35)", letterSpacing: "0.04em" } }, n.label))))),
         React.createElement("div", { style: { flex: 1, overflow: "hidden", position: "relative" } },
-            tab === 0 && React.createElement(FeedScreen, { videos: videos, setVideos: setVideos, comments: comments, setComments: setComments, show: show }),
+            tab === 0 && React.createElement(FeedScreen, { videos: videos, setVideos: setVideos, comments: comments, setComments: setComments, show: show, onViewUser: (id) => setViewingUser(id) }),
             tab === 1 && React.createElement(CreateScreen, { show: show, setTab: setTab }),
-            tab === 2 && React.createElement(DiscoverScreen, { show: show }),
+            tab === 2 && React.createElement(DiscoverScreen, { show: show, onViewUser: (id) => setViewingUser(id) }),
             tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, setLiveRoom: setLiveRoom }),
             tab === 4 && React.createElement(ProfileScreen, { show: show })),
         liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
         showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
+        viewingUser && React.createElement(UserProfileView, { userId: viewingUser, onBack: () => setViewingUser(null), show: show, onViewUser: (id) => setViewingUser(id) }),
         toast && React.createElement(Toast, { msg: toast })));
 }
 // --------------------------- FEED -----------------------------------
-function FeedScreen({ videos, setVideos, comments, setComments, show }) {
+function FeedScreen({ videos, setVideos, comments, setComments, show, onViewUser }) {
     const [cur, setCur] = useState(0);
     const [liked, setLiked] = useState({});
     const [reposted, setReposted] = useState({});
@@ -876,7 +876,7 @@ function VideoCard({ vid, active, offset, liked, reposted, commentCount, onLike,
             React.createElement("div", { style: { width: 56, height: 56, borderRadius: "50%", background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 } }, "\u25B6"))),
         React.createElement("div", { style: { position: "absolute", top: 14, left: 14, background: "rgba(0,0,0,0.55)", borderRadius: 20, padding: "4px 12px", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.8)" } }, vid.type === "video" ? "\u25b6 VIDEO" : vid.type === "lyrics" ? "\uD83D\uDCDD LYRICS" : "\uD83C\uDFB5 AUDIO"),
         React.createElement("div", { style: { position: "absolute", bottom: 0, left: 0, right: 54, padding: "0 15px 15px", background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 9, marginBottom: 8, cursor: "pointer" }, onClick: onProfile },
+            React.createElement("div", { onClick: () => vid.user_id && onViewUser && onViewUser(vid.user_id), style: { display: "flex", alignItems: "center", gap: 9, marginBottom: 8, cursor: "pointer" } },
                 React.createElement("div", { style: { width: 38, height: 38, borderRadius: "50%", background: vid.accent + "33", border: `2px solid ${vid.accent}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 } }, vid.avatar_url
                     ? React.createElement("img", { loading: "lazy", decoding: "async", src: vid.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
                     : vid.avatar),
@@ -1662,7 +1662,7 @@ const DISCOVER_CALLS = [
     { id: 3, title: "Composer - Neon Dreams", company: "Independent", deadline: "May 10", type: "Collab Call", paid: false, remote: true, accent: "#a084e8", desc: "Electronic + orchestral hybrid. Looking for composer with film score background." },
     { id: 4, title: "Lead Vocalist - Static", company: "New Works Festival", deadline: "May 15", type: "Collab Call", paid: true, remote: true, accent: "#e8a87c", desc: "Self-tape accepted. Contemporary sound. Strong actor-singer." },
 ];
-function DiscoverScreen({ show }) {
+function DiscoverScreen({ show, onViewUser }) {
     const [tab, setTab] = useState("people");
     const [query, setQuery] = useState("");
     const [followed, setFollowed] = useState({});
@@ -1755,7 +1755,7 @@ function DiscoverScreen({ show }) {
                     React.createElement("div", { style: { fontSize: 13 } }, "Loading people\u2026"))
                 : filteredPeople.length === 0
                     ? React.createElement(EmptyState, { query: query, type: "people" })
-                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { cursor: "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
                         React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 10 } },
                             React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg,${p.accent}44,${p.accent}22)`, border: `2px solid ${p.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, flexShrink: 0 } }, p.avatar),
                             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -1766,7 +1766,7 @@ function DiscoverScreen({ show }) {
                                         React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 } },
                                             "\uD83D\uDCCD ",
                                             p.location)),
-                                    React.createElement("button", { onClick: () => toggleFollow(p.id), style: { flexShrink: 0, padding: "7px 14px", background: (followed[p.id] || p.following) ? "rgba(255,255,255,0.08)" : p.accent, border: `1px solid ${(followed[p.id] || p.following) ? "rgba(255,255,255,0.15)" : p.accent}`, borderRadius: 20, color: (followed[p.id] || p.following) ? "rgba(255,255,255,0.6)" : "#1a0a2e", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, (followed[p.id] || p.following) ? "Following" : "Follow")))),
+                                    React.createElement("button", { onClick: (e) => { e.stopPropagation(); toggleFollow(p.id); }, style: { flexShrink: 0, padding: "7px 14px", background: (followed[p.id] || p.following) ? "rgba(255,255,255,0.08)" : p.accent, border: `1px solid ${(followed[p.id] || p.following) ? "rgba(255,255,255,0.15)" : p.accent}`, borderRadius: 20, color: (followed[p.id] || p.following) ? "rgba(255,255,255,0.6)" : "#1a0a2e", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, (followed[p.id] || p.following) ? "Following" : "Follow")))),
                         React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 10 } }, p.bio),
                         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 } }, p.skills.map(s => (React.createElement("span", { key: s, style: { background: p.accent + "18", border: `1px solid ${p.accent}33`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: p.accent, fontWeight: 600 } }, s)))),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
@@ -2160,6 +2160,132 @@ const INIT_PROFILE_TAPES = [
     { id: 2, title: "Hamilton - Eliza Hamilton", date: "Mar 2026", status: "pending", duration: "4:5" },
     { id: 3, title: "Sweeney Todd - Mrs. Lovett", date: "Feb 2026", status: "submitted", duration: "2:58" },
 ];
+function UserProfileView({ userId, onBack, show, onViewUser }) {
+    const [profile, setProfile] = useState(null);
+    const [posts, setPosts] = useState([]);
+    const [mediaRows, setMediaRows] = useState([]);
+    const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0, likes: 0 });
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [lightbox, setLightbox] = useState(null);
+    const [myId, setMyId] = useState(null);
+    useEffect(() => {
+        (async () => {
+            setLoading(true);
+            const { data: auth } = await supabase.auth.getUser();
+            const me = auth?.user?.id || null;
+            setMyId(me);
+            const { data: prof } = await supabase.from("profiles").select("*").eq("id", userId).single();
+            if (prof) setProfile(prof);
+            const { data: postRows } = await supabase.from("posts").select("*").eq("user_id", userId).eq("visibility", "public").order("created_at", { ascending: false });
+            setPosts(postRows || []);
+            const { data: mRows } = await supabase.from("media").select("*").eq("user_id", userId).order("created_at", { ascending: false });
+            setMediaRows(mRows || []);
+            const { data: followerRows } = await supabase.from("follows").select("follower_id").eq("following_id", userId);
+            const { data: followingRows } = await supabase.from("follows").select("following_id").eq("follower_id", userId);
+            setStats({
+                posts: (postRows || []).length,
+                followers: (followerRows || []).length,
+                following: (followingRows || []).length,
+                likes: (postRows || []).reduce((a, p) => a + (p.likes || 0), 0),
+            });
+            if (me) {
+                const { data: followCheck } = await supabase.from("follows").select("*").eq("follower_id", me).eq("following_id", userId);
+                setIsFollowing((followCheck || []).length > 0);
+            }
+            setLoading(false);
+        })();
+    }, [userId]);
+    const toggleFollow = async () => {
+        if (!myId) { show("Sign in to follow"); return; }
+        if (myId === userId) return;
+        if (isFollowing) {
+            setIsFollowing(false);
+            setStats(s => ({ ...s, followers: s.followers - 1 }));
+            await supabase.from("follows").delete().eq("follower_id", myId).eq("following_id", userId);
+            show("Unfollowed");
+        } else {
+            setIsFollowing(true);
+            setStats(s => ({ ...s, followers: s.followers + 1 }));
+            await supabase.from("follows").insert({ follower_id: myId, following_id: userId });
+            show("Following \u2713");
+        }
+    };
+    const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(1) + "M" : n >= 1e3 ? (n/1e3).toFixed(1) + "K" : String(n);
+    const merged = [
+        ...posts.map(p => ({ id: "post-" + p.id, type: p.type || "video", url: p.media_url || p.thumbnail_url, caption: p.title || "" })),
+        ...mediaRows.map(m => ({ id: "media-" + m.id, type: m.type, url: m.url, caption: m.caption || "" })),
+    ];
+    if (loading) return React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.5)" } }, "Loading\u2026");
+    if (!profile) return React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 200, padding: 20, color: "#fff" } },
+        React.createElement("button", { onClick: onBack, style: { background: "none", border: "none", color: "#fff", fontSize: 16, marginBottom: 20, cursor: "pointer" } }, "\u2190 Back"),
+        React.createElement("div", { style: { textAlign: "center", marginTop: 60, color: "rgba(255,255,255,0.5)" } }, "Profile not found")
+    );
+    return React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 200, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        // Back button floating on cover
+        React.createElement("button", { onClick: onBack, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", left: 16, zIndex: 10, width: 36, height: 36, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)", border: "none", borderRadius: "50%", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2190"),
+        // Cover
+        React.createElement("div", { style: { background: profile.banner_url ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 140, overflow: "hidden" } },
+            profile.banner_url && React.createElement("img", { loading: "lazy", src: profile.banner_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+        ),
+        // Avatar + stats
+        React.createElement("div", { style: { padding: "0 20px", marginTop: -44 } },
+            React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 18, marginBottom: 14 } },
+                React.createElement("div", { style: { width: 90, height: 90, borderRadius: "50%", border: "3px solid #08080f", background: profile.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 32, color: "#1a0a2e", flexShrink: 0 } },
+                    profile.avatar_url
+                        ? React.createElement("img", { loading: "lazy", src: profile.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : (profile.name || "U").slice(0, 2).toUpperCase()
+                ),
+                React.createElement("div", { style: { display: "flex", flex: 1, justifyContent: "space-around", paddingBottom: 4 } },
+                    [["posts", "Posts"], ["followers", "Followers"], ["following", "Following"]].map(([k, l]) =>
+                        React.createElement("div", { key: k, style: { textAlign: "center" } },
+                            React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, fmt(stats[k])),
+                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 } }, l)
+                        )
+                    )
+                )
+            ),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 2 } }, profile.name || "User"),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 2 } }, profile.handle || "@user"),
+            profile.role && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8, fontWeight: 600 } }, profile.role),
+            profile.bio && React.createElement("div", { style: { fontSize: 13.5, color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginBottom: 8, whiteSpace: "pre-wrap" } }, profile.bio),
+            (profile.location || profile.website) && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 } },
+                profile.location && React.createElement("span", null, "\uD83D\uDCCD " + profile.location),
+                profile.website && React.createElement("a", { href: profile.website.startsWith("http") ? profile.website : "https://" + profile.website, target: "_blank", rel: "noopener", style: { color: "#c9a84c", textDecoration: "none" } }, "\uD83D\uDD17 " + profile.website)
+            ),
+            stats.likes > 0 && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 14 } }, "\u2764\uFE0F " + fmt(stats.likes) + " likes"),
+            // Follow + Message buttons (only if not viewing self)
+            myId !== userId && React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } },
+                React.createElement("button", { onClick: toggleFollow, style: { flex: 1, padding: "11px", background: isFollowing ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: isFollowing ? "1px solid rgba(255,255,255,0.15)" : "none", borderRadius: 8, color: isFollowing ? "#fff" : "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, isFollowing ? "Following" : "Follow"),
+                React.createElement("button", { onClick: () => show("\uD83D\uDCAC DM opened"), style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message")
+            )
+        ),
+        // Tab header
+        React.createElement("div", { style: { borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "13px 20px", fontSize: 12, fontWeight: 700, color: "#c9a84c", letterSpacing: "0.05em" } }, "\uD83C\uDFAC POSTS"),
+        // Grid
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, padding: "0 0 80px" } },
+            merged.length === 0
+                ? React.createElement("div", { style: { gridColumn: "1 / -1", padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No posts yet")
+                : merged.map(m =>
+                    React.createElement("div", { key: m.id, onClick: () => setLightbox(m), style: { aspectRatio: "9/16", background: "#1a0a2e", position: "relative", overflow: "hidden", cursor: "pointer" } },
+                        m.type === "video" || (m.url || "").match(/\.(mp4|webm|mov)$/i)
+                            ? React.createElement("video", { src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" }, playsInline: true, muted: true, preload: "metadata" })
+                            : m.url
+                                ? React.createElement("img", { loading: "lazy", src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, opacity: 0.5 } }, m.type === "video" ? "\uD83C\uDFAC" : "\uD83C\uDFAD"),
+                        m.type === "video" && React.createElement("div", { style: { position: "absolute", bottom: 4, left: 4, background: "rgba(0,0,0,0.7)", padding: "2px 5px", borderRadius: 3, fontSize: 9, color: "#fff" } }, "\u25B6")
+                    )
+                )
+        ),
+        // Lightbox
+        lightbox && React.createElement("div", { onClick: () => setLightbox(null), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
+            lightbox.type === "video"
+                ? React.createElement("video", { src: lightbox.url, controls: true, autoPlay: true, playsInline: true, style: { maxWidth: "100%", maxHeight: "90vh" } })
+                : React.createElement("img", { src: lightbox.url, style: { maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" } })
+        )
+    );
+}
+
 function ProfileScreen({ show }) {
     const [subPage, setSubPage] = useState("main");
     const [mediaTab, setMediaTab] = useState("videos"); // videos | liked | tapes
@@ -2180,6 +2306,7 @@ function ProfileScreen({ show }) {
             const { data: authData } = await supabase.auth.getUser();
             if (!authData.user) return;
             const uid = authData.user.id;
+            // Load profile
             const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).single();
             if (prof) {
                 const p = {
@@ -2189,13 +2316,32 @@ function ProfileScreen({ show }) {
                 };
                 setProfile(p); setDraft(p);
             }
+            // Load MEDIA (photos/videos uploaded directly to profile)
             const { data: mediaRows } = await supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (mediaRows) setMedia(mediaRows.map(m => ({ id: m.id, type: m.type, url: m.url, caption: m.caption })));
+            // Load POSTS (videos/audio/lyrics/posters published to feed)
+            const { data: postRows } = await supabase.from("posts").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+            // Merge: posts + direct media, both show on profile
+            const merged = [];
+            (postRows || []).forEach(p => {
+                merged.push({
+                    id: "post-" + p.id, type: p.type || "video",
+                    url: p.media_url || p.thumbnail_url, caption: p.title || p.caption || "",
+                    likes: p.likes || 0, isPost: true, postId: p.id,
+                });
+            });
+            (mediaRows || []).forEach(m => {
+                merged.push({
+                    id: "media-" + m.id, type: m.type, url: m.url, caption: m.caption || "",
+                    mediaId: m.id,
+                });
+            });
+            setMedia(merged);
+            // Self tapes
             const { data: tapeRows } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (tapeRows) setTapes(tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at||"").slice(0,10), status: t.status||"pending", url: t.media_url })));
+            if (tapeRows) setTapes(tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at || "").slice(0, 10), status: t.status || "pending", url: t.media_url })));
+            // Stats
             const { data: followerRows } = await supabase.from("follows").select("follower_id").eq("following_id", uid);
             const { data: followingRows } = await supabase.from("follows").select("following_id").eq("follower_id", uid);
-            const { data: postRows } = await supabase.from("posts").select("id,likes").eq("user_id", uid);
             setStats({
                 posts: postRows?.length || 0,
                 followers: followerRows?.length || 0,
@@ -2293,9 +2439,13 @@ function ProfileScreen({ show }) {
             }
         }
     };
-    const removeMedia = async (id) => {
-        setMedia(p => p.filter(m => m.id !== id));
-        await supabase.from("media").delete().eq("id", id);
+    const removeMedia = async (item) => {
+        setMedia(p => p.filter(m => m.id !== item.id));
+        if (item.isPost) {
+            await supabase.from("posts").delete().eq("id", item.postId);
+        } else if (item.mediaId) {
+            await supabase.from("media").delete().eq("id", item.mediaId);
+        }
         show("Removed");
     };
     if (subPage === "edit")
@@ -2307,7 +2457,7 @@ function ProfileScreen({ show }) {
     // Helper to format counts like TikTok (1.2K, 45.7K, 1.2M)
     const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(1) + "M" : n >= 1e3 ? (n/1e3).toFixed(1) + "K" : String(n);
     // Filter media by tab
-    const visibleMedia = mediaTab === "videos" ? media.filter(m => m.type === "video")
+    const visibleMedia = mediaTab === "videos" ? media
         : mediaTab === "tapes" ? tapes
         : liked;
     return React.createElement("div", { style: { height: "calc(100dvh - 72px)", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#08080f" } },
@@ -2388,7 +2538,7 @@ function ProfileScreen({ show }) {
             lightbox.type === "video"
                 ? React.createElement("video", { src: lightbox.url, controls: true, autoPlay: true, playsInline: true, style: { maxWidth: "100%", maxHeight: "90vh" } })
                 : React.createElement("img", { src: lightbox.url, style: { maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" } }),
-            React.createElement("button", { onClick: (e) => { e.stopPropagation(); removeMedia(lightbox.id); setLightbox(null); }, style: { position: "absolute", top: 20, right: 20, background: "rgba(239,68,68,0.9)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDDD1 Delete")
+            React.createElement("button", { onClick: (e) => { e.stopPropagation(); removeMedia(lightbox); setLightbox(null); }, style: { position: "absolute", top: 20, right: 20, background: "rgba(239,68,68,0.9)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDDD1 Delete")
         )
     );
 }
