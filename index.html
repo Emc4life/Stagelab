@@ -765,6 +765,19 @@ function FeedScreen({ videos, setVideos, comments, setComments, show, onViewUser
             }
         });
     }, []);
+    // Load which posts current user has liked
+    useEffect(() => {
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data: likeRows } = await supabase.from("likes").select("post_id").eq("user_id", user.id);
+            if (likeRows) {
+                const map = {};
+                likeRows.forEach(r => { map[r.post_id] = true; });
+                setLiked(map);
+            }
+        })();
+    }, []);
     const swipe = (d) => {
         if (d === "up")
             setCur(p => Math.min(p + 1, videos.length - 1));
@@ -904,16 +917,69 @@ const Btn = ({ icon, label, onClick, accent, active }) => (React.createElement("
 // -- Comments Modal --------------------------------------------------
 function CommentsModal({ vid, comments, onAdd, onClose }) {
     const [text, setText] = useState("");
-    const [localComments, setLocalComments] = useState(comments);
+    const [localComments, setLocalComments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [me, setMe] = useState(null);
+    const [myProfile, setMyProfile] = useState(null);
     const endRef = useRef(null);
     useEffect(() => { var _a; (_a = endRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" }); }, [localComments]);
-    const submit = () => {
-        if (!text.trim())
-            return;
-        const nc = { id: Date.now(), user: "Alex Rivera", avatar: "AR", text: text.trim(), time: "now", likes: 0, liked: false };
-        setLocalComments(p => [...p, nc]);
-        onAdd(text.trim());
+    // Load user + comments for this post from Supabase
+    useEffect(() => {
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setMe(user);
+            if (user) {
+                const { data: prof } = await supabase.from("profiles").select("name,handle,avatar_url").eq("id", user.id).single();
+                if (prof) setMyProfile(prof);
+            }
+            // Only load real comments for posts that have a real DB id (not local-* or seed numeric)
+            if (typeof vid.id === "string" && vid.id.length > 20) {
+                const { data: rows } = await supabase.from("comments")
+                    .select("*, author:user_id(name,avatar_url)")
+                    .eq("post_id", vid.id)
+                    .order("created_at", { ascending: true });
+                if (rows) {
+                    setLocalComments(rows.map(c => {
+                        var _a, _b;
+                        return {
+                            id: c.id,
+                            user: ((_a = c.author) === null || _a === void 0 ? void 0 : _a.name) || "User",
+                            avatar: (((_b = c.author) === null || _b === void 0 ? void 0 : _b.name) || "U").slice(0, 2).toUpperCase(),
+                            text: c.text,
+                            time: new Date(c.created_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+                            likes: 0, liked: false,
+                        };
+                    }));
+                }
+            } else if (Array.isArray(comments)) {
+                setLocalComments(comments);
+            }
+            setLoading(false);
+        })();
+    }, [vid.id]);
+    const submit = async () => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        const tempId = "tmp-" + Date.now();
+        const newComment = {
+            id: tempId,
+            user: (myProfile === null || myProfile === void 0 ? void 0 : myProfile.name) || "You",
+            avatar: ((myProfile === null || myProfile === void 0 ? void 0 : myProfile.name) || "Y").slice(0, 2).toUpperCase(),
+            text: trimmed, time: "now", likes: 0, liked: false,
+        };
+        setLocalComments(p => [...p, newComment]);
+        onAdd(trimmed);
         setText("");
+        // Save to DB if we have a user and this is a real post
+        if (me && typeof vid.id === "string" && vid.id.length > 20) {
+            const { data: row, error } = await supabase.from("comments").insert({
+                post_id: vid.id, user_id: me.id, text: trimmed,
+            });
+            if (error) console.warn("Comment save failed:", error);
+            else if (row && row[0]) {
+                setLocalComments(p => p.map(c => c.id === tempId ? Object.assign(Object.assign({}, c), { id: row[0].id }) : c));
+            }
+        }
     };
     const toggleLike = (id) => {
         setLocalComments(p => p.map(c => c.id === id ? Object.assign(Object.assign({}, c), { liked: !c.liked, likes: c.likes + (c.liked ? -1 : 1) }) : c));
@@ -921,7 +987,8 @@ function CommentsModal({ vid, comments, onAdd, onClose }) {
     return (React.createElement(Sheet, { onClose: onClose, height: "76vh" },
         React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 20, marginBottom: 16 } }, "Comments"),
         React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingRight: 4 } },
-            localComments.length === 0 && React.createElement("div", { style: { textAlign: "center", color: "rgba(255,255,255,0.3)", padding: 32 } }, "No comments yet. Be first! \u2728"),
+            loading && React.createElement("div", { style: { textAlign: "center", color: "rgba(255,255,255,0.3)", padding: 32 } }, "Loading\u2026"),
+            !loading && localComments.length === 0 && React.createElement("div", { style: { textAlign: "center", color: "rgba(255,255,255,0.3)", padding: 32 } }, "No comments yet. Be first! \u2728"),
             localComments.map(c => (React.createElement("div", { key: c.id, style: { display: "flex", gap: 10, marginBottom: 18 } },
                 React.createElement("div", { style: { width: 33, height: 33, borderRadius: "50%", background: `${vid.accent}33`, border: `1.5px solid ${vid.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 } }, c.avatar),
                 React.createElement("div", { style: { flex: 1 } },
@@ -930,15 +997,13 @@ function CommentsModal({ vid, comments, onAdd, onClose }) {
                         React.createElement("span", { style: { fontSize: 10, color: "rgba(255,255,255,0.32)" } }, c.time)),
                     React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.5 } }, c.text),
                     React.createElement("button", { onClick: () => toggleLike(c.id), style: { marginTop: 5, background: "none", border: "none", color: c.liked ? vid.accent : "rgba(255,255,255,0.35)", fontSize: 12, cursor: "pointer" } },
-                        c.liked ? "\u2665" : "\u2661",
-                        " ",
-                        c.likes))))),
+                        c.liked ? "\u2665" : "\u2661", " ", c.likes))))),
             React.createElement("div", { ref: endRef })),
         React.createElement("div", { style: { paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10 } },
-            React.createElement("input", { value: text, onChange: e => setText(e.target.value), onKeyDown: e => { if (e.key === "Enter")
-                    submit(); }, placeholder: "Add a comment\u2026", style: { flex: 1, padding: "10px 13px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" } }),
+            React.createElement("input", { value: text, onChange: e => setText(e.target.value), onKeyDown: e => { if (e.key === "Enter") submit(); }, placeholder: "Add a comment\u2026", style: { flex: 1, padding: "10px 13px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" } }),
             React.createElement("button", { onClick: submit, style: { padding: "10px 16px", background: vid.accent, color: "#1a0a2e", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Post"))));
 }
+
 // -- Gift Modal ------------------------------------------------------
 function GiftModal({ vid, onGift, onClose }) {
     const [sent, setSent] = useState(null);
@@ -2314,7 +2379,14 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
             // Follow + Message buttons (only if not viewing self)
             myId !== userId && React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } },
                 React.createElement("button", { onClick: toggleFollow, style: { flex: 1, padding: "11px", background: isFollowing ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: isFollowing ? "1px solid rgba(255,255,255,0.15)" : "none", borderRadius: 8, color: isFollowing ? "#fff" : "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, isFollowing ? "Following" : "Follow"),
-                React.createElement("button", { onClick: () => show("\uD83D\uDCAC DM opened"), style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message")
+                React.createElement("button", { onClick: async () => {
+                if (!myId) { show("Sign in to message"); return; }
+                // Send a "wave" message to start the conversation
+                const greeting = "\uD83D\uDC4B Hey!";
+                const { error } = await supabase.from("messages").insert({ sender_id: myId, receiver_id: userId, text: greeting });
+                if (error) { show("\u26a0\ufe0f Failed to send"); return; }
+                show("\uD83D\uDCAC Message sent! Check your inbox");
+            }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message")
             )
         ),
         // Tab header
@@ -2884,8 +2956,8 @@ function InboxOverlay({ messages, setMessages, onClose, show }) {
                         convMap[partnerId].unread++;
                 });
                 const convList = Object.values(convMap);
-                if (convList.length > 0)
-                    setMessages(convList);
+                // If user is logged in, always use DB messages (even if empty)
+                setMessages(convList);
                 setDbMsgs(rows);
             }
             // Subscribe to realtime new messages
