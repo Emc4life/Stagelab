@@ -6,19 +6,22 @@
   <title>StageLab</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="StageLab" />
   <meta name="theme-color" content="#08080f" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://dsegdddquztgkdwyzbai.supabase.co" crossorigin />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+    html { -webkit-text-size-adjust: 100%; height: 100%; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
     body { touch-action: pan-y; position: fixed; width: 100%; }
     #root { width: 100vw; height: 100vh; height: 100dvh; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
     input, textarea, select { font-family: inherit; font-size: 16px !important; -webkit-appearance: none; appearance: none; border-radius: 0; }
+    input[type="range"] { appearance: auto; -webkit-appearance: auto; }
     button { font-family: inherit; touch-action: manipulation; -webkit-appearance: none; cursor: pointer; }
     * { -webkit-overflow-scrolling: touch; }
     ::-webkit-scrollbar { width: 0; height: 0; }
-    button:active { opacity: 0.7; transform: scale(0.98); }
+    button:active { opacity: 0.7; transform: scale(0.98); transition: transform 0.1s; }
   </style>
 </head>
 <body>
@@ -696,7 +699,7 @@ function MainApp({ tab, setTab, session }) {
         React.createElement("div", { style: { flex: 1, overflow: "hidden", position: "relative" } },
             tab === 0 && React.createElement(FeedScreen, { videos: videos, setVideos: setVideos, comments: comments, setComments: setComments, show: show, onViewUser: (id) => setViewingUser(id) }),
             tab === 1 && React.createElement(CreateScreen, { show: show, setTab: setTab }),
-            tab === 2 && React.createElement(DiscoverScreen, { show: show, onViewUser: (id) => { console.log("MainApp setViewingUser called with:", id); setViewingUser(id); } }),
+            tab === 2 && React.createElement(DiscoverScreen, { show: show, onViewUser: (id) => setViewingUser(id) }),
             tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, setLiveRoom: setLiveRoom }),
             tab === 4 && React.createElement(ProfileScreen, { show: show })),
         liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
@@ -1752,7 +1755,7 @@ function DiscoverScreen({ show, onViewUser }) {
                     React.createElement("div", { style: { fontSize: 13 } }, "Loading people\u2026"))
                 : filteredPeople.length === 0
                     ? React.createElement(EmptyState, { query: query, type: "people" })
-                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, onClick: () => { console.log("CARD CLICKED, id:", p.id, "onViewUser:", typeof onViewUser); if (onViewUser) onViewUser(p.id); else alert("onViewUser not passed!"); }, style: { cursor: "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { cursor: "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
                         React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 10 } },
                             React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg,${p.accent}44,${p.accent}22)`, border: `2px solid ${p.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, flexShrink: 0 } }, p.avatar),
                             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -2031,101 +2034,158 @@ const EmptyState = ({ query, type }) => (React.createElement("div", { style: { t
     React.createElement("div", { style: { fontSize: 16, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, query ? `No ${type} matching "${query}"` : `No ${type} found`),
     React.createElement("div", { style: { fontSize: 13 } }, "Try a different search term")));
 // ---------------------------- AI ------------------------------------
-function AIScreen({ show }) {
-    const [lyricIn, setLyricIn] = useState("");
-    const [lyricOut, setLyricOut] = useState("");
-    const [sceneIn, setSceneIn] = useState("");
-    const [sceneOut, setSceneOut] = useState("");
-    const [loadL, setLoadL] = useState(false);
-    const [loadS, setLoadS] = useState(false);
-    // Streaming SSE call
-    const callAI = async (prompt, setOut, setLoad) => {
-        var _a;
-        setLoad(true);
-        setOut("");
-        try {
-            const r = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, stream: true, messages: [{ role: "user", content: prompt }] })
-            });
-            if (!r.ok)
-                throw new Error("API error");
-            const reader = r.body.getReader();
-            const dec = new TextDecoder();
-            let buf = "";
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done)
-                    break;
-                buf += dec.decode(value, { stream: true });
-                const lines = buf.split("\n");
-                buf = lines.pop();
-                for (const line of lines) {
-                    if (!line.startsWith("data: "))
-                        continue;
-                    const payload = line.slice(6).trim();
-                    if (payload === "[DONE]")
-                        break;
-                    try {
-                        const evt = JSON.parse(payload);
-                        if (evt.type === "content_block_delta" && ((_a = evt.delta) === null || _a === void 0 ? void 0 : _a.type) === "text_delta") {
-                            setOut(p => p + evt.delta.text);
-                        }
-                    }
-                    catch (_b) { }
-                }
-            }
-        }
-        catch (_c) {
-            setOut("AI unavailable - try again.");
-        }
-        setLoad(false);
-    };
-    const enhance = () => {
-        if (!lyricIn.trim()) {
-            show("Enter some lyrics first");
+function SceneBuilderScreen({ show }) {
+    const [scenes, setScenes] = useState([]);
+    const [editingId, setEditingId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    // Load scenes from Supabase
+    useEffect(() => {
+        (async () => {
+            const { data: auth } = await supabase.auth.getUser();
+            if (!auth?.user) { setLoading(false); return; }
+            const { data } = await supabase.from("scenes").select("*").eq("user_id", auth.user.id).order("updated_at", { ascending: false });
+            if (data) setScenes(data);
+            setLoading(false);
+        })();
+    }, []);
+    const TEMPLATES = [
+        { id: "audition", icon: "\uD83C\uDFAD", title: "Audition Scene", description: "Short solo or two-character scene for casting", characters: "CHARACTER A\nCHARACTER B", setting: "A simple, neutral space", beats: "1. Establish relationship\n2. Reveal want / obstacle\n3. Make a choice\n4. Button line", dialogue: "" },
+        { id: "workshop", icon: "\uD83C\uDFAB", title: "Workshop Scene", description: "Material in development for table reads", characters: "", setting: "", beats: "Setup\nRising action\nClimax\nResolution", dialogue: "" },
+        { id: "twohander", icon: "\uD83D\uDC65", title: "Two-Hander", description: "Intimate scene between two people", characters: "PERSON 1\nPERSON 2", setting: "Single location, contained", beats: "1. Opening status\n2. Conflict introduced\n3. Stakes rise\n4. Status shift", dialogue: "" },
+        { id: "group", icon: "\uD83C\uDFAD", title: "Group Scene", description: "Ensemble / multi-character scene", characters: "", setting: "", beats: "Establish group dynamic\nIntroduce conflict\nIndividual moments\nGroup resolution", dialogue: "" },
+        { id: "blank", icon: "\u2728", title: "Blank Scene", description: "Start from scratch", characters: "", setting: "", beats: "", dialogue: "" },
+    ];
+    const createFromTemplate = async (t) => {
+        const { data: auth } = await supabase.auth.getUser();
+        if (!auth?.user) {
+            // Demo mode - create locally
+            const id = "local-" + Date.now();
+            const scene = { id, user_id: null, title: t.title === "Blank Scene" ? "Untitled Scene" : t.title, description: t.description || "", characters: t.characters, setting: t.setting, beats: t.beats, dialogue: t.dialogue, notes: "", created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+            setScenes(p => [scene, ...p]);
+            setEditingId(id);
+            show("\u2728 New scene created");
             return;
         }
-        callAI(`You are an award-winning Broadway lyricist. Enhance these lyrics while preserving the writer's voice and intent. Make them more poetic, singable, and emotionally resonant. Return only the enhanced lyrics.\n\n${lyricIn}`, setLyricOut, setLoadL);
-    };
-    const build = () => {
-        if (!sceneIn.trim()) {
-            show("Enter a scene prompt first");
-            return;
+        const payload = {
+            user_id: auth.user.id,
+            title: t.title === "Blank Scene" ? "Untitled Scene" : t.title,
+            description: t.description || "",
+            characters: t.characters,
+            setting: t.setting,
+            beats: t.beats,
+            dialogue: t.dialogue,
+            notes: "",
+        };
+        const { data } = await supabase.from("scenes").insert(payload);
+        if (data?.[0]) {
+            setScenes(p => [data[0], ...p]);
+            setEditingId(data[0].id);
+            show("\u2728 New scene created");
+        } else {
+            show("\u26a0\ufe0f Could not save - working offline");
+            const local = { ...payload, id: "local-" + Date.now(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+            setScenes(p => [local, ...p]);
+            setEditingId(local.id);
         }
-        callAI(`You are a celebrated musical theatre playwright. Write a vivid, emotionally charged scene based on this prompt. Include stage directions and natural dialogue. Keep it under 2 pages.\n\nPrompt: ${sceneIn}`, setSceneOut, setLoadS);
     };
-    return (React.createElement("div", { style: { padding: "22px 18px 80px", overflowY: "auto", WebkitOverflowScrolling: "touch", height: "100%" } },
-        React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "AI Studio"),
-        React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.38)", marginBottom: 24 } }, "Supercharge your creative process"),
-        React.createElement("div", { style: { background: "rgba(201,168,76,0.6)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 18, padding: "18px", marginBottom: 16 } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 14 } },
-                React.createElement("span", { style: { fontSize: 26 } }, "\u2726"),
-                React.createElement("div", null,
-                    React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } }, "Lyric Enhancer"),
-                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)" } }, "Elevate your words with AI"))),
-            React.createElement("textarea", { value: lyricIn, onChange: e => setLyricIn(e.target.value), rows: 4, style: Object.assign(Object.assign({}, inputSt), { resize: "none", marginBottom: 12 }), placeholder: "Paste your lyrics here\u2026" }),
-            React.createElement("button", { onClick: enhance, disabled: loadL, style: primaryBtn("#c9a84c", loadL) }, loadL ? "\u2726 Enhancing\u2026" : "\u2726 Enhance Lyrics"),
-            lyricOut && React.createElement("div", { style: { marginTop: 12, padding: "14px", background: "rgba(0,0,0,0.35)", borderRadius: 12, fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.6, whiteSpace: "pre-line" } }, lyricOut)),
-        React.createElement("div", { style: { background: "rgba(76,184,196,0.6)", border: "1px solid rgba(76,184,196,0.2)", borderRadius: 18, padding: "18px" } },
-            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 14 } },
-                React.createElement("span", { style: { fontSize: 26 } }, "\uD83D\uDCDC"),
-                React.createElement("div", null,
-                    React.createElement("div", { style: { fontWeight: 700, fontSize: 15 } }, "Scene Builder"),
-                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)" } }, "Generate dramatic scenes instantly"))),
-            React.createElement("input", { value: sceneIn, onChange: e => setSceneIn(e.target.value), style: Object.assign(Object.assign({}, inputSt), { marginBottom: 12 }), placeholder: "Describe your scene: characters, setting, conflict\u2026" }),
-            React.createElement("button", { onClick: build, disabled: loadS, style: primaryBtn("#4cb8c4", loadS) }, loadS ? "\uD83D\uDCDC Writing\u2026" : "\uD83D\uDCDC Build Scene"),
-            sceneOut && React.createElement("div", { style: { marginTop: 12, padding: "14px", background: "rgba(0,0,0,0.35)", borderRadius: 12, fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.6, whiteSpace: "pre-line" } }, sceneOut))));
+    const updateScene = async (id, patch) => {
+        setScenes(p => p.map(s => s.id === id ? { ...s, ...patch, updated_at: new Date().toISOString() } : s));
+        if (typeof id === "string" && id.startsWith("local-")) return;
+        await supabase.from("scenes").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+    };
+    const deleteScene = async (id) => {
+        if (!confirm("Delete this scene?")) return;
+        setScenes(p => p.filter(s => s.id !== id));
+        if (typeof id === "string" && id.startsWith("local-")) return;
+        await supabase.from("scenes").delete().eq("id", id);
+        show("Scene deleted");
+    };
+    const exportScene = (s) => {
+        const text = `${s.title.toUpperCase()}\n\n${s.description || ""}\n\n--- CHARACTERS ---\n${s.characters || "(none)"}\n\n--- SETTING ---\n${s.setting || "(none)"}\n\n--- BEATS ---\n${s.beats || "(none)"}\n\n--- DIALOGUE ---\n${s.dialogue || "(none)"}\n\n--- NOTES ---\n${s.notes || "(none)"}`;
+        if (navigator.share) {
+            navigator.share({ title: s.title, text }).catch(() => {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+            show("\uD83D\uDCCB Copied to clipboard");
+        }
+    };
+    // Editor view
+    if (editingId) {
+        const scene = scenes.find(s => s.id === editingId);
+        if (!scene) { setEditingId(null); return null; }
+        const fld = (label, key, placeholder, multiline = true, rows = 5) => React.createElement("div", { style: { marginBottom: 16 } },
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, label),
+            multiline
+                ? React.createElement("textarea", { value: scene[key] || "", onChange: e => updateScene(editingId, { [key]: e.target.value }), rows, placeholder, style: { width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#fff", fontSize: 14, resize: "none", lineHeight: 1.5, fontFamily: "inherit" } })
+                : React.createElement("input", { value: scene[key] || "", onChange: e => updateScene(editingId, { [key]: e.target.value }), placeholder, style: { width: "100%", padding: "11px 13px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#fff", fontSize: 14 } })
+        );
+        return React.createElement("div", { style: { height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 18px 80px" } },
+            // Header
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 18 } },
+                React.createElement("button", { onClick: () => setEditingId(null), style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "#fff", padding: "8px 12px", fontSize: 14, cursor: "pointer" } }, "\u2190 Scenes"),
+                React.createElement("button", { onClick: () => exportScene(scene), style: { marginLeft: "auto", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 10, color: "#c9a84c", padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" } }, "\uD83D\uDCE4 Share"),
+                React.createElement("button", { onClick: () => deleteScene(editingId), style: { background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 10, color: "#ef4444", padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" } }, "\uD83D\uDDD1")
+            ),
+            // Title
+            React.createElement("input", { value: scene.title || "", onChange: e => updateScene(editingId, { title: e.target.value }), placeholder: "Scene title", style: { width: "100%", padding: "12px 0", background: "transparent", border: "none", borderBottom: "1px solid rgba(255,255,255,0.08)", color: "#fff", fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 8 } }),
+            // Description
+            fld("DESCRIPTION", "description", "What is this scene about?", false),
+            // Characters
+            fld("CHARACTERS", "characters", "One per line\u2026 e.g.\nMARIE - 28, the protagonist\nLUCAS - 30, her brother", true, 4),
+            // Setting
+            fld("SETTING", "setting", "Where and when does this take place?", true, 2),
+            // Beats
+            fld("STORY BEATS", "beats", "Outline the dramatic structure\u2026", true, 6),
+            // Dialogue
+            fld("DIALOGUE", "dialogue", "MARIE\nI didn\u2019t mean for it to happen.\n\nLUCAS\n(quietly)\nYou never do.", true, 14),
+            // Notes
+            fld("DIRECTOR / SELF NOTES", "notes", "Blocking ideas, given circumstances, subtext\u2026", true, 4),
+            // Auto-save indicator
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", textAlign: "center", marginTop: 20 } }, "\u2713 Auto-saved")
+        );
+    }
+    // List view
+    return React.createElement("div", { style: { height: "100%", overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 18px 80px" } },
+        React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "Scene Builder"),
+        React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 22 } }, "Build, save, and share theatrical scenes."),
+        // Templates
+        React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em", marginBottom: 12 } }, "START FROM TEMPLATE"),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 28 } },
+            TEMPLATES.map(t =>
+                React.createElement("button", { key: t.id, onClick: () => createFromTemplate(t), style: { padding: 14, background: "linear-gradient(160deg,rgba(201,168,76,0.08),rgba(201,168,76,0.02))", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 12, color: "#fff", textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 6 } },
+                    React.createElement("div", { style: { fontSize: 22 } }, t.icon),
+                    React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, t.title),
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.4 } }, t.description)
+                )
+            )
+        ),
+        // Existing scenes
+        React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.15em", marginBottom: 12 } }, "YOUR SCENES (" + scenes.length + ")"),
+        loading
+            ? React.createElement("div", { style: { color: "rgba(255,255,255,0.4)", padding: 30, textAlign: "center", fontSize: 13 } }, "Loading\u2026")
+            : scenes.length === 0
+                ? React.createElement("div", { style: { padding: 30, textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13, background: "rgba(255,255,255,0.03)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.1)" } }, "No scenes yet. Pick a template above to get started.")
+                : React.createElement("div", null,
+                    scenes.map(s =>
+                        React.createElement("button", { key: s.id, onClick: () => setEditingId(s.id), style: { display: "block", width: "100%", textAlign: "left", padding: 14, marginBottom: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "#fff", cursor: "pointer" } },
+                            React.createElement("div", { style: { fontSize: 15, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 4 } }, s.title || "Untitled"),
+                            s.description && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 6, lineHeight: 1.4 } }, s.description.slice(0, 100) + (s.description.length > 100 ? "\u2026" : "")),
+                            React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.05em" } },
+                                (s.characters ? s.characters.split("\n").filter(x => x.trim()).length + " char\u00b7 " : ""),
+                                "Updated " + new Date(s.updated_at).toLocaleDateString()
+                            )
+                        )
+                    )
+                )
+    );
 }
-// ---------------------------- STUDIO --------------------------------
-// Studio bundles AI, Casting, and Live into one tab with sub-navigation
+
 function StudioScreen({ show, onJoin, setLiveRoom }) {
-    const [sub, setSub] = useState("ai");
+    const [sub, setSub] = useState("scenes");
     const STUDIO_SUBS = [
-        { key: "ai", label: "\u2726 AI Studio" },
-        { key: "casting", label: "\uD83C\uDFAD Casting" },
-        { key: "live", label: "\u25cf Live", live: true },
+        { key: "scenes", label: "\uD83C\uDFAD Scene Builder" },
+        { key: "casting", label: "\uD83D\uDCDD Casting" },
+        { key: "live", label: "\uD83D\uDD34 Live", live: true },
     ];
     return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
         React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 } }, STUDIO_SUBS.map(s => (React.createElement("button", { key: s.key, onClick: () => setSub(s.key), style: { flex: 1, padding: "12px 0", background: "none", border: "none",
@@ -2139,7 +2199,7 @@ function StudioScreen({ show, onJoin, setLiveRoom }) {
             s.label,
             s.live && sub !== s.key && React.createElement("span", { style: { display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#ef4444", marginLeft: 5, verticalAlign: "middle", animation: "liveDot 1.5s infinite" } }))))),
         React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
-            sub === "ai" && React.createElement(AIScreen, { show: show }),
+            sub === "scenes" && React.createElement(SceneBuilderScreen, { show: show }),
             sub === "casting" && React.createElement(CastingScreen, { show: show }),
             sub === "live" && React.createElement(LiveScreen, { show: show, onJoin: onJoin }))));
 }
@@ -2158,7 +2218,6 @@ const INIT_PROFILE_TAPES = [
     { id: 3, title: "Sweeney Todd - Mrs. Lovett", date: "Feb 2026", status: "submitted", duration: "2:58" },
 ];
 function UserProfileView({ userId, onBack, show, onViewUser }) {
-    console.log("UserProfileView rendering with userId:", userId);
     const [profile, setProfile] = useState(null);
     const [posts, setPosts] = useState([]);
     const [mediaRows, setMediaRows] = useState([]);
@@ -3269,7 +3328,289 @@ const clamp = (text) => text.length > 20 ? 22 : text.length > 14 ? 26 : 32;
 
 var container = document.getElementById('root');
 var root = ReactDOM.createRoot(container);
-root.render(React.createElement(StageLab));
+root.render(React.createElement(StageLab));function SceneBuilderScreen({ show }) {
+    const [scenes, setScenes] = useState([]);
+    const [activeScene, setActiveScene] = useState(null);
+    const [showNewModal, setShowNewModal] = useState(false);
+    const [loading, setLoading] = useState(true);
+    // Load scenes from Supabase
+    useEffect(() => {
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) { setLoading(false); return; }
+            const { data } = await supabase.from("scenes").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+            if (data) setScenes(data);
+            setLoading(false);
+        })();
+    }, []);
+    const createScene = async (name, show_name, setting) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        const newScene = {
+            name, show_name, setting,
+            characters: [],
+            beats: [],
+            notes: "",
+        };
+        if (user) {
+            const { data, error } = await supabase.from("scenes").insert({
+                user_id: user.id, name, show_name, setting,
+                characters: [], beats: [], notes: "",
+            });
+            if (error) { console.warn("Save failed:", error); show("\u26a0\ufe0f Sign in to save"); }
+            const localId = "local-" + Date.now();
+            const localScene = { ...newScene, id: data?.[0]?.id || localId, created_at: new Date().toISOString() };
+            setScenes(p => [localScene, ...p]);
+            setActiveScene(localScene);
+        } else {
+            const localScene = { ...newScene, id: "local-" + Date.now(), created_at: new Date().toISOString() };
+            setScenes(p => [localScene, ...p]);
+            setActiveScene(localScene);
+        }
+        setShowNewModal(false);
+        show("\uD83C\uDFAD Scene created");
+    };
+    const updateScene = async (sceneId, updates) => {
+        setScenes(p => p.map(s => s.id === sceneId ? { ...s, ...updates } : s));
+        setActiveScene(prev => prev?.id === sceneId ? { ...prev, ...updates } : prev);
+        if (typeof sceneId === "string" && sceneId.startsWith("local-")) return;
+        await supabase.from("scenes").update(updates).eq("id", sceneId);
+    };
+    const deleteScene = async (sceneId) => {
+        setScenes(p => p.filter(s => s.id !== sceneId));
+        if (activeScene?.id === sceneId) setActiveScene(null);
+        if (typeof sceneId === "string" && sceneId.startsWith("local-")) return;
+        await supabase.from("scenes").delete().eq("id", sceneId);
+        show("Scene deleted");
+    };
+    if (activeScene) {
+        return React.createElement(SceneEditor, {
+            scene: activeScene,
+            onUpdate: (updates) => updateScene(activeScene.id, updates),
+            onBack: () => setActiveScene(null),
+            onDelete: () => { deleteScene(activeScene.id); },
+            show,
+        });
+    }
+    return React.createElement("div", { style: { padding: "20px 16px 80px", overflowY: "auto", WebkitOverflowScrolling: "touch", height: "100%" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Scene Builder"),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 } }, "Block, plan, and organize your scenes")
+            ),
+            React.createElement("button", { onClick: () => setShowNewModal(true), style: { padding: "10px 16px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 10, color: "#1a0a2e", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ New Scene")
+        ),
+        loading
+            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading scenes\u2026")
+            : scenes.length === 0
+                ? React.createElement("div", { style: { textAlign: "center", padding: 60, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 16 } },
+                    React.createElement("div", { style: { fontSize: 48, marginBottom: 12, opacity: 0.4 } }, "\uD83C\uDFAD"),
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700, marginBottom: 6 } }, "No scenes yet"),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 20, lineHeight: 1.5 } }, "Build out scenes for your show. Add characters, plan blocking, write director notes."),
+                    React.createElement("button", { onClick: () => setShowNewModal(true), style: { padding: "12px 24px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 10, color: "#1a0a2e", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "Create First Scene")
+                )
+                : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+                    scenes.map(s =>
+                        React.createElement("div", { key: s.id, onClick: () => setActiveScene(s), style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, cursor: "pointer" } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 } },
+                                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, s.name),
+                                React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.4)" } }, (s.created_at || "").slice(0, 10))
+                            ),
+                            s.show_name && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 4 } }, s.show_name),
+                            s.setting && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 8 } }, "\uD83D\uDCCD " + s.setting),
+                            React.createElement("div", { style: { display: "flex", gap: 12, fontSize: 11, color: "rgba(255,255,255,0.5)" } },
+                                React.createElement("span", null, "\uD83D\uDC65 " + (s.characters?.length || 0) + " characters"),
+                                React.createElement("span", null, "\uD83D\uDCDD " + (s.beats?.length || 0) + " beats")
+                            )
+                        )
+                    )
+                ),
+        showNewModal && React.createElement(NewSceneModal, { onCreate: createScene, onClose: () => setShowNewModal(false) })
+    );
+}
+function NewSceneModal({ onCreate, onClose }) {
+    const [name, setName] = useState("");
+    const [showName, setShowName] = useState("");
+    const [setting, setSetting] = useState("");
+    const submit = () => {
+        if (!name.trim()) return;
+        onCreate(name.trim(), showName.trim(), setting.trim());
+    };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "New Scene"),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "SCENE NAME"),
+            React.createElement("input", { value: name, onChange: e => setName(e.target.value), placeholder: "e.g. Act 1, Scene 3", style: { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 14 } }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "SHOW (OPTIONAL)"),
+            React.createElement("input", { value: showName, onChange: e => setShowName(e.target.value), placeholder: "e.g. Hamilton, Wicked", style: { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 14 } }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "SETTING (OPTIONAL)"),
+            React.createElement("input", { value: setting, onChange: e => setSetting(e.target.value), placeholder: "e.g. Hamilton's office, evening", style: { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 22 } }),
+            React.createElement("button", { onClick: submit, disabled: !name.trim(), style: { width: "100%", padding: "13px", background: name.trim() ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: name.trim() ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: name.trim() ? "pointer" : "not-allowed" } }, "Create Scene"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "13px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function SceneEditor({ scene, onUpdate, onBack, onDelete, show }) {
+    const [tab, setTab] = useState("stage");
+    const [characters, setCharacters] = useState(scene.characters || []);
+    const [beats, setBeats] = useState(scene.beats || []);
+    const [notes, setNotes] = useState(scene.notes || "");
+    const [draggingId, setDraggingId] = useState(null);
+    const stageRef = useRef(null);
+    // Save changes to parent
+    const persist = () => {
+        onUpdate({ characters, beats, notes });
+        show("\u2713 Saved");
+    };
+    // Add character
+    const addCharacter = () => {
+        const name = prompt("Character name:");
+        if (!name?.trim()) return;
+        const colors = ["#c9a84c", "#e8a87c", "#4cb8c4", "#a87cc4", "#7cc48d", "#c47c8d"];
+        const newChar = {
+            id: "ch-" + Date.now(),
+            name: name.trim(),
+            color: colors[characters.length % colors.length],
+            x: 50, y: 50, // center stage as percentages
+        };
+        const updated = [...characters, newChar];
+        setCharacters(updated);
+        onUpdate({ characters: updated, beats, notes });
+    };
+    const removeCharacter = (id) => {
+        const updated = characters.filter(c => c.id !== id);
+        setCharacters(updated);
+        onUpdate({ characters: updated, beats, notes });
+    };
+    // Drag handler
+    const startDrag = (id) => (e) => {
+        e.preventDefault();
+        setDraggingId(id);
+    };
+    useEffect(() => {
+        if (!draggingId) return;
+        const move = (e) => {
+            if (!stageRef.current) return;
+            const rect = stageRef.current.getBoundingClientRect();
+            const point = e.touches ? e.touches[0] : e;
+            const x = Math.max(5, Math.min(95, ((point.clientX - rect.left) / rect.width) * 100));
+            const y = Math.max(5, Math.min(95, ((point.clientY - rect.top) / rect.height) * 100));
+            setCharacters(p => p.map(c => c.id === draggingId ? { ...c, x, y } : c));
+        };
+        const stop = () => {
+            setDraggingId(null);
+            onUpdate({ characters, beats, notes });
+        };
+        window.addEventListener("mousemove", move);
+        window.addEventListener("touchmove", move, { passive: false });
+        window.addEventListener("mouseup", stop);
+        window.addEventListener("touchend", stop);
+        return () => {
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("touchmove", move);
+            window.removeEventListener("mouseup", stop);
+            window.removeEventListener("touchend", stop);
+        };
+    }, [draggingId, characters, beats, notes, onUpdate]);
+    // Add beat
+    const addBeat = () => {
+        const text = prompt("Describe the beat (action, line, blocking):");
+        if (!text?.trim()) return;
+        const updated = [...beats, { id: "b-" + Date.now(), text: text.trim(), time: beats.length + 1 }];
+        setBeats(updated);
+        onUpdate({ characters, beats: updated, notes });
+    };
+    const removeBeat = (id) => {
+        const updated = beats.filter(b => b.id !== id);
+        setBeats(updated);
+        onUpdate({ characters, beats: updated, notes });
+    };
+    return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+        // Header
+        React.createElement("div", { style: { padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 12 } },
+            React.createElement("button", { onClick: onBack, style: { background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", padding: 4 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 15, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, scene.name),
+                scene.show_name && React.createElement("div", { style: { fontSize: 11, color: "#c9a84c" } }, scene.show_name)
+            ),
+            React.createElement("button", { onClick: () => { if (confirm("Delete this scene?")) onDelete(); }, style: { background: "none", border: "1px solid rgba(239,68,68,0.4)", color: "#fca5a5", padding: "6px 10px", borderRadius: 6, fontSize: 11, cursor: "pointer" } }, "Delete")
+        ),
+        // Tabs
+        React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            [["stage", "\uD83C\uDFAD Stage"], ["beats", "\uD83D\uDCDD Beats"], ["notes", "\u270D\uFE0F Notes"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setTab(k), style: { flex: 1, padding: "11px 0", background: "none", border: "none", borderBottom: tab === k ? "2px solid #c9a84c" : "2px solid transparent", color: tab === k ? "#c9a84c" : "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: tab === k ? 700 : 500, cursor: "pointer" } }, l)
+            )
+        ),
+        // Content
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px" } },
+            // STAGE TAB
+            tab === "stage" && React.createElement("div", null,
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+                    React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)" } }, "Drag characters to block the scene"),
+                    React.createElement("button", { onClick: addCharacter, style: { padding: "7px 12px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "+ Character")
+                ),
+                // Stage diagram
+                React.createElement("div", { ref: stageRef, style: { position: "relative", aspectRatio: "16/10", background: "linear-gradient(180deg,rgba(201,168,76,0.08),rgba(201,168,76,0.02))", border: "2px solid rgba(201,168,76,0.3)", borderRadius: 8, marginBottom: 14, overflow: "hidden", touchAction: "none" } },
+                    // Stage area labels (theatre conventions)
+                    React.createElement("div", { style: { position: "absolute", top: 4, left: 0, right: 0, textAlign: "center", fontSize: 9, letterSpacing: "0.2em", color: "rgba(201,168,76,0.5)" } }, "UPSTAGE"),
+                    React.createElement("div", { style: { position: "absolute", bottom: 4, left: 0, right: 0, textAlign: "center", fontSize: 9, letterSpacing: "0.2em", color: "rgba(201,168,76,0.5)" } }, "DOWNSTAGE \u00B7 AUDIENCE"),
+                    React.createElement("div", { style: { position: "absolute", left: 4, top: "50%", transform: "translateY(-50%) rotate(-90deg)", fontSize: 9, letterSpacing: "0.2em", color: "rgba(201,168,76,0.5)", transformOrigin: "center" } }, "STAGE LEFT"),
+                    React.createElement("div", { style: { position: "absolute", right: 4, top: "50%", transform: "translateY(-50%) rotate(90deg)", fontSize: 9, letterSpacing: "0.2em", color: "rgba(201,168,76,0.5)", transformOrigin: "center" } }, "STAGE RIGHT"),
+                    // Center mark
+                    React.createElement("div", { style: { position: "absolute", left: "50%", top: "50%", width: 12, height: 12, transform: "translate(-50%,-50%)", border: "1px dashed rgba(201,168,76,0.3)", borderRadius: "50%" } }),
+                    // Characters
+                    characters.map(c =>
+                        React.createElement("div", { key: c.id, onMouseDown: startDrag(c.id), onTouchStart: startDrag(c.id), style: { position: "absolute", left: c.x + "%", top: c.y + "%", transform: "translate(-50%,-50%)", width: 44, height: 44, background: c.color, color: "#1a0a2e", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, cursor: "grab", border: "2px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(0,0,0,0.4)", userSelect: "none", touchAction: "none" } }, c.name.slice(0, 2).toUpperCase())
+                    )
+                ),
+                // Character list
+                characters.length === 0
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 20, color: "rgba(255,255,255,0.4)", fontSize: 12 } }, "No characters yet. Add one to start blocking.")
+                    : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                        characters.map(c =>
+                            React.createElement("div", { key: c.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 8 } },
+                                React.createElement("div", { style: { width: 28, height: 28, background: c.color, borderRadius: "50%", color: "#1a0a2e", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11 } }, c.name.slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, fontSize: 13, fontWeight: 600 } }, c.name),
+                                React.createElement("button", { onClick: () => removeCharacter(c.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 16, padding: 4 } }, "\u00D7")
+                            )
+                        )
+                    )
+            ),
+            // BEATS TAB
+            tab === "beats" && React.createElement("div", null,
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+                    React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)" } }, "Plan the moments of your scene"),
+                    React.createElement("button", { onClick: addBeat, style: { padding: "7px 12px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "+ Beat")
+                ),
+                beats.length === 0
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, background: "rgba(255,255,255,0.04)", borderRadius: 10, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No beats yet. Add one to start mapping out the scene.")
+                    : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+                        beats.map((b, i) =>
+                            React.createElement("div", { key: b.id, style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" } },
+                                React.createElement("div", { style: { width: 28, height: 28, borderRadius: "50%", background: "rgba(201,168,76,0.2)", color: "#c9a84c", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 } }, i + 1),
+                                React.createElement("div", { style: { flex: 1, fontSize: 13, lineHeight: 1.5 } }, b.text),
+                                React.createElement("button", { onClick: () => removeBeat(b.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 16 } }, "\u00D7")
+                            )
+                        )
+                    )
+            ),
+            // NOTES TAB
+            tab === "notes" && React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 10 } }, "Director notes, intentions, design ideas\u2026"),
+                React.createElement("textarea", {
+                    value: notes,
+                    onChange: e => setNotes(e.target.value),
+                    onBlur: () => onUpdate({ characters, beats, notes }),
+                    rows: 14,
+                    placeholder: "Write your notes here\u2026",
+                    style: { width: "100%", padding: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "#fff", fontSize: 14, lineHeight: 1.6, resize: "none", fontFamily: "inherit" }
+                })
+            )
+        )
+    );
+}
+
+
 
   </script>
 </body>
