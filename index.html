@@ -2745,7 +2745,7 @@ function SceneBuilderScreen({ show }) {
     );
 }
 
-function StudioScreen({ show, onJoin, setLiveRoom }) {
+function StudioScreen({ show, onJoin, onViewUser }) {
     const [sub, setSub] = useState("scenes");
     const STUDIO_SUBS = [
         { key: "scenes", label: "\uD83C\uDFAD Scene Builder" },
