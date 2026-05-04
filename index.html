@@ -2171,7 +2171,7 @@ function ProductionsScreen({ show, onViewUser }) {
                 ),
         showCreate && React.createElement(NewProductionModal, { onCreate: async (data) => {
                 const { data: { user } } = await supabase.auth.getUser();
-                if (!user) { show("Sign in first"); return; }
+                if (!user) { alert("You need to sign in first to create a production."); return; }
                 const defaultPhases = [
                     { id: "p1", name: "Auditions", order: 0 },
                     { id: "p2", name: "Callbacks", order: 1 },
@@ -2181,8 +2181,22 @@ function ProductionsScreen({ show, onViewUser }) {
                     { id: "p6", name: "Tech", order: 5 },
                     { id: "p7", name: "Performances", order: 6 },
                 ];
-                const { data: row, error } = await supabase.from("productions").insert(Object.assign(Object.assign({}, data), { director_id: user.id, phases: defaultPhases, current_phase: "Auditions" }));
-                if (error) { console.warn(error); show("\u26a0\ufe0f Could not create show"); return; }
+                const payload = Object.assign(Object.assign({}, data), { director_id: user.id, phases: defaultPhases, current_phase: "Auditions" });
+                const { data: row, error } = await supabase.from("productions").insert(payload);
+                if (error) {
+                    console.error("Production create error:", error);
+                    alert("Could not create show:\n\n" + (error.message || JSON.stringify(error)) + "\n\nMake sure you ran productions_setup.sql in Supabase.");
+                    return;
+                }
+                // Auto-add yourself as director member so you appear in cast
+                try {
+                    const newProdId = (row && row[0] && row[0].id) || null;
+                    if (newProdId) {
+                        await supabase.from("production_members").insert({
+                            production_id: newProdId, user_id: user.id, role_type: "director", invite_status: "accepted",
+                        });
+                    }
+                } catch (e) { console.warn("Could not auto-add director member", e); }
                 show("\uD83C\uDFAC Show created!");
                 setShowCreate(false);
                 reload();
@@ -2328,18 +2342,21 @@ function InfoChip({ icon, label, value }) {
         React.createElement("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, value)
     );
 }
-function EventRow({ event, onClick }) {
+function EventRow({ event, onClick, isDirector, onDelete }) {
     const dt = new Date(event.starts_at);
-    return React.createElement("div", { onClick: onClick, style: { display: "flex", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6, cursor: onClick ? "pointer" : "default" } },
+    const typeIcon = { audition: "\uD83C\uDFA4", callback: "\uD83D\uDCDE", rehearsal: "\uD83C\uDFAD", tech: "\uD83D\uDD27", performance: "\u2728", meeting: "\uD83D\uDCC5", other: "\uD83D\uDCCC" }[event.type] || "\uD83D\uDCCC";
+    return React.createElement("div", { onClick: onClick, style: { display: "flex", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6, cursor: onClick ? "pointer" : "default", alignItems: "center" } },
         React.createElement("div", { style: { textAlign: "center", flexShrink: 0, paddingRight: 10, borderRight: "1px solid rgba(255,255,255,0.08)" } },
             React.createElement("div", { style: { fontSize: 9, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.08em" } }, dt.toLocaleString("default", { month: "short" }).toUpperCase()),
             React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, dt.getDate())
         ),
         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 700, marginBottom: 2, letterSpacing: "0.04em" } }, (event.type || "").toUpperCase()),
+            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 700, marginBottom: 2, letterSpacing: "0.04em" } }, typeIcon + " " + (event.type || "").toUpperCase()),
             React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, event.title),
-            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (event.location ? " \u00B7 " + event.location : ""))
-        )
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (event.location ? " \u00B7 " + event.location : "")),
+            event.prep_notes && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4, fontStyle: "italic" } }, "\u270D\uFE0F " + event.prep_notes)
+        ),
+        isDirector && onDelete && React.createElement("button", { onClick: (e) => { e.stopPropagation(); onDelete(); }, style: { background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 18, padding: 6, cursor: "pointer", flexShrink: 0 } }, "\u00D7")
     );
 }
 function CastTab({ production, members, isDirector, onViewUser, show, reload }) {
@@ -2432,22 +2449,42 @@ function AddMemberModal({ productionId, onClose, onAdded }) {
 }
 function ScheduleTab({ production, events, isDirector, show, reload }) {
     const [showAdd, setShowAdd] = useState(false);
-    const grouped = events.reduce((acc, e) => {
+    const [filter, setFilter] = useState("upcoming"); // upcoming | past | all
+    const now = new Date();
+    const filtered = events.filter(e => {
+        const dt = new Date(e.starts_at);
+        if (filter === "upcoming") return dt >= new Date(now.toDateString());
+        if (filter === "past") return dt < new Date(now.toDateString());
+        return true;
+    });
+    const grouped = filtered.reduce((acc, e) => {
         const d = new Date(e.starts_at).toDateString();
         if (!acc[d]) acc[d] = [];
         acc[d].push(e);
         return acc;
     }, {});
+    const removeEvent = async (id) => {
+        if (!confirm("Delete this event?")) return;
+        await supabase.from("production_events").delete().eq("id", id);
+        show("Event removed");
+        reload();
+    };
     return React.createElement("div", null,
         isDirector && React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "11px", marginBottom: 14, background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ Add Event"),
-        events.length === 0
-            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, isDirector ? "Add rehearsals, auditions, and performances to start scheduling." : "No events scheduled yet.")
-            : Object.keys(grouped).map(date =>
-                React.createElement("div", { key: date, style: { marginBottom: 16 } },
-                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 } }, new Date(date).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }).toUpperCase()),
-                    grouped[date].map(e => React.createElement(EventRow, { key: e.id, event: e }))
-                )
-            ),
+        React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } },
+            [["upcoming", "Upcoming"], ["past", "Past"], ["all", "All"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setFilter(k), style: { flex: 1, padding: "8px", background: filter === k ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.04)", border: "1px solid " + (filter === k ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.06)"), borderRadius: 8, color: filter === k ? "#c9a84c" : "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 600, cursor: "pointer" } }, l)
+            )
+        ),
+        filtered.length === 0
+            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, isDirector ? "No " + filter + " events. " + (filter === "upcoming" ? "Tap + Add Event to schedule one." : "") : "No events.")
+            : Object.keys(grouped).map(date => {
+                const isToday = new Date(date).toDateString() === now.toDateString();
+                return React.createElement("div", { key: date, style: { marginBottom: 16 } },
+                    React.createElement("div", { style: { fontSize: 11, color: isToday ? "#c9a84c" : "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 } }, (isToday ? "TODAY \u00B7 " : "") + new Date(date).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }).toUpperCase()),
+                    grouped[date].map(e => React.createElement(EventRow, { key: e.id, event: e, isDirector, onDelete: () => removeEvent(e.id) }))
+                );
+            }),
         showAdd && React.createElement(AddEventModal, { productionId: production.id, onClose: () => setShowAdd(false), onAdded: () => { reload(); setShowAdd(false); show("\u2713 Event added"); } })
     );
 }
@@ -2514,7 +2551,11 @@ function CheckinTab({ production, events, members, me, isDirector, show, reload 
         const d = new Date(e.starts_at);
         return d.toDateString() === now.toDateString();
     });
-    const upcoming = events.filter(e => new Date(e.starts_at) > now && new Date(e.starts_at).toDateString() !== now.toDateString());
+    const upcoming = events.filter(e => new Date(e.starts_at) > now && new Date(e.starts_at).toDateString() !== now.toDateString()).slice(0, 10);
+    const past = events.filter(e => {
+        const d = new Date(e.starts_at);
+        return d < now && d.toDateString() !== now.toDateString();
+    }).slice(0, 5);
     const checkInMe = async (eventId) => {
         if (!me) { show("Sign in to check in"); return; }
         const { error } = await supabase.from("event_checkins").upsert({ event_id: eventId, user_id: me.id, status: "present" });
@@ -2556,9 +2597,22 @@ function CheckinTab({ production, events, members, me, isDirector, show, reload 
             })
         ),
         today.length === 0 && upcoming.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No events to check in for."),
-        upcoming.length > 0 && React.createElement("div", null,
+        upcoming.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
             React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "UPCOMING"),
-            upcoming.slice(0, 5).map(e => React.createElement(EventRow, { key: e.id, event: e }))
+            upcoming.slice(0, 5).map(e => React.createElement(EventRow, { key: e.id, event: e, onClick: isDirector ? () => setSelectedEvent(e) : undefined }))
+        ),
+        past.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "RECENT"),
+            past.map(e => {
+                const myStatus = me && checkins[e.id] && checkins[e.id][me.id];
+                return React.createElement("div", { key: e.id, onClick: isDirector ? () => setSelectedEvent(e) : undefined, style: { padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 10, marginBottom: 6, cursor: isDirector ? "pointer" : "default", display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 3 } }, e.title),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, new Date(e.starts_at).toLocaleDateString([], { month: "short", day: "numeric" }) + " \u00B7 " + new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+                    ),
+                    myStatus && React.createElement("div", { style: { fontSize: 10, padding: "3px 8px", borderRadius: 12, background: myStatus === "present" ? "rgba(76,222,128,0.15)" : myStatus === "late" ? "rgba(251,191,36,0.15)" : "rgba(239,68,68,0.15)", color: myStatus === "present" ? "#4ade80" : myStatus === "late" ? "#fbbf24" : "#ef4444", fontWeight: 700, letterSpacing: "0.05em" } }, myStatus.toUpperCase())
+                );
+            })
         )
     );
 }
