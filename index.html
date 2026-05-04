@@ -130,6 +130,9 @@ const supabase = (() => {
         const q = {
             select: (cols) => { _select = cols || "*"; return q; },
             eq: (col, val) => { _filters.push(`${col}=eq.${encodeURIComponent(val)}`); return q; },
+            neq: (col, val) => { _filters.push(`${col}=neq.${encodeURIComponent(val)}`); return q; },
+            in: (col, vals) => { if (vals && vals.length) _filters.push(`${col}=in.(${vals.map(v => encodeURIComponent(v)).join(",")})`); else _filters.push(`${col}=eq.__none__`); return q; },
+            ilike: (col, pattern) => { _filters.push(`${col}=ilike.${encodeURIComponent(pattern)}`); return q; },
             single: () => { _single = true; return q; },
             limit: (n) => { _limit = n; return q; },
             order: (col, opts) => { _filters.push(`order=${col}.${(opts === null || opts === void 0 ? void 0 : opts.ascending) === false ? "desc" : "asc"}`); return q; },
@@ -2106,24 +2109,35 @@ function ProductionsScreen({ show, onViewUser }) {
     const [isVerified, setIsVerified] = useState(false);
     const [loading, setLoading] = useState(true);
     const reload = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        setMe(user);
-        if (!user) { setLoading(false); return; }
-        const { data: prof } = await supabase.from("profiles").select("verified_director").eq("id", user.id).single();
-        setIsVerified((prof === null || prof === void 0 ? void 0 : prof.verified_director) === true);
-        // Load shows where I'm director OR cast/crew
-        const { data: directed } = await supabase.from("productions").select("*").eq("director_id", user.id).eq("status", "active").order("created_at", { ascending: false });
-        const { data: memberRows } = await supabase.from("production_members").select("production_id").eq("user_id", user.id);
-        const memberIds = (memberRows || []).map(r => r.production_id);
-        let memberShows = [];
-        if (memberIds.length) {
-            const { data } = await supabase.from("productions").select("*").in("id", memberIds).eq("status", "active");
-            memberShows = data || [];
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            setMe(user);
+            if (!user) { setLoading(false); return; }
+            // Verified director check (optional)
+            try {
+                const { data: prof } = await supabase.from("profiles").select("verified_director").eq("id", user.id).single();
+                setIsVerified((prof === null || prof === void 0 ? void 0 : prof.verified_director) === true);
+            } catch (e) { /* ignore */ }
+            // Load shows I direct
+            const { data: directed } = await supabase.from("productions").select("*").eq("director_id", user.id).order("created_at", { ascending: false });
+            // Load shows I'm a member of
+            const { data: memberRows } = await supabase.from("production_members").select("production_id").eq("user_id", user.id);
+            const memberIds = (memberRows || []).map(r => r.production_id).filter(id => id);
+            let memberShows = [];
+            if (memberIds.length) {
+                const { data } = await supabase.from("productions").select("*").in("id", memberIds);
+                memberShows = data || [];
+            }
+            const directedActive = (directed || []).filter(p => !p.status || p.status === "active");
+            const memberActive = memberShows.filter(p => !p.status || p.status === "active");
+            const merged = [...directedActive];
+            memberActive.forEach(s => { if (!merged.find(x => x.id === s.id)) merged.push(s); });
+            setProductions(merged);
+        } catch (e) {
+            console.error("Production load error:", e);
+        } finally {
+            setLoading(false);
         }
-        const merged = [...(directed || [])];
-        memberShows.forEach(s => { if (!merged.find(x => x.id === s.id)) merged.push(s); });
-        setProductions(merged);
-        setLoading(false);
     };
     useEffect(() => { reload(); }, []);
     if (activeProduction) {
