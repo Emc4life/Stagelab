@@ -15,7 +15,6 @@
     html { -webkit-text-size-adjust: 100%; height: 100%; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #08080f; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
     body { touch-action: pan-y; position: fixed; width: 100%; }
-    /* #root fills viewport completely - components handle their own safe-areas via env() */
     #root { width: 100vw; height: 100vh; height: 100dvh; }
     input, textarea, select { font-family: inherit; font-size: 16px !important; -webkit-appearance: none; appearance: none; border-radius: 0; }
     input[type="range"] { appearance: auto; -webkit-appearance: auto; }
@@ -701,7 +700,7 @@ function MainApp({ tab, setTab, session }) {
             tab === 0 && React.createElement(FeedScreen, { videos: videos, setVideos: setVideos, comments: comments, setComments: setComments, show: show, onViewUser: (id) => setViewingUser(id) }),
             tab === 1 && React.createElement(CreateScreen, { show: show, setTab: setTab }),
             tab === 2 && React.createElement(DiscoverScreen, { show: show, onViewUser: (id) => setViewingUser(id) }),
-            tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, setLiveRoom: setLiveRoom }),
+            tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, onViewUser: (id) => setViewingUser(id), setLiveRoom: setLiveRoom }),
             tab === 4 && React.createElement(ProfileScreen, { show: show })),
         liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
         showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
@@ -2100,6 +2099,506 @@ const EmptyState = ({ query, type }) => (React.createElement("div", { style: { t
     React.createElement("div", { style: { fontSize: 16, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, query ? `No ${type} matching "${query}"` : `No ${type} found`),
     React.createElement("div", { style: { fontSize: 13 } }, "Try a different search term")));
 // ---------------------------- AI ------------------------------------
+function ProductionsScreen({ show, onViewUser }) {
+    const [productions, setProductions] = useState([]);
+    const [activeProduction, setActiveProduction] = useState(null);
+    const [showCreate, setShowCreate] = useState(false);
+    const [me, setMe] = useState(null);
+    const [isVerified, setIsVerified] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const reload = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        setMe(user);
+        if (!user) { setLoading(false); return; }
+        const { data: prof } = await supabase.from("profiles").select("verified_director").eq("id", user.id).single();
+        setIsVerified((prof === null || prof === void 0 ? void 0 : prof.verified_director) === true);
+        // Load shows where I'm director OR cast/crew
+        const { data: directed } = await supabase.from("productions").select("*").eq("director_id", user.id).eq("status", "active").order("created_at", { ascending: false });
+        const { data: memberRows } = await supabase.from("production_members").select("production_id").eq("user_id", user.id);
+        const memberIds = (memberRows || []).map(r => r.production_id);
+        let memberShows = [];
+        if (memberIds.length) {
+            const { data } = await supabase.from("productions").select("*").in("id", memberIds).eq("status", "active");
+            memberShows = data || [];
+        }
+        const merged = [...(directed || [])];
+        memberShows.forEach(s => { if (!merged.find(x => x.id === s.id)) merged.push(s); });
+        setProductions(merged);
+        setLoading(false);
+    };
+    useEffect(() => { reload(); }, []);
+    if (activeProduction) {
+        return React.createElement(ProductionDetail, {
+            production: activeProduction,
+            isDirector: activeProduction.director_id === (me === null || me === void 0 ? void 0 : me.id),
+            me, show, onViewUser,
+            onBack: () => { setActiveProduction(null); reload(); },
+            onUpdate: (updates) => setActiveProduction(p => Object.assign(Object.assign({}, p), updates)),
+        });
+    }
+    return React.createElement("div", { style: { padding: "20px 16px 80px", overflowY: "auto", WebkitOverflowScrolling: "touch", height: "100%" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Productions"),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 } }, "Direct, manage, and track your shows")
+            ),
+            me && React.createElement("button", { onClick: () => setShowCreate(true), style: { padding: "10px 16px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 10, color: "#1a0a2e", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ New Show")
+        ),
+        
+        loading
+            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+            : productions.length === 0
+                ? React.createElement("div", { style: { textAlign: "center", padding: 60, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 16 } },
+                    React.createElement("div", { style: { fontSize: 48, marginBottom: 12, opacity: 0.4 } }, "\uD83C\uDFAC"),
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700, marginBottom: 6 } }, "No productions yet"),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto" } }, "Create your first show to start managing cast, schedule, and check-ins.")
+                )
+                : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+                    productions.map(p =>
+                        React.createElement("div", { key: p.id, onClick: () => setActiveProduction(p), style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center" } },
+                            React.createElement("div", { style: { width: 56, height: 56, borderRadius: 10, background: p.poster_url ? "transparent" : "linear-gradient(135deg,#4a006e,#1a0a2e)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 } },
+                                p.poster_url
+                                    ? React.createElement("img", { src: p.poster_url, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                    : "\uD83C\uDFAD"
+                            ),
+                            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.title),
+                                p.current_phase && React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginBottom: 3, fontWeight: 600 } }, p.current_phase),
+                                p.venue && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, "\uD83D\uDCCD " + p.venue)
+                            ),
+                            p.director_id === (me === null || me === void 0 ? void 0 : me.id) && React.createElement("div", { style: { fontSize: 9, padding: "3px 7px", background: "rgba(201,168,76,0.2)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 12, color: "#c9a84c", letterSpacing: "0.05em" } }, "DIRECTING")
+                        )
+                    )
+                ),
+        showCreate && React.createElement(NewProductionModal, { onCreate: async (data) => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) { show("Sign in first"); return; }
+                const defaultPhases = [
+                    { id: "p1", name: "Auditions", order: 0 },
+                    { id: "p2", name: "Callbacks", order: 1 },
+                    { id: "p3", name: "Read-through", order: 2 },
+                    { id: "p4", name: "Blocking", order: 3 },
+                    { id: "p5", name: "Off-book", order: 4 },
+                    { id: "p6", name: "Tech", order: 5 },
+                    { id: "p7", name: "Performances", order: 6 },
+                ];
+                const { data: row, error } = await supabase.from("productions").insert(Object.assign(Object.assign({}, data), { director_id: user.id, phases: defaultPhases, current_phase: "Auditions" }));
+                if (error) { console.warn(error); show("\u26a0\ufe0f Could not create show"); return; }
+                show("\uD83C\uDFAC Show created!");
+                setShowCreate(false);
+                reload();
+            }, onClose: () => setShowCreate(false) })
+    );
+}
+function NewProductionModal({ onCreate, onClose }) {
+    const [title, setTitle] = useState("");
+    const [synopsis, setSynopsis] = useState("");
+    const [venue, setVenue] = useState("");
+    const [openDate, setOpenDate] = useState("");
+    const [closeDate, setCloseDate] = useState("");
+    const submit = () => {
+        if (!title.trim()) return;
+        onCreate({
+            title: title.trim(),
+            synopsis: synopsis.trim() || null,
+            venue: venue.trim() || null,
+            open_date: openDate || null,
+            close_date: closeDate || null,
+        });
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 12 };
+    const labelSt = { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "90dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "New Production"),
+            React.createElement("div", { style: labelSt }, "SHOW TITLE"),
+            React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), placeholder: "e.g. Hamilton, Wicked, Original Musical", style: inputSt }),
+            React.createElement("div", { style: labelSt }, "SYNOPSIS"),
+            React.createElement("textarea", { value: synopsis, onChange: e => setSynopsis(e.target.value), rows: 3, placeholder: "What's the show about?", style: Object.assign(Object.assign({}, inputSt), { resize: "none", fontFamily: "inherit" }) }),
+            React.createElement("div", { style: labelSt }, "VENUE"),
+            React.createElement("input", { value: venue, onChange: e => setVenue(e.target.value), placeholder: "e.g. La Jolla Playhouse", style: inputSt }),
+            React.createElement("div", { style: { display: "flex", gap: 12 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("div", { style: labelSt }, "OPENING"),
+                    React.createElement("input", { type: "date", value: openDate, onChange: e => setOpenDate(e.target.value), style: inputSt })
+                ),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("div", { style: labelSt }, "CLOSING"),
+                    React.createElement("input", { type: "date", value: closeDate, onChange: e => setCloseDate(e.target.value), style: inputSt })
+                )
+            ),
+            React.createElement("button", { onClick: submit, disabled: !title.trim(), style: { width: "100%", padding: "14px", marginTop: 8, background: title.trim() ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: title.trim() ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: title.trim() ? "pointer" : "not-allowed" } }, "Create Show"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function ProductionDetail({ production, isDirector, me, show, onViewUser, onBack, onUpdate }) {
+    const [tab, setTab] = useState("overview");
+    const [members, setMembers] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const reload = async () => {
+        setLoading(true);
+        const { data: memberRows } = await supabase.from("production_members")
+            .select("*, profile:user_id(name,handle,avatar_url)")
+            .eq("production_id", production.id);
+        setMembers(memberRows || []);
+        const { data: eventRows } = await supabase.from("production_events")
+            .select("*")
+            .eq("production_id", production.id)
+            .order("starts_at", { ascending: true });
+        setEvents(eventRows || []);
+        setLoading(false);
+    };
+    useEffect(() => { reload(); }, [production.id]);
+    return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+        React.createElement("div", { style: { padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 12 } },
+            React.createElement("button", { onClick: onBack, style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", padding: 0, width: 36, height: 36, borderRadius: "50%", fontSize: 16, cursor: "pointer", flexShrink: 0 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, production.title),
+                production.current_phase && React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginTop: 1 } }, production.current_phase)
+            ),
+            isDirector && React.createElement("div", { style: { fontSize: 9, padding: "4px 8px", background: "rgba(201,168,76,0.2)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 12, color: "#c9a84c", letterSpacing: "0.05em" } }, "DIRECTOR")
+        ),
+        React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            [["overview", "Overview"], ["cast", "Cast"], ["schedule", "Schedule"], ["checkin", "Check-in"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setTab(k), style: { flex: 1, padding: "11px 0", background: "none", border: "none", borderBottom: tab === k ? "2px solid #c9a84c" : "2px solid transparent", color: tab === k ? "#c9a84c" : "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: tab === k ? 700 : 500, cursor: "pointer", letterSpacing: "0.04em" } }, l.toUpperCase())
+            )
+        ),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px" } },
+            loading
+                ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                : tab === "overview"
+                    ? React.createElement(OverviewTab, { production, members, events, isDirector, onUpdate, show })
+                    : tab === "cast"
+                        ? React.createElement(CastTab, { production, members, isDirector, onViewUser, show, reload })
+                        : tab === "schedule"
+                            ? React.createElement(ScheduleTab, { production, events, isDirector, show, reload })
+                            : React.createElement(CheckinTab, { production, events, members, me, isDirector, show, reload })
+        )
+    );
+}
+function OverviewTab({ production, members, events, isDirector, onUpdate, show }) {
+    const [editingPhase, setEditingPhase] = useState(false);
+    const phases = production.phases || [];
+    const currentIdx = phases.findIndex(p => p.name === production.current_phase);
+    const advancePhase = async (phaseName) => {
+        const { error } = await supabase.from("productions").update({ current_phase: phaseName }).eq("id", production.id);
+        if (error) { show("Failed to update phase"); return; }
+        onUpdate({ current_phase: phaseName });
+        show("\u2713 Phase updated");
+        setEditingPhase(false);
+    };
+    const upcoming = events.filter(e => new Date(e.starts_at) > new Date()).slice(0, 3);
+    return React.createElement("div", null,
+        production.synopsis && React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, marginBottom: 18, whiteSpace: "pre-wrap" } }, production.synopsis),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 } },
+            production.venue && React.createElement(InfoChip, { icon: "\uD83D\uDCCD", label: "Venue", value: production.venue }),
+            production.open_date && React.createElement(InfoChip, { icon: "\uD83C\uDFAD", label: "Opening", value: production.open_date }),
+            React.createElement(InfoChip, { icon: "\uD83D\uDC65", label: "Members", value: members.length + "" }),
+            React.createElement(InfoChip, { icon: "\uD83D\uDCC5", label: "Events", value: events.length + "" })
+        ),
+        // Phase tracker
+        phases.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } },
+                React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700 } }, "PRODUCTION STATUS"),
+                isDirector && React.createElement("button", { onClick: () => setEditingPhase(!editingPhase), style: { background: "none", border: "none", color: "#c9a84c", fontSize: 11, cursor: "pointer" } }, editingPhase ? "Cancel" : "Update")
+            ),
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                phases.map((p, i) => {
+                    const isCurrent = p.name === production.current_phase;
+                    const isPast = i < currentIdx;
+                    return React.createElement("div", { key: p.id || i, onClick: () => editingPhase && advancePhase(p.name), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: isCurrent ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.04)", border: "1px solid " + (isCurrent ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.05)"), borderRadius: 8, cursor: editingPhase ? "pointer" : "default" } },
+                        React.createElement("div", { style: { width: 22, height: 22, borderRadius: "50%", background: isPast ? "#c9a84c" : isCurrent ? "rgba(201,168,76,0.3)" : "rgba(255,255,255,0.06)", border: isCurrent ? "2px solid #c9a84c" : "1px solid rgba(255,255,255,0.1)", color: isPast ? "#1a0a2e" : isCurrent ? "#c9a84c" : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, isPast ? "\u2713" : i + 1),
+                        React.createElement("div", { style: { flex: 1, fontSize: 13, fontWeight: isCurrent ? 700 : 500, color: isPast ? "rgba(255,255,255,0.5)" : "#fff" } }, p.name)
+                    );
+                })
+            )
+        ),
+        // Upcoming events
+        upcoming.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "UPCOMING"),
+            upcoming.map(e => React.createElement(EventRow, { key: e.id, event: e }))
+        )
+    );
+}
+function InfoChip({ icon, label, value }) {
+    return React.createElement("div", { style: { padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 } },
+        React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", marginBottom: 3 } }, icon + " " + label.toUpperCase()),
+        React.createElement("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, value)
+    );
+}
+function EventRow({ event, onClick }) {
+    const dt = new Date(event.starts_at);
+    return React.createElement("div", { onClick: onClick, style: { display: "flex", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6, cursor: onClick ? "pointer" : "default" } },
+        React.createElement("div", { style: { textAlign: "center", flexShrink: 0, paddingRight: 10, borderRight: "1px solid rgba(255,255,255,0.08)" } },
+            React.createElement("div", { style: { fontSize: 9, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.08em" } }, dt.toLocaleString("default", { month: "short" }).toUpperCase()),
+            React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, dt.getDate())
+        ),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 700, marginBottom: 2, letterSpacing: "0.04em" } }, (event.type || "").toUpperCase()),
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, event.title),
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (event.location ? " \u00B7 " + event.location : ""))
+        )
+    );
+}
+function CastTab({ production, members, isDirector, onViewUser, show, reload }) {
+    const [showAdd, setShowAdd] = useState(false);
+    const cast = members.filter(m => m.role_type === "cast" || m.role_type === "ensemble" || m.role_type === "swing");
+    const team = members.filter(m => !["cast", "ensemble", "swing"].includes(m.role_type));
+    const removeMember = async (id) => {
+        if (!confirm("Remove this person from the production?")) return;
+        await supabase.from("production_members").delete().eq("id", id);
+        show("Removed");
+        reload();
+    };
+    return React.createElement("div", null,
+        isDirector && React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "11px", marginBottom: 14, background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ Add Cast or Crew"),
+        team.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "PRODUCTION TEAM"),
+            team.map(m => React.createElement(MemberRow, { key: m.id, member: m, isDirector, onView: onViewUser, onRemove: removeMember }))
+        ),
+        cast.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "CAST"),
+            cast.map(m => React.createElement(MemberRow, { key: m.id, member: m, isDirector, onView: onViewUser, onRemove: removeMember }))
+        ),
+        members.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, isDirector ? "Add cast and crew to start building your team." : "Cast list coming soon."),
+        showAdd && React.createElement(AddMemberModal, { productionId: production.id, onClose: () => setShowAdd(false), onAdded: () => { reload(); setShowAdd(false); show("\u2713 Added"); } })
+    );
+}
+function MemberRow({ member, isDirector, onView, onRemove }) {
+    var _a, _b, _c;
+    const name = ((_a = member.profile) === null || _a === void 0 ? void 0 : _a.name) || member.display_name || member.invite_handle || "Pending";
+    const avatar = ((_b = member.profile) === null || _b === void 0 ? void 0 : _b.avatar_url);
+    const initials = (name || "U").slice(0, 2).toUpperCase();
+    const roleLabel = (member.role_type || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6 } },
+        React.createElement("div", { onClick: () => member.user_id && onView && onView(member.user_id), style: { width: 38, height: 38, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#1a0a2e", flexShrink: 0, cursor: member.user_id ? "pointer" : "default" } },
+            avatar ? React.createElement("img", { src: avatar, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } }) : initials
+        ),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, member.character_name ? member.character_name + " — " + name : name),
+            React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginTop: 1 } }, roleLabel + (member.invite_status === "pending" ? " · pending" : ""))
+        ),
+        isDirector && React.createElement("button", { onClick: () => onRemove(member.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 18, cursor: "pointer", padding: 4 } }, "\u00D7")
+    );
+}
+function AddMemberModal({ productionId, onClose, onAdded }) {
+    const [handle, setHandle] = useState("");
+    const [roleType, setRoleType] = useState("cast");
+    const [character, setCharacter] = useState("");
+    const submit = async () => {
+        if (!handle.trim()) return;
+        const cleanHandle = handle.trim().replace(/^@/, "");
+        const { data: prof } = await supabase.from("profiles").select("id,name").ilike("handle", "%" + cleanHandle + "%").limit(1).single();
+        const payload = {
+            production_id: productionId,
+            role_type: roleType,
+            character_name: character.trim() || null,
+            invite_handle: "@" + cleanHandle,
+            invite_status: prof ? "accepted" : "pending",
+            display_name: prof ? null : "@" + cleanHandle,
+        };
+        if (prof) payload.user_id = prof.id;
+        const { error } = await supabase.from("production_members").insert(payload);
+        if (error) { console.warn(error); alert("Could not add member: " + error.message); return; }
+        onAdded();
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 12 };
+    const roles = [
+        { k: "cast", l: "Cast" }, { k: "ensemble", l: "Ensemble" }, { k: "swing", l: "Swing" },
+        { k: "music_director", l: "Music Director" }, { k: "choreographer", l: "Choreographer" },
+        { k: "stage_manager", l: "Stage Manager" }, { k: "assistant", l: "Assistant" },
+        { k: "designer", l: "Designer" }, { k: "crew", l: "Crew" }, { k: "other", l: "Other" },
+    ];
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "85dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "Add Member"),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "USER HANDLE"),
+            React.createElement("input", { value: handle, onChange: e => setHandle(e.target.value), placeholder: "@username", style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "ROLE"),
+            React.createElement("select", { value: roleType, onChange: e => setRoleType(e.target.value), style: inputSt },
+                roles.map(r => React.createElement("option", { key: r.k, value: r.k }, r.l))
+            ),
+            (roleType === "cast" || roleType === "ensemble" || roleType === "swing") && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "CHARACTER (OPTIONAL)"),
+                React.createElement("input", { value: character, onChange: e => setCharacter(e.target.value), placeholder: "e.g. Hamilton, Elphaba", style: inputSt })
+            ),
+            React.createElement("button", { onClick: submit, disabled: !handle.trim(), style: { width: "100%", padding: "13px", marginTop: 6, background: handle.trim() ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: handle.trim() ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: handle.trim() ? "pointer" : "not-allowed" } }, "Add to Production"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function ScheduleTab({ production, events, isDirector, show, reload }) {
+    const [showAdd, setShowAdd] = useState(false);
+    const grouped = events.reduce((acc, e) => {
+        const d = new Date(e.starts_at).toDateString();
+        if (!acc[d]) acc[d] = [];
+        acc[d].push(e);
+        return acc;
+    }, {});
+    return React.createElement("div", null,
+        isDirector && React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "11px", marginBottom: 14, background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ Add Event"),
+        events.length === 0
+            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, isDirector ? "Add rehearsals, auditions, and performances to start scheduling." : "No events scheduled yet.")
+            : Object.keys(grouped).map(date =>
+                React.createElement("div", { key: date, style: { marginBottom: 16 } },
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 } }, new Date(date).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }).toUpperCase()),
+                    grouped[date].map(e => React.createElement(EventRow, { key: e.id, event: e }))
+                )
+            ),
+        showAdd && React.createElement(AddEventModal, { productionId: production.id, onClose: () => setShowAdd(false), onAdded: () => { reload(); setShowAdd(false); show("\u2713 Event added"); } })
+    );
+}
+function AddEventModal({ productionId, onClose, onAdded }) {
+    const [title, setTitle] = useState("");
+    const [type, setType] = useState("rehearsal");
+    const [startsAt, setStartsAt] = useState("");
+    const [location, setLocation] = useState("");
+    const [prep, setPrep] = useState("");
+    const submit = async () => {
+        if (!title.trim() || !startsAt) return;
+        const { error } = await supabase.from("production_events").insert({
+            production_id: productionId,
+            type, title: title.trim(),
+            starts_at: new Date(startsAt).toISOString(),
+            location: location.trim() || null,
+            prep_notes: prep.trim() || null,
+        });
+        if (error) { alert("Failed: " + error.message); return; }
+        onAdded();
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 12 };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "90dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "New Event"),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "TYPE"),
+            React.createElement("select", { value: type, onChange: e => setType(e.target.value), style: inputSt },
+                ["audition", "callback", "rehearsal", "tech", "performance", "meeting", "other"].map(t =>
+                    React.createElement("option", { key: t, value: t }, t.charAt(0).toUpperCase() + t.slice(1))
+                )
+            ),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "TITLE"),
+            React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), placeholder: "e.g. Act 1 read-through", style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "DATE & TIME"),
+            React.createElement("input", { type: "datetime-local", value: startsAt, onChange: e => setStartsAt(e.target.value), style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "LOCATION"),
+            React.createElement("input", { value: location, onChange: e => setLocation(e.target.value), placeholder: "e.g. Studio B, La Jolla Playhouse", style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "PREP NOTES"),
+            React.createElement("textarea", { value: prep, onChange: e => setPrep(e.target.value), rows: 3, placeholder: "What to prep, wear, bring", style: Object.assign(Object.assign({}, inputSt), { resize: "none", fontFamily: "inherit" }) }),
+            React.createElement("button", { onClick: submit, disabled: !title.trim() || !startsAt, style: { width: "100%", padding: "13px", background: (title.trim() && startsAt) ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: (title.trim() && startsAt) ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: (title.trim() && startsAt) ? "pointer" : "not-allowed" } }, "Create Event"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function CheckinTab({ production, events, members, me, isDirector, show, reload }) {
+    const [checkins, setCheckins] = useState({}); // event_id → {user_id: status}
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    useEffect(() => {
+        (async () => {
+            if (!events.length) return;
+            const eventIds = events.map(e => e.id);
+            const { data } = await supabase.from("event_checkins").select("*").in("event_id", eventIds);
+            const map = {};
+            (data || []).forEach(c => {
+                if (!map[c.event_id]) map[c.event_id] = {};
+                map[c.event_id][c.user_id] = c.status;
+            });
+            setCheckins(map);
+        })();
+    }, [events]);
+    const now = new Date();
+    const today = events.filter(e => {
+        const d = new Date(e.starts_at);
+        return d.toDateString() === now.toDateString();
+    });
+    const upcoming = events.filter(e => new Date(e.starts_at) > now && new Date(e.starts_at).toDateString() !== now.toDateString());
+    const checkInMe = async (eventId) => {
+        if (!me) { show("Sign in to check in"); return; }
+        const { error } = await supabase.from("event_checkins").upsert({ event_id: eventId, user_id: me.id, status: "present" });
+        if (error) { show("Check-in failed"); return; }
+        show("\u2713 Checked in!");
+        setCheckins(p => Object.assign(Object.assign({}, p), { [eventId]: Object.assign(Object.assign({}, p[eventId]), { [me.id]: "present" }) }));
+    };
+    const toggleCheckinOpen = async (event) => {
+        const newVal = !event.checkin_open;
+        await supabase.from("production_events").update({ checkin_open: newVal }).eq("id", event.id);
+        show(newVal ? "Check-in opened" : "Check-in closed");
+        reload();
+    };
+    if (selectedEvent && isDirector) {
+        return React.createElement(AttendanceRoster, {
+            event: selectedEvent, members, checkins: checkins[selectedEvent.id] || {},
+            onBack: () => setSelectedEvent(null), show, reload,
+        });
+    }
+    return React.createElement("div", null,
+        today.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "TODAY"),
+            today.map(e => {
+                const myStatus = me && checkins[e.id] && checkins[e.id][me.id];
+                const isOpen = e.checkin_open;
+                return React.createElement("div", { key: e.id, style: { background: "linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05))", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, padding: 14, marginBottom: 8 } },
+                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 4 } }, e.title),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 12 } }, new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (e.location ? " · " + e.location : "")),
+                    isDirector && React.createElement(React.Fragment, null,
+                        React.createElement("button", { onClick: () => toggleCheckinOpen(e), style: { width: "100%", padding: "11px", marginBottom: 6, background: isOpen ? "rgba(76,222,128,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid " + (isOpen ? "rgba(76,222,128,0.4)" : "rgba(255,255,255,0.1)"), borderRadius: 8, color: isOpen ? "#4ade80" : "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, isOpen ? "\u2713 Check-in open" : "Open check-in"),
+                        React.createElement("button", { onClick: () => setSelectedEvent(e), style: { width: "100%", padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" } }, "View Roster (" + Object.keys(checkins[e.id] || {}).length + ")")
+                    ),
+                    !isDirector && me && (myStatus
+                        ? React.createElement("div", { style: { padding: "11px", background: "rgba(76,222,128,0.15)", border: "1px solid rgba(76,222,128,0.4)", borderRadius: 8, color: "#4ade80", fontSize: 13, fontWeight: 700, textAlign: "center" } }, "\u2713 Checked in")
+                        : isOpen
+                            ? React.createElement("button", { onClick: () => checkInMe(e.id), style: { width: "100%", padding: "13px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 10, color: "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Check In")
+                            : React.createElement("div", { style: { padding: "11px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center" } }, "Check-in not yet open"))
+                );
+            })
+        ),
+        today.length === 0 && upcoming.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No events to check in for."),
+        upcoming.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "UPCOMING"),
+            upcoming.slice(0, 5).map(e => React.createElement(EventRow, { key: e.id, event: e }))
+        )
+    );
+}
+function AttendanceRoster({ event, members, checkins, onBack, show, reload }) {
+    const calledMembers = members; // simplified — show everyone
+    const setStatus = async (userId, status) => {
+        await supabase.from("event_checkins").upsert({ event_id: event.id, user_id: userId, status });
+        show("\u2713 " + status);
+        reload();
+    };
+    return React.createElement("div", null,
+        React.createElement("button", { onClick: onBack, style: { background: "none", border: "none", color: "#c9a84c", fontSize: 13, marginBottom: 14, cursor: "pointer", padding: 0 } }, "\u2190 Back"),
+        React.createElement("div", { style: { fontSize: 16, fontWeight: 700, marginBottom: 4 } }, event.title),
+        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 18 } }, new Date(event.starts_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })),
+        calledMembers.length === 0
+            ? React.createElement("div", { style: { padding: 40, textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No members yet")
+            : calledMembers.map(m => {
+                var _a, _b;
+                const name = ((_a = m.profile) === null || _a === void 0 ? void 0 : _a.name) || m.display_name || "Pending";
+                const avatar = (_b = m.profile) === null || _b === void 0 ? void 0 : _b.avatar_url;
+                const status = m.user_id ? checkins[m.user_id] : null;
+                const statusColor = status === "present" ? "#4ade80" : status === "late" ? "#fbbf24" : status === "absent" ? "#ef4444" : "rgba(255,255,255,0.3)";
+                return React.createElement("div", { key: m.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6 } },
+                    React.createElement("div", { style: { width: 36, height: 36, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, color: "#1a0a2e", flexShrink: 0 } },
+                        avatar ? React.createElement("img", { src: avatar, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (name || "U").slice(0, 2).toUpperCase()
+                    ),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, name),
+                        React.createElement("div", { style: { fontSize: 10, color: statusColor, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" } }, status || "not checked in")
+                    ),
+                    m.user_id && React.createElement("div", { style: { display: "flex", gap: 4 } },
+                        ["present", "late", "absent"].map(s =>
+                            React.createElement("button", { key: s, onClick: () => setStatus(m.user_id, s), title: s, style: { width: 28, height: 28, borderRadius: "50%", background: status === s ? (s === "present" ? "rgba(76,222,128,0.25)" : s === "late" ? "rgba(251,191,36,0.25)" : "rgba(239,68,68,0.25)") : "rgba(255,255,255,0.04)", border: "1px solid " + (status === s ? (s === "present" ? "rgba(76,222,128,0.5)" : s === "late" ? "rgba(251,191,36,0.5)" : "rgba(239,68,68,0.5)") : "rgba(255,255,255,0.08)"), color: s === "present" ? "#4ade80" : s === "late" ? "#fbbf24" : "#ef4444", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 } }, s === "present" ? "\u2713" : s === "late" ? "\u23F0" : "\u2717")
+                        )
+                    )
+                );
+            })
+    );
+}
 function SceneBuilderScreen({ show }) {
     const [scenes, setScenes] = useState([]);
     const [editingId, setEditingId] = useState(null);
@@ -2250,6 +2749,7 @@ function StudioScreen({ show, onJoin, setLiveRoom }) {
     const [sub, setSub] = useState("scenes");
     const STUDIO_SUBS = [
         { key: "scenes", label: "\uD83C\uDFAD Scene Builder" },
+        { key: "productions", label: "\uD83C\uDFAC Productions" },
         { key: "casting", label: "\uD83D\uDCDD Casting" },
         { key: "live", label: "\uD83D\uDD34 Live", live: true },
     ];
@@ -2266,7 +2766,8 @@ function StudioScreen({ show, onJoin, setLiveRoom }) {
             s.live && sub !== s.key && React.createElement("span", { style: { display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#ef4444", marginLeft: 5, verticalAlign: "middle", animation: "liveDot 1.5s infinite" } }))))),
         React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
             sub === "scenes" && React.createElement(SceneBuilderScreen, { show: show }),
-            sub === "casting" && React.createElement(CastingScreen, { show: show }),
+            sub === "productions" && React.createElement(ProductionsScreen, { show: show, onViewUser: onViewUser }),
+        sub === "casting" && React.createElement(CastingScreen, { show: show }),
             sub === "live" && React.createElement(LiveScreen, { show: show, onJoin: onJoin }))));
 }
 // --------------------------- PROFILE --------------------------------
