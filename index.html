@@ -10,6 +10,9 @@
   <meta name="theme-color" content="#08080f" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://dsegdddquztgkdwyzbai.supabase.co" crossorigin />
+  <link rel="dns-prefetch" href="https://dsegdddquztgkdwyzbai.supabase.co" />
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" />
+  <link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
     html { -webkit-text-size-adjust: 100%; height: 100%; }
@@ -108,6 +111,7 @@ const supabase = (() => {
         },
         signOut: async () => {
             try {
+                try { localStorage.removeItem("sl_profile_cache"); localStorage.removeItem("sl_stats_cache"); } catch (e) {}
                 await fetch(`${SUPA_URL}/auth/v1/logout`, { method: "POST", headers: headers() });
             }
             catch (_a) { }
@@ -346,20 +350,19 @@ const SLogo = ({ size = 32, showText = false, textSize = 17 }) => (React.createE
     showText && (React.createElement("span", { style: { fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: textSize, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1 } }, "StageLab"))));
 // ------------------------------ ROOT --------------------------------
 function StageLab() {
-    const [page, setPage] = useState("loading");
+    // Synchronous token check — no async wait for first paint
+    const initialToken = (() => { try { return localStorage.getItem("sb_token"); } catch (e) { return null; } })();
+    const [page, setPage] = useState(initialToken ? "app" : "auth");
     const [tab, setTab] = useState(0);
-    const [session, setSession] = useState(null);
+    const [session, setSession] = useState(initialToken ? { access_token: initialToken } : null);
     useEffect(() => {
-        // Check for existing session on load
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-                setSession(data.session);
-                setPage("app");
-            }
-            else {
-                setPage("auth");
-            }
-        });
+        // Verify session in background — only redirect to auth if token is invalid
+        if (initialToken) {
+            supabase.auth.getSession().then(({ data }) => {
+                if (data.session) setSession(data.session);
+                // Don't kick to auth here even if invalid - let API errors handle that gracefully
+            });
+        }
         // Listen for auth state changes (sign in / sign out)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
             if (event === "SIGNED_OUT" || !s) {
@@ -370,10 +373,6 @@ function StageLab() {
         });
         return () => subscription.unsubscribe();
     }, []);
-    if (page === "loading")
-        return (React.createElement("div", { style: { background: "#08080f", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" } },
-            React.createElement("style", null, CSS),
-            React.createElement(SLogo, { size: 60 })));
     if (page === "auth")
         return React.createElement(AuthScreen, { onEnter: (s) => { setSession(s); setPage("app"); }, onOnboard: (s) => { setSession(s); setPage("onboard"); } });
     if (page === "onboard")
@@ -2788,7 +2787,8 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
     const [profile, setProfile] = useState(null);
     const [posts, setPosts] = useState([]);
     const [mediaRows, setMediaRows] = useState([]);
-    const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0, likes: 0 });
+    const cachedStats = (() => { try { return JSON.parse(localStorage.getItem("sl_stats_cache") || "null"); } catch { return null; } })();
+    const [stats, setStats] = useState(cachedStats || { posts: 0, followers: 0, following: 0, likes: 0 });
     const [isFollowing, setIsFollowing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [lightbox, setLightbox] = useState(null);
@@ -2923,13 +2923,16 @@ function ProfileScreen({ show }) {
     const PROFILE_DEFAULT = {
         name: "", handle: "", bio: "", location: "", website: "", role: "", avatar: null, banner: null,
     };
-    const [profile, setProfile] = useState(PROFILE_DEFAULT);
-    const [draft, setDraft] = useState(PROFILE_DEFAULT);
+    // Try to hydrate from localStorage cache for instant render
+    const cached = (() => { try { return JSON.parse(localStorage.getItem("sl_profile_cache") || "null"); } catch { return null; } })();
+    const [profile, setProfile] = useState(cached || PROFILE_DEFAULT);
+    const [draft, setDraft] = useState(cached || PROFILE_DEFAULT);
     const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
     const [media, setMedia] = useState([]);
     const [tapes, setTapes] = useState([]);
     const [liked, setLiked] = useState([]);
-    const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0, likes: 0 });
+    const cachedStats = (() => { try { return JSON.parse(localStorage.getItem("sl_stats_cache") || "null"); } catch { return null; } })();
+    const [stats, setStats] = useState(cachedStats || { posts: 0, followers: 0, following: 0, likes: 0 });
     const [lightbox, setLightbox] = useState(null);
     // Load from Supabase
     useEffect(() => {
@@ -2946,6 +2949,7 @@ function ProfileScreen({ show }) {
                     avatar: prof.avatar_url || null, banner: prof.banner_url || null,
                 };
                 setProfile(p); setDraft(p);
+                try { localStorage.setItem("sl_profile_cache", JSON.stringify(p)); } catch (e) {}
             }
             // Load MEDIA (photos/videos uploaded directly to profile)
             const { data: mediaRows } = await supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false });
@@ -2973,12 +2977,14 @@ function ProfileScreen({ show }) {
             // Stats
             const { data: followerRows } = await supabase.from("follows").select("follower_id").eq("following_id", uid);
             const { data: followingRows } = await supabase.from("follows").select("following_id").eq("follower_id", uid);
-            setStats({
+            const finalStats = {
                 posts: postRows?.length || 0,
                 followers: followerRows?.length || 0,
                 following: followingRows?.length || 0,
                 likes: (postRows || []).reduce((a, p) => a + (p.likes || 0), 0),
-            });
+            };
+            setStats(finalStats);
+            try { localStorage.setItem("sl_stats_cache", JSON.stringify(finalStats)); } catch (e) {}
         })();
     }, []);
     // Upload to Supabase Storage
@@ -3260,7 +3266,7 @@ function SettingsPage({ onBack, show }) {
         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 } }, [["Change Password", "password"], ["Linked Accounts", "links"], ["Download My Data", "data"]].map(([l, k]) => (React.createElement("button", { key: k, onClick: () => show(`Opening ${l}\u2026`), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500, fontSize: 13, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" } },
             l,
             React.createElement("span", { style: { opacity: 0.4, fontSize: 16 } }, "\u203A"))))),
-        React.createElement("button", { onClick: async () => { await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
+        React.createElement("button", { onClick: async () => { try { localStorage.removeItem("sl_profile_cache"); localStorage.removeItem("sl_stats_cache"); } catch(e){} await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
 }
 // --------------------------- LIVE -----------------------------------
 const LIVE_CHAT_SEEDS = [
