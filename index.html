@@ -674,46 +674,127 @@ const NAV = [
 function TutorialOverlay({ onClose, onGoTab }) {
     const [step, setStep] = useState(0);
     const steps = [
-        { icon: "\uD83C\uDFAD", title: "Welcome to StageLab", body: "The social home for musical theatre. Performers, directors, composers, and creatives all in one place. Let's take a quick tour." },
-        { icon: "\uD83C\uDFE0", title: "Feed", body: "Swipe through performances, audio, lyrics, and posters from artists across the community. Like, comment, and share what moves you." },
-        { icon: "\uD83C\uDFAC", title: "Create", body: "Post your own work — videos, audio tracks, lyric sheets, or show posters. Share your craft with the world." },
-        { icon: "\uD83D\uDD0D", title: "Discover", body: "Find people in your scene — actors, directors, MDs, choreographers. Follow them, message them, and see their work. Tap any profile to view it." },
-        { icon: "\u2B50", title: "Studio", body: "Your creative workspace. Build and block scenes with Scene Builder, manage full productions with cast and rehearsal check-ins, and go Live." },
-        { icon: "\uD83C\uDFA4", title: "Auditions", body: "The casting hub. Browse open calls, post a casting call for your show, submit self-tapes, track your auditions, and build your résumé." },
-        { icon: "\uD83D\uDC64", title: "Your Profile", body: "Build out your profile with a cover photo, bio, and your best work. Other artists can find and follow you here." },
-        { icon: "\uD83D\uDC9B", title: "You're all set!", body: "StageLab is still growing — you might hit a glitch or two as we build out the backend. Thanks for being early. Now go make something." },
+        {
+            icon: "\uD83C\uDFAD", accent: "#c9a84c",
+            title: "Welcome to StageLab",
+            tagline: "The stage door to your community",
+            body: "This is the home for musical theatre people. Performers, directors, music directors, choreographers, designers, and dreamers. Whatever your role in the room, there's a place for you here.",
+            tip: "Swipe through to see how it all works. Takes about 30 seconds.",
+        },
+        {
+            icon: "\uD83C\uDFE0", accent: "#e8a87c",
+            title: "The Feed",
+            tagline: "Your daily dose of talent",
+            body: "Scroll a living feed of performances, audio, lyrics, and posters from artists everywhere. Double-tap to like, drop a comment, or share a piece that gives you chills.",
+            tip: "Tap any creator's name to visit their profile and follow them.",
+        },
+        {
+            icon: "\uD83C\uDFAC", accent: "#4cb8c4",
+            title: "Create & Post",
+            tagline: "Share your craft",
+            body: "Got a clip from your last show? A demo you're proud of? Post videos, audio, lyric sheets, or show art straight from the Create tab. Your work lives on your profile for everyone to find.",
+            tip: "Self-tapes, song covers, monologues. It all belongs here.",
+        },
+        {
+            icon: "\uD83D\uDD0D", accent: "#a87cc4",
+            title: "Discover People",
+            tagline: "Find your people",
+            body: "Search the community by role and craft. Looking for a rehearsal pianist? A scene partner? A director for your passion project? They're here. Follow them and slide into the DMs.",
+            tip: "Every profile shows their work, credits, and how to reach them.",
+        },
+        {
+            icon: "\u2B50", accent: "#c9a84c",
+            title: "The Studio",
+            tagline: "Where shows come together",
+            body: "Your creative command center. Block scenes on a real stage diagram with Scene Builder, run an entire production with Productions (cast, schedule, rehearsal check-ins), or go Live with your community.",
+            tip: "Directors: Productions lets you manage your whole show in one place.",
+        },
+        {
+            icon: "\uD83C\uDFA4", accent: "#4ade80",
+            title: "Auditions",
+            tagline: "Get cast. Cast your show.",
+            body: "The casting hub. Browse open calls from companies near you and remote. Posting a show? Add every character, audition date, callback, and rehearsal detail in one notice. Track every audition you submit.",
+            tip: "Tap any call to see the full breakdown: roles, dates, what to prepare.",
+        },
+        {
+            icon: "\uD83D\uDC64", accent: "#e8a87c",
+            title: "Your Profile",
+            tagline: "Your digital headshot wall",
+            body: "Build out your profile with a cover photo, bio, and your best work in a clean grid. This is your home base. The first thing people see when they find you.",
+            tip: "A complete profile gets way more follows and casting interest.",
+        },
+        {
+            icon: "\uD83D\uDC9B", accent: "#c9a84c",
+            title: "You're ready",
+            tagline: "Break a leg",
+            body: "StageLab is young and still growing. You might bump into a glitch here and there as we keep building. Thank you for being one of the early ones. It means everything.",
+            tip: "Now go make something worth a standing ovation.",
+        },
     ];
     const s = steps[step];
     const isLast = step === steps.length - 1;
-    return React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(8,4,14,0.96)", zIndex: 600, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", paddingTop: "calc(40px + env(safe-area-inset-top))", paddingBottom: "calc(40px + env(safe-area-inset-bottom))" } },
-        // Skip button
-        React.createElement("button", { onClick: onClose, style: { position: "absolute", top: "calc(20px + env(safe-area-inset-top))", right: 20, background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer" } }, "Skip"),
-        // Icon
-        React.createElement("div", { style: { fontSize: 64, marginBottom: 24 } }, s.icon),
-        // Title
-        React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", textAlign: "center", marginBottom: 14, background: "linear-gradient(90deg,#f5c518,#f07020,#e040a0)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" } }, s.title),
-        // Body
-        React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.75)", textAlign: "center", lineHeight: 1.6, maxWidth: 320, marginBottom: 36 } }, s.body),
-        // Progress dots
-        React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 32 } },
+    const goNext = () => { if (isLast) onClose(); else setStep(step + 1); };
+    const goBack = () => step > 0 && setStep(step - 1);
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600, background: "radial-gradient(120% 80% at 50% 0%, " + s.accent + "18, #08040e 55%)", display: "flex", flexDirection: "column", transition: "background 0.4s ease" } },
+        // Skip button (top right)
+        React.createElement("button", { onClick: onClose, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", right: 18, zIndex: 3, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontSize: 13, padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 600 } }, "Skip"),
+        // Progress bar at top
+        React.createElement("div", { style: { display: "flex", gap: 5, padding: "calc(20px + env(safe-area-inset-top)) 20px 0", marginTop: 0 } },
             steps.map((_, i) =>
-                React.createElement("div", { key: i, style: { width: i === step ? 22 : 7, height: 7, borderRadius: 4, background: i === step ? "#c9a84c" : "rgba(255,255,255,0.2)", transition: "all 0.2s" } })
+                React.createElement("div", { key: i, style: { flex: 1, height: 3, borderRadius: 2, background: i <= step ? s.accent : "rgba(255,255,255,0.12)", transition: "background 0.3s" } })
             )
         ),
-        // Next/Done button
-        React.createElement("button", { onClick: () => { if (isLast) onClose(); else setStep(step + 1); }, style: { width: "100%", maxWidth: 320, padding: "15px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: "#1a0a2e", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, isLast ? "Start Exploring" : "Next"),
-        // Back link
-        step > 0 && React.createElement("button", { onClick: () => setStep(step - 1), style: { marginTop: 12, background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 13, cursor: "pointer" } }, "Back")
+        // Main content - centered
+        React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 32px", textAlign: "center" } },
+            // Icon in a glowing circle
+            React.createElement("div", { style: { width: 110, height: 110, borderRadius: "50%", background: "linear-gradient(135deg," + s.accent + "33," + s.accent + "11)", border: "1px solid " + s.accent + "44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56, marginBottom: 28, boxShadow: "0 8px 40px " + s.accent + "33" } }, s.icon),
+            // Tagline
+            React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: s.accent, fontWeight: 700, marginBottom: 10 } }, s.tagline),
+            // Title
+            React.createElement("div", { style: { fontSize: 32, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 16, color: "#fff", lineHeight: 1.05 } }, s.title),
+            // Body
+            React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.65, maxWidth: 340, marginBottom: 20 } }, s.body),
+            // Tip pill
+            React.createElement("div", { style: { fontSize: 12.5, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 16px", maxWidth: 320, lineHeight: 1.5 } },
+                React.createElement("span", { style: { color: s.accent, fontWeight: 700 } }, "Tip: "),
+                s.tip)
+        ),
+        // Bottom controls
+        React.createElement("div", { style: { padding: "0 24px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12 } },
+            React.createElement("button", { onClick: goNext, style: { width: "100%", padding: "16px", background: "linear-gradient(135deg," + s.accent + ",#e8a87c)", border: "none", borderRadius: 16, color: "#1a0a2e", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px " + s.accent + "44" } }, isLast ? "Enter StageLab" : "Next"),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: 20 } },
+                step > 0
+                    ? React.createElement("button", { onClick: goBack, style: { background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontWeight: 600 } }, "\u2190 Back")
+                    : React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.3)" } }, step + 1 + " of " + steps.length)
+            )
+        )
     );
 }
+
 function MainApp({ tab, setTab, session }) {
     const [toast, setToast] = useState("");
     const [liveRoom, setLiveRoom] = useState(null);
     const [showInbox, setShowInbox] = useState(false);
     const [viewingUser, setViewingUser] = useState(null); // view another user's profile
     const [showTutorial, setShowTutorial] = useState(() => {
+        // Show only if neither localStorage nor (later) profile says it's been seen
         try { return !localStorage.getItem("sl_tutorial_seen"); } catch (e) { return true; }
     });
+    // Double-check against the user's saved profile flag (survives localStorage clears + new devices)
+    useEffect(() => {
+        (async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data: prof } = await supabase.from("profiles").select("tutorial_seen").eq("id", user.id).single();
+                if (prof && prof.tutorial_seen) {
+                    // Already seen on another device — don't show, and sync localStorage
+                    setShowTutorial(false);
+                    try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {}
+                }
+            } catch (e) { /* column may not exist yet; ignore */ }
+        })();
+    }, []);
     // FIX 1: persisted state survives refresh
     const [videos, setVideos] = useState(INIT_VIDEOS); // seeded + DB loaded
     const [comments, setComments] = useState(INIT_COMMENTS); // seeded + DB loaded
@@ -746,7 +827,15 @@ function MainApp({ tab, setTab, session }) {
         liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
         showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
         viewingUser && React.createElement(UserProfileView, { userId: viewingUser, onBack: () => setViewingUser(null), show: show, onViewUser: (id) => setViewingUser(id) }),
-        showTutorial && React.createElement(TutorialOverlay, { onClose: () => { setShowTutorial(false); try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {} }, onGoTab: (t) => setTab(t) }),
+        showTutorial && React.createElement(TutorialOverlay, { onClose: async () => {
+            setShowTutorial(false);
+            try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {}
+            // Persist to profile so it never shows again on any device
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) await supabase.from("profiles").update({ tutorial_seen: true }).eq("id", user.id);
+            } catch (e) { /* column may not exist; localStorage still covers it */ }
+        }, onGoTab: (t) => setTab(t) }),
         toast && React.createElement(Toast, { msg: toast })));
 }
 // --------------------------- FEED -----------------------------------
