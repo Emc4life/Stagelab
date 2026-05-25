@@ -4004,8 +4004,8 @@ function CastingScreen({ show, onViewUser, isHub }) {
         show(`"${role}" added to Auditions! \u2b50`);
         setSub("auditions");
     };
-    return (React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-        React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.4)", borderBottom: "1px solid rgba(255,255,255,0.08)", overflowX: "auto" } }, SUBS.map(s => (React.createElement("button", { key: s.key, onClick: () => setSub(s.key), style: { flex: "0 0 auto", padding: "12px 18px", background: "none", border: "none", color: sub === s.key ? "#c9a84c" : "rgba(255,255,255,0.45)", fontWeight: sub === s.key ? 700 : 400, fontSize: 13, cursor: "pointer", borderBottom: sub === s.key ? "2px solid #c9a84c" : "2px solid transparent", whiteSpace: "nowrap" } }, s.label)))),
+    return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
+        React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.4)", borderBottom: "1px solid rgba(255,255,255,0.08)", overflowX: "auto", flexShrink: 0 } }, SUBS.map(s => (React.createElement("button", { key: s.key, onClick: () => setSub(s.key), style: { flex: "0 0 auto", padding: "12px 18px", background: "none", border: "none", color: sub === s.key ? "#c9a84c" : "rgba(255,255,255,0.45)", fontWeight: sub === s.key ? 700 : 400, fontSize: 13, cursor: "pointer", borderBottom: sub === s.key ? "2px solid #c9a84c" : "2px solid transparent", whiteSpace: "nowrap" } }, s.label)))),
         React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
             sub === "calls" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
                 React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
