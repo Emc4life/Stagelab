@@ -3130,9 +3130,70 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
     );
 }
 
+function ProfileResume({ credits, training, skills, profile }) {
+    const hasContent = (credits && credits.length) || (training && training.length) || (skills && skills.trim());
+    if (!hasContent) {
+        return React.createElement("div", { style: { textAlign: "center", padding: "50px 20px", color: "rgba(255,255,255,0.4)" } },
+            React.createElement("div", { style: { fontSize: 40, marginBottom: 12, opacity: 0.5 } }, "\uD83D\uDCC4"),
+            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, marginBottom: 6, color: "rgba(255,255,255,0.6)" } }, "No r\u00e9sum\u00e9 yet"),
+            React.createElement("div", { style: { fontSize: 12, lineHeight: 1.5, maxWidth: 240, margin: "0 auto" } }, "Build your r\u00e9sum\u00e9 in the Auditions tab and it'll show up here automatically.")
+        );
+    }
+    const Section = ({ title, children }) => React.createElement("div", { style: { marginBottom: 22 } },
+        React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 12, textTransform: "uppercase" } }, title),
+        children
+    );
+    return React.createElement("div", { style: { padding: "20px 16px 40px" } },
+        // Theatre credits
+        (credits && credits.length > 0) && React.createElement(Section, { title: "Theatre Credits" },
+            credits.map((c, i) =>
+                React.createElement("div", { key: c.id || i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" } },
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, c.role || c.title),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 1 } }, [c.title !== (c.role || c.title) ? c.title : null, c.company].filter(Boolean).join(" \u00B7 "))
+                    ),
+                    c.year && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 600, flexShrink: 0, marginLeft: 10 } }, c.year)
+                )
+            )
+        ),
+        // Training
+        (training && training.length > 0) && React.createElement(Section, { title: "Training" },
+            training.map((t, i) =>
+                React.createElement("div", { key: t.id || i, style: { padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" } },
+                    React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, t.title),
+                    t.sub && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 1 } }, t.sub)
+                )
+            )
+        ),
+        // Skills
+        (skills && skills.trim()) && React.createElement(Section, { title: "Special Skills" },
+            React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7 } },
+                skills.split(",").map(s => s.trim()).filter(Boolean).map((s, i) =>
+                    React.createElement("span", { key: i, style: { fontSize: 12, padding: "6px 12px", background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 16, color: "#c9a84c" } }, s)
+                )
+            )
+        )
+    );
+}
 function ProfileScreen({ show }) {
     const [subPage, setSubPage] = useState("main");
-    const [mediaTab, setMediaTab] = useState("videos"); // videos | liked | tapes
+    const [mediaTab, setMediaTab] = useState("videos");
+    // Load résumé data for this profile
+    useEffect(() => {
+        (async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data: prof } = await supabase.from("profiles").select("resume_skills").eq("id", user.id).single();
+                if (prof) setResumeSkillsP(prof.resume_skills || "");
+                const { data: rc } = await supabase.from("resume_credits").select("*").eq("user_id", user.id).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+                if (rc) {
+                    setResumeCredits(rc.filter(r => r.kind === "credit").map(r => ({ id: r.id, title: r.title, role: r.role || "", company: r.company || "", year: r.year || "" })));
+                    setResumeTraining(rc.filter(r => r.kind === "training").map(r => ({ id: r.id, title: r.title, sub: r.sub || "" })));
+                }
+            } catch (e) {}
+        })();
+    }, []); // videos | liked | tapes
     const PROFILE_DEFAULT = {
         name: "", handle: "", bio: "", location: "", website: "", role: "", avatar: null, banner: null,
     };
@@ -3144,6 +3205,9 @@ function ProfileScreen({ show }) {
     const [media, setMedia] = useState([]);
     const [tapes, setTapes] = useState([]);
     const [liked, setLiked] = useState([]);
+    const [resumeCredits, setResumeCredits] = useState([]);
+    const [resumeTraining, setResumeTraining] = useState([]);
+    const [resumeSkillsP, setResumeSkillsP] = useState("");
     const cachedStats = (() => { try { return JSON.parse(localStorage.getItem("sl_stats_cache") || "null"); } catch { return null; } })();
     const [stats, setStats] = useState(cachedStats || { posts: 0, followers: 0, following: 0, likes: 0 });
     const [lightbox, setLightbox] = useState(null);
@@ -3355,7 +3419,7 @@ function ProfileScreen({ show }) {
         ),
         // Tabs
         React.createElement("div", { style: { display: "flex", borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
-            [["videos", "\uD83C\uDFAC Videos"], ["tapes", "\uD83C\uDFAD Self Tapes"], ["liked", "\u2764\uFE0F Liked"]].map(([k, l]) =>
+            [["videos", "\uD83C\uDFAC Videos"], ["tapes", "\uD83C\uDFAD Self Tapes"], ["resume", "\uD83D\uDCC4 R\u00e9sum\u00e9"], ["liked", "\u2764\uFE0F Liked"]].map(([k, l]) =>
                 React.createElement("button", { key: k, onClick: () => setMediaTab(k), style: { flex: 1, padding: "13px 0", background: "none", border: "none", borderBottom: mediaTab === k ? "2px solid #c9a84c" : "2px solid transparent", color: mediaTab === k ? "#c9a84c" : "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: mediaTab === k ? 700 : 500, cursor: "pointer", letterSpacing: "0.02em" } }, l)
             )
         ),
@@ -3364,8 +3428,12 @@ function ProfileScreen({ show }) {
             React.createElement("input", { type: "file", accept: "image/*,video/*", multiple: true, onChange: handleMediaUpload, style: { display: "none" } }),
             "\uD83D\uDCE4  Upload Photos or Videos"
         ),
-        // Grid (3-col like TikTok)
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, padding: "0 0 80px" } },
+        // Résumé tab content
+        mediaTab === "resume" && React.createElement("div", { style: { padding: "16px 16px 90px" } },
+            React.createElement(ProfileResume, { credits: resumeCredits, training: resumeTraining, skills: resumeSkillsP, profile: profile })
+        ),
+        // Grid (3-col like TikTok) — hidden on résumé tab
+        mediaTab !== "resume" && React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, padding: "0 0 80px" } },
             visibleMedia.length === 0
                 ? React.createElement("div", { style: { gridColumn: "1 / -1", padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } },
                     mediaTab === "videos" ? "No videos yet. Upload your first one above." :
@@ -3749,6 +3817,9 @@ function CastingScreen({ show, onViewUser, isHub }) {
     const [auditions, setAuditions] = useState(INIT_AUDITIONS);
     const [selfTapes, setSelfTapes] = useState(INIT_SELFTAPES);
     const [credits, setCredits] = useState(INIT_CREDITS);
+    const [training, setTraining] = useState([]);
+    const [resumeProfile, setResumeProfile] = useState(null);
+    const [resumeSkills, setResumeSkills] = useState("");
     // Load casting data from Supabase on mount
     useEffect(() => {
         (async () => {
@@ -3788,6 +3859,20 @@ function CastingScreen({ show, onViewUser, isHub }) {
                 const { data: auds } = await supabase.from("auditions").select("*").eq("user_id", uid).order("created_at", { ascending: false });
                 if (auds && auds.length > 0) {
                     setAuditions(auds.map(a => ({ id: a.id, show: a.show, role: a.role || "", company: a.company || "", date: a.date || "", location: a.location || "", prep: a.prep || "", status: a.status || "upcoming", emoji: "\uD83C\uDFAD" })));
+                }
+            } catch (e) {}
+            // Resume — load profile header, credits, training, skills
+            try {
+                const { data: prof } = await supabase.from("profiles").select("name,role,avatar_url,location,resume_skills,resume_headline").eq("id", uid).single();
+                if (prof) { setResumeProfile(prof); setResumeSkills(prof.resume_skills || ""); }
+            } catch (e) {}
+            try {
+                const { data: rc } = await supabase.from("resume_credits").select("*").eq("user_id", uid).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+                if (rc) {
+                    const creditRows = rc.filter(r => r.kind === "credit");
+                    const trainingRows = rc.filter(r => r.kind === "training");
+                    if (creditRows.length) setCredits(creditRows.map(r => ({ id: r.id, title: r.title, role: r.role || "", company: r.company || "", year: r.year || "" })));
+                    if (trainingRows.length) setTraining(trainingRows.map(r => ({ id: r.id, title: r.title, sub: r.sub || "" })));
                 }
             } catch (e) {}
         })();
@@ -3876,8 +3961,44 @@ function CastingScreen({ show, onViewUser, isHub }) {
     const markTapeSubmitted = (id) => { setSelfTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: "submitted" }) : t)); };
     const removeAud = (id) => { setAuditions(p => p.filter(a => a.id !== id)); show("Removed."); };
     const removeTape = (id) => { setSelfTapes(p => p.filter(t => t.id !== id)); show("Removed."); };
-    const removeCredit = (i) => { setCredits(p => p.filter((_, j) => j !== i)); };
-    const addCredit = (c) => { setCredits(p => [c, ...p]); };
+    const addCredit = async (c) => {
+        const localId = "tmp-" + Date.now();
+        setCredits(p => [Object.assign(Object.assign({}, c), { id: localId }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("resume_credits").insert({
+            user_id: user.id, kind: "credit", title: c.title, role: c.role || null, company: c.company || null, year: c.year || null,
+        });
+        if (row && row[0]) setCredits(p => p.map(x => x.id === localId ? Object.assign(Object.assign({}, x), { id: row[0].id }) : x));
+        try { await supabase.from("profiles").update({ has_resume: true }).eq("id", user.id); } catch (e) {}
+    };
+    const addTraining = async (t) => {
+        const localId = "tmp-" + Date.now();
+        setTraining(p => [Object.assign(Object.assign({}, t), { id: localId }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("resume_credits").insert({
+            user_id: user.id, kind: "training", title: t.title, sub: t.sub || null,
+        });
+        if (row && row[0]) setTraining(p => p.map(x => x.id === localId ? Object.assign(Object.assign({}, x), { id: row[0].id }) : x));
+        try { await supabase.from("profiles").update({ has_resume: true }).eq("id", user.id); } catch (e) {}
+    };
+    const removeCredit = async (id) => {
+        setCredits(p => p.filter(c => c.id !== id));
+        if (typeof id === "string" && id.startsWith("tmp-")) return;
+        await supabase.from("resume_credits").delete().eq("id", id);
+    };
+    const removeTraining = async (id) => {
+        setTraining(p => p.filter(t => t.id !== id));
+        if (typeof id === "string" && id.startsWith("tmp-")) return;
+        await supabase.from("resume_credits").delete().eq("id", id);
+    };
+    const saveSkills = async (val) => {
+        setResumeSkills(val);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from("profiles").update({ resume_skills: val, has_resume: true }).eq("id", user.id);
+    };
     const trackFromCall = (show_t, role) => {
         setAuditions(p => [{ id: Date.now(), show: show_t, role, company: "From Casting Call", date: "TBA", location: "TBA", prep: "", status: "upcoming", emoji: "\uD83C\uDFAD" }, ...p]);
         show(`"${role}" added to Auditions! \u2b50`);
@@ -3994,21 +4115,27 @@ function CastingScreen({ show, onViewUser, isHub }) {
                     React.createElement("div", null,
                         React.createElement("div", { style: { fontSize: 24, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "R\u00E9sum\u00E9"),
                         React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 } }, "Your theatre CV, always ready to share")),
-                    React.createElement("button", { onClick: () => show("\uD83D\uDCCB R\u00e9sum\u00e9 link copied!"), style: { padding: "9px 16px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u2197 Share")),
+                    React.createElement("div", { style: { padding: "7px 13px", background: "rgba(76,222,128,0.12)", border: "1px solid rgba(76,222,128,0.3)", borderRadius: 12, color: "#4ade80", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", gap: 5 } }, "\u2713 On your profile")),
                 React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", borderRadius: 18, padding: "20px", marginBottom: 18 } },
                     React.createElement("div", { style: { display: "flex", gap: 14, alignItems: "center", marginBottom: 16 } },
-                        React.createElement("div", { style: { width: 60, height: 60, borderRadius: 16, background: "rgba(201,168,76,0.2)", border: "2px solid #c9a84c", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22 } }, "AR"),
+                        React.createElement("div", { style: { width: 60, height: 60, borderRadius: 16, background: (resumeProfile && resumeProfile.avatar_url) ? "transparent" : "rgba(201,168,76,0.2)", border: "2px solid #c9a84c", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, overflow: "hidden" } }, (resumeProfile && resumeProfile.avatar_url) ? React.createElement("img", { src: resumeProfile.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } }) : ((resumeProfile && resumeProfile.name) ? resumeProfile.name.slice(0, 2).toUpperCase() : "\uD83C\uDFAD")),
                         React.createElement("div", null,
-                            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Alex Rivera"),
-                            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, "Composer \u00B7 Lyricist \u00B7 Performer"),
-                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)" } }, "San Diego, CA"))),
-                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 } }, [["14", "Shows"], ["6", "Lead Roles"], ["8yr", "Experience"]].map(([n, l]) => (React.createElement("div", { key: l, style: { background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 0", textAlign: "center" } },
+                            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, (resumeProfile && resumeProfile.name) ? resumeProfile.name : "Your Name"),
+                            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, (resumeProfile && resumeProfile.role) ? resumeProfile.role : "Add your role in your profile"),
+                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)" } }, (resumeProfile && resumeProfile.location) ? resumeProfile.location : "Add location in profile"))),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 } }, [
+                        [String(credits.length), credits.length === 1 ? "Show" : "Shows"],
+                        [String(credits.filter(c => /lead|principal|title/i.test((c.role || ""))).length), "Lead Roles"],
+                        [String(training.length), training.length === 1 ? "Training" : "Trainings"]
+                    ].map(([n, l]) => (React.createElement("div", { key: l, style: { background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 0", textAlign: "center" } },
                         React.createElement("div", { style: { fontSize: 18, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, n),
                         React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.45)", letterSpacing: "0.06em" } }, l)))))),
-                React.createElement(ResumeSection, { title: "Training", onAdd: () => setModal("add-training") }, [{ title: "B.F.A. Musical Theatre", sub: "San Diego State \u00b7 2018" }, { title: "Vocal Performance", sub: "Pacific Conservatory \u00b7 2015-2019" }].map((t, i) => (React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" } },
-                    React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, t.title),
-                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } }, t.sub))))),
-                React.createElement(ResumeSection, { title: "Theatre Credits", onAdd: () => setModal("add-credit") }, credits.map((c, i) => (React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" } },
+                React.createElement(ResumeSection, { title: "Training", onAdd: () => setModal("add-training") }, training.length === 0 ? React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "No training added yet") : training.map((t, i) => (React.createElement("div", { key: t.id || i, style: { padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, t.title),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } }, t.sub)),
+                    React.createElement("button", { onClick: () => removeTraining(t.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 16, cursor: "pointer", padding: 4 } }, "\u00D7"))))),
+                React.createElement(ResumeSection, { title: "Theatre Credits", onAdd: () => setModal("add-credit") }, credits.map((c, i) => (React.createElement("div", { key: c.id || i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" } },
                     React.createElement("div", null,
                         React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } },
                             c.title,
@@ -4020,16 +4147,20 @@ function CastingScreen({ show, onViewUser, isHub }) {
                             c.company,
                             " \u00B7 ",
                             c.year)),
-                    React.createElement("button", { onClick: () => removeCredit(i), style: { background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: 16, cursor: "pointer" } }, "\u00D7"))))),
-                React.createElement(ResumeSection, { title: "Skills & Special", onAdd: () => show("Skills editor coming soon") },
-                    React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 4 } }, ["Piano", "Guitar", "Mezzo-Soprano", "Dance: Jazz & Ballet", "Stage Combat", "Dialects: British, French"].map(s => (React.createElement("span", { key: s, style: { background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "rgba(255,255,255,0.7)" } }, s))))),
+                    React.createElement("button", { onClick: () => removeCredit(c.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: 16, cursor: "pointer" } }, "\u00D7"))))),
+                React.createElement(ResumeSection, { title: "Skills & Special", onAdd: () => setModal("edit-skills") },
+                    (resumeSkills && resumeSkills.trim())
+                        ? React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 4 } }, resumeSkills.split(",").map(s => s.trim()).filter(Boolean).map((s, i) => (React.createElement("span", { key: i, style: { background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "rgba(255,255,255,0.7)" } }, s))))
+                        : React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "Tap + to add your skills")),
                 React.createElement(ResumeSection, { title: "Representation", onAdd: () => show("Rep editor coming soon") },
                     React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "No representation added yet"))))),
         viewingCall && React.createElement(CastingCallDetail, { call: viewingCall, onClose: () => setViewingCall(null), onTrack: () => { trackFromCall(viewingCall.title, viewingCall.role); setViewingCall(null); }, show: show }),
         modal === "post-call" && React.createElement(PostCastingModal, { onClose: () => setModal(null), onSubmit: (d) => { addCall(d); setModal(null); show(`"${d.title}" casting call posted! \uD83C\uDFAD`); } }),
         modal === "add-audition" && React.createElement(AddAuditionModal, { onClose: () => setModal(null), onSubmit: (d) => { addAudition(d); setModal(null); show(`Audition saved! \u2b50`); } }),
         modal === "new-tape" && React.createElement(NewTapeModal, { onClose: () => setModal(null), onSubmit: (d) => { addTape(d); setModal(null); show("Self tape saved! \uD83C\uDFAC"); } }),
-        modal === "add-credit" && React.createElement(AddCreditModal, { onClose: () => setModal(null), onSubmit: (d) => { addCredit(d); setModal(null); show("Credit added \u2713"); } })));
+        modal === "add-credit" && React.createElement(AddCreditModal, { onClose: () => setModal(null), onSubmit: (d) => { addCredit(d); setModal(null); show("Credit added \u2713"); } }),
+        modal === "add-training" && React.createElement(AddTrainingModal, { onClose: () => setModal(null), onSubmit: (d) => { addTraining(d); setModal(null); show("Training added \u2713"); } }),
+        modal === "edit-skills" && React.createElement(EditSkillsModal, { current: resumeSkills, onClose: () => setModal(null), onSubmit: (val) => { saveSkills(val); setModal(null); show("Skills saved \u2713"); } })));
 }
 // -- Casting sub-components ----------------------------------------------------
 const Tag = ({ label, color }) => (React.createElement("span", { style: { background: color ? color + "18" : "rgba(255,255,255,0.7)", border: `1px solid ${color ? color + "44" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600, color: color || "rgba(255,255,255,0.65)" } }, label));
@@ -4265,6 +4396,23 @@ function AddCreditModal({ onClose, onSubmit }) {
             React.createElement("input", { value: f.year, onChange: e => u("year", e.target.value), style: darkInput, placeholder: "e.g. 2023" }))));
 }
 // Shared casting modal shell
+function AddTrainingModal({ onClose, onSubmit }) {
+    const [f, setF] = useState({ title: "", sub: "" });
+    const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
+    return (React.createElement(CastingModal, { title: "Add Training", onClose: onClose, onSubmit: () => { if (f.title.trim()) onSubmit(f); } },
+        React.createElement(CField, { label: "PROGRAM / DEGREE" },
+            React.createElement("input", { value: f.title, onChange: e => u("title", e.target.value), style: darkInput, placeholder: "e.g. B.F.A. Musical Theatre" })),
+        React.createElement(CField, { label: "SCHOOL & YEARS" },
+            React.createElement("input", { value: f.sub, onChange: e => u("sub", e.target.value), style: darkInput, placeholder: "e.g. San Diego State \u00B7 2018" }))));
+}
+function EditSkillsModal({ current, onClose, onSubmit }) {
+    const [val, setVal] = useState(current || "");
+    return (React.createElement(CastingModal, { title: "Skills & Special Abilities", onClose: onClose, onSubmit: () => onSubmit(val) },
+        React.createElement(CField, { label: "SKILLS (COMMA SEPARATED)" },
+            React.createElement("textarea", { value: val, onChange: e => setVal(e.target.value), rows: 4, style: Object.assign(Object.assign({}, darkInput), { resize: "none" }), placeholder: "Piano, Guitar, Mezzo-Soprano, Tap, Stage Combat, Dialects: British" })),
+        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: -6 } }, "Separate each skill with a comma. They'll show as tags on your r\u00e9sum\u00e9.")));
+}
+
 function CastingModal({ title, onClose, onSubmit, children }) {
     return (React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
         React.createElement("div", { onClick: e => e.stopPropagation(), className: "overlay-enter", style: { background: "#120920", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "90vh", display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.1)", borderBottom: "none" } },
