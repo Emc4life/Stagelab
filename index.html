@@ -668,13 +668,52 @@ const NAV = [
     { icon: "\uD83C\uDFAC", label: "Create" },
     { icon: "\uD83D\uDD0D", label: "Discover" },
     { icon: "\u2B50", label: "Studio" },
+    { icon: "\uD83C\uDFA4", label: "Auditions" },
     { icon: "\uD83D\uDC64", label: "Me" },
 ];
+function TutorialOverlay({ onClose, onGoTab }) {
+    const [step, setStep] = useState(0);
+    const steps = [
+        { icon: "\uD83C\uDFAD", title: "Welcome to StageLab", body: "The social home for musical theatre. Performers, directors, composers, and creatives all in one place. Let's take a quick tour." },
+        { icon: "\uD83C\uDFE0", title: "Feed", body: "Swipe through performances, audio, lyrics, and posters from artists across the community. Like, comment, and share what moves you." },
+        { icon: "\uD83C\uDFAC", title: "Create", body: "Post your own work — videos, audio tracks, lyric sheets, or show posters. Share your craft with the world." },
+        { icon: "\uD83D\uDD0D", title: "Discover", body: "Find people in your scene — actors, directors, MDs, choreographers. Follow them, message them, and see their work. Tap any profile to view it." },
+        { icon: "\u2B50", title: "Studio", body: "Your creative workspace. Build and block scenes with Scene Builder, manage full productions with cast and rehearsal check-ins, and go Live." },
+        { icon: "\uD83C\uDFA4", title: "Auditions", body: "The casting hub. Browse open calls, post a casting call for your show, submit self-tapes, track your auditions, and build your résumé." },
+        { icon: "\uD83D\uDC64", title: "Your Profile", body: "Build out your profile with a cover photo, bio, and your best work. Other artists can find and follow you here." },
+        { icon: "\uD83D\uDC9B", title: "You're all set!", body: "StageLab is still growing — you might hit a glitch or two as we build out the backend. Thanks for being early. Now go make something." },
+    ];
+    const s = steps[step];
+    const isLast = step === steps.length - 1;
+    return React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(8,4,14,0.96)", zIndex: 600, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", paddingTop: "calc(40px + env(safe-area-inset-top))", paddingBottom: "calc(40px + env(safe-area-inset-bottom))" } },
+        // Skip button
+        React.createElement("button", { onClick: onClose, style: { position: "absolute", top: "calc(20px + env(safe-area-inset-top))", right: 20, background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer" } }, "Skip"),
+        // Icon
+        React.createElement("div", { style: { fontSize: 64, marginBottom: 24 } }, s.icon),
+        // Title
+        React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", textAlign: "center", marginBottom: 14, background: "linear-gradient(90deg,#f5c518,#f07020,#e040a0)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" } }, s.title),
+        // Body
+        React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.75)", textAlign: "center", lineHeight: 1.6, maxWidth: 320, marginBottom: 36 } }, s.body),
+        // Progress dots
+        React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 32 } },
+            steps.map((_, i) =>
+                React.createElement("div", { key: i, style: { width: i === step ? 22 : 7, height: 7, borderRadius: 4, background: i === step ? "#c9a84c" : "rgba(255,255,255,0.2)", transition: "all 0.2s" } })
+            )
+        ),
+        // Next/Done button
+        React.createElement("button", { onClick: () => { if (isLast) onClose(); else setStep(step + 1); }, style: { width: "100%", maxWidth: 320, padding: "15px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: "#1a0a2e", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, isLast ? "Start Exploring" : "Next"),
+        // Back link
+        step > 0 && React.createElement("button", { onClick: () => setStep(step - 1), style: { marginTop: 12, background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 13, cursor: "pointer" } }, "Back")
+    );
+}
 function MainApp({ tab, setTab, session }) {
     const [toast, setToast] = useState("");
     const [liveRoom, setLiveRoom] = useState(null);
     const [showInbox, setShowInbox] = useState(false);
     const [viewingUser, setViewingUser] = useState(null); // view another user's profile
+    const [showTutorial, setShowTutorial] = useState(() => {
+        try { return !localStorage.getItem("sl_tutorial_seen"); } catch (e) { return true; }
+    });
     // FIX 1: persisted state survives refresh
     const [videos, setVideos] = useState(INIT_VIDEOS); // seeded + DB loaded
     const [comments, setComments] = useState(INIT_COMMENTS); // seeded + DB loaded
@@ -692,8 +731,8 @@ function MainApp({ tab, setTab, session }) {
                         "\u2709",
                         totalUnread > 0 && (React.createElement("span", { style: { position: "absolute", top: 4, right: 4, minWidth: 16, height: 16, background: "#c9a84c", borderRadius: 8, fontSize: 9, fontWeight: 700, color: "#1a0a2e", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #08080f", padding: "0 3px" } }, totalUnread))),
                     React.createElement("button", { onClick: () => show("\uD83D\uDD14 You're all caught up"), style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83D\uDD14")))),
-        React.createElement("nav", { style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))" } }, NAV.map((n, i) => (React.createElement("button", { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", minWidth: 44, minHeight: 44 } },
-            React.createElement("div", { style: { width: tab === i ? 28 : 22, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : "50%", background: tab === i ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: tab === i ? 18 : 16, transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)", position: "relative" } },
+        React.createElement("nav", { style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))" } }, NAV.map((n, i) => (React.createElement("button", { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", minWidth: 0, minHeight: 44 } },
+            React.createElement("div", { style: { width: tab === i ? 26 : 21, height: tab === i ? 26 : 21, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : "50%", background: tab === i ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: tab === i ? 18 : 16, transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)", position: "relative" } },
                 React.createElement("span", { style: { color: n.live ? (tab === i ? "#1a0a2e" : "#ef4444") : (tab === i ? "#1a0a2e" : "rgba(255,255,255,0.55)"), animation: n.live && tab !== i ? "liveDot 1.5s infinite" : "none" } }, n.icon),
                 n.label === "Live" && tab !== i && React.createElement("span", { style: { position: "absolute", top: -2, right: -2, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: "1.5px solid #08080f", animation: "liveDot 1.5s infinite" } })),
             React.createElement("span", { style: { fontSize: 9, fontWeight: tab === i ? 700 : 400, color: tab === i ? "#c9a84c" : "rgba(255,255,255,0.35)", letterSpacing: "0.04em" } }, n.label))))),
@@ -702,10 +741,12 @@ function MainApp({ tab, setTab, session }) {
             tab === 1 && React.createElement(CreateScreen, { show: show, setTab: setTab }),
             tab === 2 && React.createElement(DiscoverScreen, { show: show, onViewUser: (id) => setViewingUser(id) }),
             tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, onViewUser: (id) => setViewingUser(id), setLiveRoom: setLiveRoom }),
-            tab === 4 && React.createElement(ProfileScreen, { show: show })),
+            tab === 5 && React.createElement(ProfileScreen, { show: show }),
+            tab === 4 && React.createElement(AuditionsScreen, { show: show, onViewUser: (id) => setViewingUser(id) })),
         liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
         showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
         viewingUser && React.createElement(UserProfileView, { userId: viewingUser, onBack: () => setViewingUser(null), show: show, onViewUser: (id) => setViewingUser(id) }),
+        showTutorial && React.createElement(TutorialOverlay, { onClose: () => { setShowTutorial(false); try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {} }, onGoTab: (t) => setTab(t) }),
         toast && React.createElement(Toast, { msg: toast })));
 }
 // --------------------------- FEED -----------------------------------
@@ -2834,7 +2875,6 @@ function StudioScreen({ show, onJoin, onViewUser }) {
     const STUDIO_SUBS = [
         { key: "scenes", label: "\uD83C\uDFAD Scene Builder" },
         { key: "productions", label: "\uD83C\uDFAC Productions" },
-        { key: "casting", label: "\uD83D\uDCDD Casting" },
         { key: "live", label: "\uD83D\uDD34 Live", live: true },
     ];
     return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
@@ -2851,7 +2891,6 @@ function StudioScreen({ show, onJoin, onViewUser }) {
         React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
             sub === "scenes" && React.createElement(SceneBuilderScreen, { show: show }),
             sub === "productions" && React.createElement(ProductionsScreen, { show: show, onViewUser: onViewUser }),
-        sub === "casting" && React.createElement(CastingScreen, { show: show }),
             sub === "live" && React.createElement(LiveScreen, { show: show, onJoin: onJoin }))));
 }
 // --------------------------- PROFILE --------------------------------
@@ -3610,7 +3649,11 @@ function InboxOverlay({ messages, setMessages, onClose, show }) {
         })))));
 }
 // ---------------------------- CASTING --------------------------------
-function CastingScreen({ show }) {
+function AuditionsScreen({ show, onViewUser }) {
+    // Auditions hub — reuses the full Casting interface (Calls, Auditions, Self Tapes, Résumé)
+    return React.createElement(CastingScreen, { show: show, onViewUser: onViewUser, isHub: true });
+}
+function CastingScreen({ show, onViewUser, isHub }) {
     const [sub, setSub] = useState("calls");
     // FIX 1: persisted casting data
     const [castingCalls, setCastingCalls] = useState(INIT_CASTING_CALLS);
