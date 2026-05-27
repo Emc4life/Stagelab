@@ -980,9 +980,19 @@ function FeedScreen({ videos, setVideos, comments, setComments, show, onViewUser
     const [reposted, setReposted] = useState({});
     const [modal, setModal] = useState(null);
     const touchY = useRef(null);
-    // Load real posts from Supabase on mount
+    // Load real posts from Supabase on mount (filtering out blocked users)
     useEffect(() => {
-        supabase.from("posts")
+        (async () => {
+            // Get blocked user ids first
+            let blockedIds = [];
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data: bl } = await supabase.from("blocks").select("blocked_id").eq("blocker_id", user.id);
+                    blockedIds = (bl || []).map(b => b.blocked_id);
+                }
+            } catch (e) {}
+            supabase.from("posts")
             .select("*, profiles(name,handle,avatar_url,role)")
             .eq("visibility", "public")
             .order("created_at", { ascending: false })
@@ -991,6 +1001,9 @@ function FeedScreen({ videos, setVideos, comments, setComments, show, onViewUser
             if (error) {
                 console.error("Feed load error:", error);
                 return;
+            }
+            if (data && blockedIds.length) {
+                data = data.filter(p => !blockedIds.includes(p.user_id));
             }
             if (data && data.length > 0) {
                 const ACCENTS = ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#e8507c", "#50c8a8"];
@@ -1030,6 +1043,7 @@ function FeedScreen({ videos, setVideos, comments, setComments, show, onViewUser
                 });
             }
         });
+        })();
     }, []);
     // Load which posts current user has liked
     useEffect(() => {
@@ -3135,6 +3149,52 @@ const INIT_PROFILE_TAPES = [
     { id: 2, title: "Hamilton - Eliza Hamilton", date: "Mar 2026", status: "pending", duration: "4:5" },
     { id: 3, title: "Sweeney Todd - Mrs. Lovett", date: "Feb 2026", status: "submitted", duration: "2:58" },
 ];
+function ReportModal({ targetType, targetId, onClose, show }) {
+    const [reason, setReason] = useState("");
+    const [details, setDetails] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const REASONS = [
+        "Spam or scam",
+        "Harassment or bullying",
+        "Hate speech",
+        "Nudity or sexual content",
+        "Impersonation",
+        "Inappropriate content involving a minor",
+        "Other",
+    ];
+    const submit = async () => {
+        if (!reason) { show("Pick a reason"); return; }
+        setSubmitting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { show("Sign in to report"); setSubmitting(false); return; }
+        const { error } = await supabase.from("reports").insert({
+            reporter_id: user.id,
+            target_type: targetType,
+            target_id: String(targetId),
+            reason,
+            details: details.trim() || null,
+        });
+        setSubmitting(false);
+        if (error) { console.error(error); show("Could not submit report"); return; }
+        show("\u2713 Report submitted. Thank you.");
+        onClose();
+    };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 560, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: e => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "85dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "22px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "Report"),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 20, lineHeight: 1.5 } }, "Your report is anonymous. Our team will review it. If someone is in immediate danger, contact local authorities."),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 8 } }, "WHAT'S WRONG?"),
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 } },
+                REASONS.map(r =>
+                    React.createElement("button", { key: r, onClick: () => setReason(r), style: { width: "100%", padding: "13px 14px", textAlign: "left", background: reason === r ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.04)", border: "1px solid " + (reason === r ? "rgba(201,168,76,0.5)" : "rgba(255,255,255,0.08)"), borderRadius: 10, color: reason === r ? "#c9a84c" : "rgba(255,255,255,0.85)", fontSize: 14, fontWeight: reason === r ? 700 : 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+                        r, reason === r && React.createElement("span", null, "\u2713")))),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 8 } }, "ADDITIONAL DETAILS (OPTIONAL)"),
+            React.createElement("textarea", { value: details, onChange: e => setDetails(e.target.value), rows: 3, placeholder: "Anything else we should know\u2026", style: { width: "100%", padding: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 18, resize: "none", fontFamily: "inherit" } }),
+            React.createElement("button", { onClick: submit, disabled: !reason || submitting, style: { width: "100%", padding: "14px", background: (reason && !submitting) ? "linear-gradient(135deg,#ef4444,#f87171)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 12, color: (reason && !submitting) ? "#fff" : "rgba(255,255,255,0.4)", fontSize: 15, fontWeight: 700, cursor: (reason && !submitting) ? "pointer" : "not-allowed" } }, submitting ? "Submitting\u2026" : "Submit Report"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
+    );
+}
 function UserProfileView({ userId, onBack, show, onViewUser }) {
     const [profile, setProfile] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -3145,6 +3205,9 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
     const [loading, setLoading] = useState(true);
     const [lightbox, setLightbox] = useState(null);
     const [myId, setMyId] = useState(null);
+    const [showMenu, setShowMenu] = useState(false);
+    const [showReport, setShowReport] = useState(false);
+    const [blocked, setBlocked] = useState(false);
     useEffect(() => {
         (async () => {
             setLoading(true);
@@ -3241,9 +3304,29 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
                 if (error) { show("\u26a0\ufe0f Failed to send"); return; }
                 notify({ userId: userId, type: "message", title: "New message", body: greeting, link: "inbox" });
                 show("\uD83D\uDCAC Message sent! Check your inbox");
-            }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message")
+            }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message"),
+                React.createElement("button", { onClick: () => setShowMenu(true), style: { width: 44, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 18, fontWeight: 700, cursor: "pointer" } }, "\u22EF")
             )
         ),
+        // Report/Block action menu
+        showMenu && React.createElement("div", { onClick: () => setShowMenu(false), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 550, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+            React.createElement("div", { onClick: e => e.stopPropagation(), style: { width: "100%", maxWidth: 500, background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "12px 16px", paddingBottom: "calc(20px + env(safe-area-inset-bottom))" } },
+                React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "6px auto 16px" } }),
+                React.createElement("button", { onClick: () => { setShowMenu(false); setShowReport(true); }, style: { width: "100%", padding: "15px", background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.06)", color: "#fff", fontSize: 15, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } }, "\uD83D\uDEA9 Report this user"),
+                React.createElement("button", { onClick: async () => {
+                    setShowMenu(false);
+                    if (!myId) { show("Sign in first"); return; }
+                    if (!confirm("Block this user? You won't see their posts or messages, and they can't contact you.")) return;
+                    const { error } = await supabase.from("blocks").insert({ blocker_id: myId, blocked_id: userId });
+                    if (error && !(error.code === "23505")) { show("Could not block"); return; }
+                    setBlocked(true);
+                    show("\uD83D\uDEAB User blocked");
+                    setTimeout(onBack, 800);
+                }, style: { width: "100%", padding: "15px", background: "none", border: "none", color: "#f87171", fontSize: 15, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } }, "\uD83D\uDEAB Block this user"),
+                React.createElement("button", { onClick: () => setShowMenu(false), style: { width: "100%", padding: "15px", marginTop: 6, background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Cancel")
+            )
+        ),
+        showReport && React.createElement(ReportModal, { targetType: "user", targetId: userId, onClose: () => setShowReport(false), show: show }),
         // Tab header
         React.createElement("div", { style: { borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "13px 20px", fontSize: 12, fontWeight: 700, color: "#c9a84c", letterSpacing: "0.05em" } }, "\uD83C\uDFAC POSTS"),
         // Grid
