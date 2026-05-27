@@ -297,6 +297,22 @@ const INIT_CREDITS = [
 ];
 const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 // ---------------------- PERSISTENCE HELPERS --------------------------
+// ── Notification helper: create a notification for another user ──
+async function notify({ userId, type, title, body, link }) {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        // Don't notify yourself
+        if (user && user.id === userId) return;
+        await supabase.from("notifications").insert({
+            user_id: userId,
+            actor_id: user ? user.id : null,
+            type, title,
+            body: body || null,
+            link: link || null,
+        });
+    } catch (e) { /* notifications are non-critical; never block the action */ }
+}
+
 function usePersistedState(key, init) {
     const [val, setVal] = useState(() => {
         try {
@@ -747,6 +763,44 @@ function TutorialOverlay({ onClose, onGoTab }) {
     );
 }
 
+function NotificationsPanel({ notifications, onClose, onMarkAllRead, onGoTab, show }) {
+    const iconFor = (t) => ({
+        follow: "\uD83D\uDC64", comment: "\uD83D\uDCAC", like: "\u2764\uFE0F", message: "\uD83D\uDCE9",
+        application: "\uD83C\uDFA4", checkin: "\u2705", cast: "\uD83C\uDFAD",
+    }[t] || "\uD83D\uDD14");
+    const timeAgo = (iso) => {
+        if (!iso) return "";
+        const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 60) return "now";
+        if (diff < 3600) return Math.floor(diff / 60) + "m";
+        if (diff < 86400) return Math.floor(diff / 3600) + "h";
+        if (diff < 604800) return Math.floor(diff / 86400) + "d";
+        return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+    };
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 500, background: "#08080f", display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        // Header
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", width: 40, height: 40, borderRadius: "50%", fontSize: 18, cursor: "pointer", flexShrink: 0 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, fontSize: 18, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Notifications"),
+            notifications.some(n => !n.read) && React.createElement("button", { onClick: onMarkAllRead, style: { background: "none", border: "none", color: "#c9a84c", fontSize: 12, fontWeight: 600, cursor: "pointer" } }, "Mark all read")),
+        // List
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+            notifications.length === 0
+                ? React.createElement("div", { style: { textAlign: "center", padding: "80px 30px", color: "rgba(255,255,255,0.4)" } },
+                    React.createElement("div", { style: { fontSize: 44, marginBottom: 14, opacity: 0.5 } }, "\uD83D\uDD14"),
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 600, marginBottom: 6, color: "rgba(255,255,255,0.6)" } }, "All caught up"),
+                    React.createElement("div", { style: { fontSize: 13, lineHeight: 1.5, maxWidth: 240, margin: "0 auto" } }, "New follows, comments, messages, and audition submissions will show up here."))
+                : notifications.map(n =>
+                    React.createElement("div", { key: n.id, onClick: () => { if (n.link) { if (n.link === "auditions") onGoTab(4); else if (n.link.startsWith("production")) onGoTab(3); else show("Opening\u2026"); } }, style: { display: "flex", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: n.read ? "transparent" : "rgba(201,168,76,0.06)", cursor: n.link ? "pointer" : "default", alignItems: "flex-start" } },
+                        React.createElement("div", { style: { width: 40, height: 40, borderRadius: "50%", background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 } }, iconFor(n.type)),
+                        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, marginBottom: 2 } }, n.title),
+                            n.body && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.4 } }, n.body)),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", flexShrink: 0 } }, timeAgo(n.created_at)),
+                        !n.read && React.createElement("div", { style: { width: 8, height: 8, borderRadius: "50%", background: "#c9a84c", flexShrink: 0, marginTop: 6 } }))
+                ))
+    );
+}
 function MainApp({ tab, setTab, session }) {
     const [toast, setToast] = useState("");
     const [liveRoom, setLiveRoom] = useState(null);
@@ -756,6 +810,30 @@ function MainApp({ tab, setTab, session }) {
         // Show only if neither localStorage nor (later) profile says it's been seen
         try { return !localStorage.getItem("sl_tutorial_seen"); } catch (e) { return true; }
     });
+    // ── Notifications ──
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifs, setShowNotifs] = useState(false);
+    const notifUnread = notifications.filter(n => !n.read).length;
+    const loadNotifs = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
+            if (data) setNotifications(data);
+        } catch (e) { /* table may not exist yet */ }
+    };
+    useEffect(() => {
+        loadNotifs();
+        const iv = setInterval(loadNotifs, 30000); // poll every 30s
+        return () => clearInterval(iv);
+    }, []);
+    const markAllRead = async () => {
+        setNotifications(p => p.map(n => Object.assign(Object.assign({}, n), { read: true })));
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) await supabase.from("notifications").update({ read: true }).eq("user_id", user.id);
+        } catch (e) {}
+    };
     // Double-check against the user's saved profile flag (survives localStorage clears + new devices)
     useEffect(() => {
         (async () => {
@@ -787,7 +865,9 @@ function MainApp({ tab, setTab, session }) {
                     React.createElement("button", { onClick: () => setShowInbox(true), style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", position: "relative", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } },
                         "\u2709",
                         totalUnread > 0 && (React.createElement("span", { style: { position: "absolute", top: 4, right: 4, minWidth: 16, height: 16, background: "#c9a84c", borderRadius: 8, fontSize: 9, fontWeight: 700, color: "#1a0a2e", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #08080f", padding: "0 3px" } }, totalUnread))),
-                    React.createElement("button", { onClick: () => show("\uD83D\uDD14 You're all caught up"), style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83D\uDD14")))),
+                    React.createElement("button", { onClick: () => { setShowNotifs(true); }, style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" } },
+                        "\uD83D\uDD14",
+                        notifUnread > 0 && React.createElement("span", { style: { position: "absolute", top: 3, right: 3, minWidth: 15, height: 15, background: "#ef4444", borderRadius: 8, fontSize: 9, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #08080f", padding: "0 3px" } }, notifUnread > 9 ? "9+" : notifUnread))))),
         React.createElement("nav", { style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))" } }, NAV.map((n, i) => (React.createElement("button", { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", minWidth: 0, minHeight: 44 } },
             React.createElement("div", { style: { width: tab === i ? 26 : 21, height: tab === i ? 26 : 21, height: tab === i ? 28 : 22, borderRadius: tab === i ? 10 : "50%", background: tab === i ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: tab === i ? 18 : 16, transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)", position: "relative" } },
                 React.createElement("span", { style: { color: n.live ? (tab === i ? "#1a0a2e" : "#ef4444") : (tab === i ? "#1a0a2e" : "rgba(255,255,255,0.55)"), animation: n.live && tab !== i ? "liveDot 1.5s infinite" : "none" } }, n.icon),
@@ -803,6 +883,7 @@ function MainApp({ tab, setTab, session }) {
         liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
         showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
         viewingUser && React.createElement(UserProfileView, { userId: viewingUser, onBack: () => setViewingUser(null), show: show, onViewUser: (id) => setViewingUser(id) }),
+        showNotifs && React.createElement(NotificationsPanel, { notifications: notifications, onClose: () => setShowNotifs(false), onMarkAllRead: markAllRead, onGoTab: (t) => { setShowNotifs(false); setTab(t); }, show: show }),
         showTutorial && React.createElement(TutorialOverlay, { onClose: async () => {
             setShowTutorial(false);
             try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {}
@@ -1083,6 +1164,9 @@ function CommentsModal({ vid, comments, onAdd, onClose }) {
                 post_id: vid.id, user_id: me.id, text: trimmed,
             });
             if (error) console.warn("Comment save failed:", error);
+            else if (vid.user_id && vid.user_id !== me.id) {
+                notify({ userId: vid.user_id, type: "comment", title: "New comment", body: trimmed.slice(0, 60), link: "feed" });
+            }
             else if (row && row[0]) {
                 setLocalComments(p => p.map(c => c.id === tempId ? Object.assign(Object.assign({}, c), { id: row[0].id }) : c));
             }
@@ -1905,6 +1989,7 @@ function DiscoverScreen({ show, onViewUser }) {
         }
         else {
             supabase.from("follows").insert({ follower_id: user.id, following_id: String(id) });
+            notify({ userId: String(id), type: "follow", title: "New follower", body: "Someone started following you", link: "profile" });
         }
     };
     const toggleSave = (id) => {
@@ -3076,6 +3161,7 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
                 const greeting = "\uD83D\uDC4B Hey!";
                 const { error } = await supabase.from("messages").insert({ sender_id: myId, receiver_id: userId, text: greeting });
                 if (error) { show("\u26a0\ufe0f Failed to send"); return; }
+                notify({ userId: userId, type: "message", title: "New message", body: greeting, link: "inbox" });
                 show("\uD83D\uDCAC Message sent! Check your inbox");
             }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message")
             )
@@ -4151,7 +4237,89 @@ const ResumeSection = ({ title, onAdd, children }) => (React.createElement("div"
         React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.4)" } }, title.toUpperCase()),
         React.createElement("button", { onClick: onAdd, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 8, padding: "4px 10px", color: "#c9a84c", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "+ Add")),
     children));
+function ApplyModal({ call, onClose, show, onApplied }) {
+    const chars = (call.characters && call.characters.length) ? call.characters : [];
+    const [role, setRole] = useState(chars.length ? chars[0].name : "");
+    const [note, setNote] = useState("");
+    const [tape, setTape] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const submit = async () => {
+        setSubmitting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { alert("Please sign in to submit an audition."); setSubmitting(false); return; }
+        // Need the call owner (director). casting_calls has user_id.
+        let directorId = call.user_id || call.director_id;
+        if (!directorId) {
+            try {
+                const { data: cc } = await supabase.from("casting_calls").select("user_id").eq("id", call.id).single();
+                directorId = cc && cc.user_id;
+            } catch (e) {}
+        }
+        const { error } = await supabase.from("casting_applications").insert({
+            call_id: call.id,
+            applicant_id: user.id,
+            director_id: directorId || user.id,
+            character_name: role || null,
+            note: note.trim() || null,
+            tape_url: tape.trim() || null,
+        });
+        if (error) {
+            console.error(error);
+            // Unique violation = already applied
+            if (error.code === "23505" || (error.message || "").includes("duplicate")) {
+                alert("You've already submitted for this role.");
+            } else {
+                alert("Could not submit: " + (error.message || "unknown error") + "\n\nMake sure applications_notifications_setup.sql has been run.");
+            }
+            setSubmitting(false);
+            return;
+        }
+        // Notify the director
+        if (directorId && directorId !== user.id) {
+            await notify({
+                userId: directorId,
+                type: "application",
+                title: "New audition submission",
+                body: (role ? role + " \u2014 " : "") + (call.title || "your casting call"),
+                link: "auditions",
+            });
+        }
+        // Also track it on the applicant's side
+        try {
+            await supabase.from("auditions").insert({
+                user_id: user.id, show: call.title || "", role: role || null,
+                company: call.company || null, date: call.audition_dates || call.date || null,
+                location: call.location || null, status: "submitted",
+            });
+        } catch (e) {}
+        setSubmitting(false);
+        show("\uD83C\uDFA4 Audition submitted!");
+        onApplied();
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 14 };
+    const labelSt = { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 600, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "88dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#15082a", borderRadius: "22px 22px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 4 } }, "Submit Audition"),
+            React.createElement("div", { style: { fontSize: 13, color: "#c9a84c", marginBottom: 20 } }, call.title + (call.company ? " \u00B7 " + call.company : "")),
+            chars.length > 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: labelSt }, "AUDITIONING FOR"),
+                React.createElement("select", { value: role, onChange: e => setRole(e.target.value), style: inputSt },
+                    chars.map((ch, i) => React.createElement("option", { key: i, value: ch.name }, ch.name)))),
+            chars.length === 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: labelSt }, "ROLE (OPTIONAL)"),
+                React.createElement("input", { value: role, onChange: e => setRole(e.target.value), placeholder: "Which role?", style: inputSt })),
+            React.createElement("div", { style: labelSt }, "MESSAGE TO CASTING (OPTIONAL)"),
+            React.createElement("textarea", { value: note, onChange: e => setNote(e.target.value), rows: 3, placeholder: "Introduce yourself, share your availability, anything they should know\u2026", style: Object.assign(Object.assign({}, inputSt), { resize: "none", fontFamily: "inherit" }) }),
+            React.createElement("div", { style: labelSt }, "SELF-TAPE LINK (OPTIONAL)"),
+            React.createElement("input", { value: tape, onChange: e => setTape(e.target.value), placeholder: "YouTube, Vimeo, Drive link\u2026", style: inputSt }),
+            React.createElement("button", { onClick: submit, disabled: submitting, style: { width: "100%", padding: "15px", marginTop: 4, background: submitting ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: submitting ? "rgba(255,255,255,0.5)" : "#1a0a2e", fontSize: 15, fontWeight: 700, cursor: submitting ? "default" : "pointer" } }, submitting ? "Submitting\u2026" : "Submit My Audition"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
+    );
+}
 function CastingCallDetail({ call, onClose, onTrack, show }) {
+    const [showApply, setShowApply] = useState(false);
     const c = call;
     const Row = ({ icon, label, value }) => value ? React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 10 } },
         React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, icon),
@@ -4202,9 +4370,12 @@ function CastingCallDetail({ call, onClose, onTrack, show }) {
                 React.createElement(Row, { icon: "\u270D\uFE0F", label: "WHAT TO PREPARE", value: c.prepare || c.prep }),
                 React.createElement(Row, { icon: "\uD83D\uDCE7", label: "CONTACT / SUBMIT", value: c.contact }),
                 // Actions
-                React.createElement("div", { style: { display: "flex", gap: 10, marginTop: 22 } },
-                    React.createElement("button", { onClick: onTrack, style: { flex: 1, padding: "14px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 14, cursor: "pointer" } }, "\u2B50 Track This Audition"),
-                    React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 48, padding: "14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"))
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 22 } },
+                    React.createElement("button", { onClick: () => setShowApply(true), style: { width: "100%", padding: "15px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 16px rgba(201,168,76,0.35)" } }, "\uD83C\uDFA4 Submit Audition"),
+                    React.createElement("div", { style: { display: "flex", gap: 10 } },
+                        React.createElement("button", { onClick: onTrack, style: { flex: 1, padding: "13px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.75)", fontWeight: 600, fontSize: 13, cursor: "pointer" } }, "\u2B50 Track"),
+                        React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 48, padding: "13px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"))),
+                showApply && React.createElement(ApplyModal, { call: c, onClose: () => setShowApply(false), show: show, onApplied: () => { setShowApply(false); } })
             )
         )
     );
