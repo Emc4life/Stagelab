@@ -2155,6 +2155,7 @@ function DiscoverScreen({ show, onViewUser }) {
     const [saved, setSaved] = useState({});
     const [realUsers, setRealUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
+    const [composeTo, setComposeTo] = useState(null);
     const tabs = [
         { key: "people", label: "\uD83D\uDC65 People" },
         { key: "projects", label: "\uD83C\uDFAD Projects" },
@@ -2257,7 +2258,7 @@ function DiscoverScreen({ show, onViewUser }) {
                         React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 10 } }, p.bio),
                         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 } }, p.skills.map(s => (React.createElement("span", { key: s, style: { background: p.accent + "18", border: `1px solid ${p.accent}33`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: p.accent, fontWeight: 600 } }, s)))),
                         React.createElement("div", { style: { display: "flex", gap: 8 } },
-                            React.createElement("button", { onClick: (e) => { e.stopPropagation(); show(`Message sent to ${p.name} \u2713`); }, style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDCAC Message"),
+                            React.createElement("button", { onClick: (e) => { e.stopPropagation(); setComposeTo({ id: p.id, name: p.name }); }, style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDCAC Message"),
                             React.createElement("button", { onClick: (e) => { e.stopPropagation(); show(`Collab request sent to ${p.name}! \uD83C\uDFAD`); }, style: { flex: 2, padding: "9px", background: p.accent + "22", border: `1px solid ${p.accent}44`, borderRadius: 10, color: p.accent, fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83C\uDFAD Request Collab")))))),
             tab === "projects" && (filteredProjects.length === 0
                 ? React.createElement(EmptyState, { query: query, type: "projects" })
@@ -2300,7 +2301,7 @@ function DiscoverScreen({ show, onViewUser }) {
                     React.createElement("div", { style: { display: "flex", gap: 8 } },
                         React.createElement("button", { onClick: () => show(`Applied to "${c.title}"! \u2713`), style: { flex: 2, padding: "10px", background: `linear-gradient(135deg,${c.accent},${c.accent}cc)`, border: "none", borderRadius: 10, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Apply Now"),
                         React.createElement("button", { onClick: () => toggleSave("call-" + c.id), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, saved["call-" + c.id] ? "\uD83D\uDD16 Saved" : "\uD83D\uDD16 Save")))))),
-            tab === "shows" && React.createElement(LocalShowsPanel, { show: show }))));
+            tab === "shows" && React.createElement(LocalShowsPanel, { show: show }), composeTo && React.createElement(ComposeMessageModal, { recipientId: composeTo.id, recipientName: composeTo.name, onClose: () => setComposeTo(null), show: show }))));
 }
 // -- Local Shows Panel ------------------------------------------------
 const ZIP_REGEX = /^\d{5}$/;
@@ -3346,6 +3347,34 @@ function ReportModal({ targetType, targetId, onClose, show }) {
             React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
     );
 }
+function ComposeMessageModal({ recipientId, recipientName, onClose, show, onSent }) {
+    const [text, setText] = useState("");
+    const [sending, setSending] = useState(false);
+    const send = async () => {
+        const msg = text.trim();
+        if (!msg) return;
+        setSending(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { show("Sign in to message"); setSending(false); return; }
+        const { error } = await supabase.from("messages").insert({ sender_id: user.id, receiver_id: recipientId, text: msg });
+        if (error) { console.error(error); show("\u26a0\ufe0f Could not send"); setSending(false); return; }
+        // Notify the recipient
+        notify({ userId: recipientId, type: "message", title: "New message", body: msg.slice(0, 80), link: "inbox" });
+        setSending(false);
+        show("\uD83D\uDCAC Message sent!");
+        if (onSent) onSent();
+        onClose();
+    };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 600, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: e => e.stopPropagation(), style: { width: "100%", maxWidth: 500, background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "22px 20px", paddingBottom: "calc(22px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 } }, "Message to"),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 16 } }, recipientName || "User"),
+            React.createElement("textarea", { value: text, onChange: e => setText(e.target.value), rows: 4, autoFocus: true, placeholder: "Write your message\u2026", style: { width: "100%", padding: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 15, lineHeight: 1.5, resize: "none", fontFamily: "inherit", marginBottom: 16, outline: "none" } }),
+            React.createElement("button", { onClick: send, disabled: !text.trim() || sending, style: { width: "100%", padding: "15px", background: (text.trim() && !sending) ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 14, color: (text.trim() && !sending) ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 15, fontWeight: 700, cursor: (text.trim() && !sending) ? "pointer" : "not-allowed" } }, sending ? "Sending\u2026" : "Send Message"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
+    );
+}
 function UserProfileView({ userId, onBack, show, onViewUser }) {
     const [profile, setProfile] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -3358,6 +3387,7 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
     const [myId, setMyId] = useState(null);
     const [showMenu, setShowMenu] = useState(false);
     const [showReport, setShowReport] = useState(false);
+    const [showCompose, setShowCompose] = useState(false);
     const [blocked, setBlocked] = useState(false);
     useEffect(() => {
         (async () => {
@@ -3447,15 +3477,7 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
             // Follow + Message buttons (only if not viewing self)
             myId !== userId && React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } },
                 React.createElement("button", { onClick: toggleFollow, style: { flex: 1, padding: "11px", background: isFollowing ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: isFollowing ? "1px solid rgba(255,255,255,0.15)" : "none", borderRadius: 8, color: isFollowing ? "#fff" : "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, isFollowing ? "Following" : "Follow"),
-                React.createElement("button", { onClick: async () => {
-                if (!myId) { show("Sign in to message"); return; }
-                // Send a "wave" message to start the conversation
-                const greeting = "\uD83D\uDC4B Hey!";
-                const { error } = await supabase.from("messages").insert({ sender_id: myId, receiver_id: userId, text: greeting });
-                if (error) { show("\u26a0\ufe0f Failed to send"); return; }
-                notify({ userId: userId, type: "message", title: "New message", body: greeting, link: "inbox" });
-                show("\uD83D\uDCAC Message sent! Check your inbox");
-            }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message"),
+                React.createElement("button", { onClick: () => { if (!myId) { show("Sign in to message"); return; } setShowCompose(true); }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message"),
                 React.createElement("button", { onClick: () => setShowMenu(true), style: { width: 44, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 18, fontWeight: 700, cursor: "pointer" } }, "\u22EF")
             )
         ),
@@ -3478,6 +3500,7 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
             )
         ),
         showReport && React.createElement(ReportModal, { targetType: "user", targetId: userId, onClose: () => setShowReport(false), show: show }),
+        showCompose && React.createElement(ComposeMessageModal, { recipientId: userId, recipientName: profile.name, onClose: () => setShowCompose(false), show: show }),
         // Tab header
         React.createElement("div", { style: { borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "13px 20px", fontSize: 12, fontWeight: 700, color: "#c9a84c", letterSpacing: "0.05em" } }, "\uD83C\uDFAC POSTS"),
         // Grid
