@@ -80,6 +80,24 @@ const supabase = (() => {
                 return { data: { user: null } };
             }
         },
+        resetPasswordForEmail: async (email, options) => {
+            const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
+                method: "POST", headers: { "Content-Type": "application/json", "apikey": SUPA_KEY },
+                body: JSON.stringify({ email, ...(options && options.redirectTo ? { gotrue_meta_security: {} } : {}) })
+            });
+            if (!r.ok) { let d = {}; try { d = await r.json(); } catch (e) {} throw new Error(d.msg || d.error_description || d.message || "Could not send reset email"); }
+            return { error: null };
+        },
+        updateUserPassword: async (newPassword) => {
+            const tok = getToken();
+            const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+                method: "PUT", headers: { "Content-Type": "application/json", "apikey": SUPA_KEY, "Authorization": `Bearer ${tok}` },
+                body: JSON.stringify({ password: newPassword })
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.msg || d.message || "Could not update password");
+            return { data: d, error: null };
+        },
         signInWithPassword: async ({ email, password }) => {
             const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
                 method: "POST", headers: { "Content-Type": "application/json", "apikey": SUPA_KEY },
@@ -370,9 +388,21 @@ const SLogo = ({ size = 32, showText = false, textSize = 17 }) => (React.createE
     showText && (React.createElement("span", { style: { fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: textSize, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1 } }, "StageLab"))));
 // ------------------------------ ROOT --------------------------------
 function StageLab() {
+    // Detect password-recovery link (Supabase redirects with #access_token=...&type=recovery)
+    const recovery = (() => {
+        try {
+            const h = window.location.hash || "";
+            if (h.includes("type=recovery") && h.includes("access_token=")) {
+                const params = new URLSearchParams(h.replace(/^#/, ""));
+                const tok = params.get("access_token");
+                if (tok) { try { localStorage.setItem("sb_token", tok); } catch (e) {} return tok; }
+            }
+        } catch (e) {}
+        return null;
+    })();
     // Synchronous token check — no async wait for first paint
     const initialToken = (() => { try { return localStorage.getItem("sb_token"); } catch (e) { return null; } })();
-    const [page, setPage] = useState(initialToken ? "app" : "auth");
+    const [page, setPage] = useState(recovery ? "reset" : (initialToken ? "app" : "auth"));
     const [tab, setTab] = useState(0);
     const [session, setSession] = useState(initialToken ? { access_token: initialToken } : null);
     useEffect(() => {
@@ -393,6 +423,8 @@ function StageLab() {
         });
         return () => subscription.unsubscribe();
     }, []);
+    if (page === "reset")
+        return React.createElement(ResetPasswordScreen, { onDone: () => { try { window.location.hash = ""; } catch (e) {} setPage("app"); }, onCancel: () => { try { window.location.hash = ""; } catch (e) {} setPage("auth"); } });
     if (page === "auth")
         return React.createElement(AuthScreen, { onEnter: (s) => { setSession(s); setPage("app"); }, onOnboard: (s) => { setSession(s); setPage("onboard"); } });
     if (page === "onboard")
@@ -400,6 +432,38 @@ function StageLab() {
     return React.createElement(MainApp, { tab: tab, setTab: setTab, session: session });
 }
 // -------------------------------- AUTH ------------------------------
+function ResetPasswordScreen({ onDone, onCancel }) {
+    const [pw, setPw] = useState("");
+    const [pw2, setPw2] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [toast, setToast] = useState("");
+    const submit = async () => {
+        if (pw.length < 6) { setError("Password must be at least 6 characters"); return; }
+        if (pw !== pw2) { setError("Passwords don't match"); return; }
+        setError(""); setLoading(true);
+        try {
+            await supabase.auth.updateUserPassword(pw);
+            setToast("\u2713 Password updated!");
+            setTimeout(onDone, 1400);
+        } catch (e) {
+            setError(e.message || "Could not update password. The reset link may have expired.");
+            setLoading(false);
+        }
+    };
+    const inp = { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", marginBottom: 12 };
+    return React.createElement("div", { style: { minHeight: "100dvh", background: "radial-gradient(120% 80% at 50% 0%, rgba(201,168,76,0.12), #08040e 55%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "30px 24px" } },
+        React.createElement("div", { style: { width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c33,#c9a84c11)", border: "1px solid #c9a84c44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, marginBottom: 20 } }, "\uD83D\uDD11"),
+        React.createElement("div", { style: { fontSize: 26, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 8, color: "#fff" } }, "Set a new password"),
+        React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 26, maxWidth: 300, lineHeight: 1.5 } }, "Choose a new password for your StageLab account."),
+        React.createElement("div", { style: { width: "100%", maxWidth: 360 } },
+            React.createElement("input", { value: pw, onChange: e => setPw(e.target.value), placeholder: "New password", type: "password", style: inp }),
+            React.createElement("input", { value: pw2, onChange: e => setPw2(e.target.value), placeholder: "Confirm new password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: inp }),
+            error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
+            React.createElement("button", { onClick: submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: 12 } }, loading ? "\u2026" : "Update Password"),
+            React.createElement("button", { onClick: onCancel, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer" } }, "Cancel")),
+        toast && React.createElement(Toast, { msg: toast }));
+}
 function AuthScreen({ onEnter, onOnboard }) {
     const [mode, setMode] = useState(0); // 0=signin 1=signup
     const [name, setName] = useState("");
@@ -409,6 +473,18 @@ function AuthScreen({ onEnter, onOnboard }) {
     const [error, setError] = useState("");
     const [toast, setToast] = useState("");
     const showToast = (m) => { setToast(m); setTimeout(() => setToast(""), 2600); };
+    const sendReset = async () => {
+        if (!email.trim()) { setError("Enter your email first"); return; }
+        setError(""); setLoading(true);
+        try {
+            await supabase.auth.resetPasswordForEmail(email.trim());
+            showToast("\uD83D\uDCE7 Reset link sent! Check your email");
+            setTimeout(() => setMode(0), 1800);
+        } catch (e) {
+            setError(e.message || "Could not send reset email");
+        }
+        setLoading(false);
+    };
     const submit = async () => {
         if (!email.trim() || !password.trim()) {
             setError("Please enter email and password.");
@@ -458,9 +534,11 @@ function AuthScreen({ onEnter, onOnboard }) {
             React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 11, marginBottom: 14 } },
                 mode === 1 && (React.createElement("input", { value: name, onChange: e => setName(e.target.value), placeholder: "Full name", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
                 React.createElement("input", { value: email, onChange: e => setEmail(e.target.value), placeholder: "Email address", type: "email", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }),
-                React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
+                mode !== 2 && React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
             error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
-            React.createElement("button", { onClick: submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: 20 } }, loading ? "\u2026" : mode === 0 ? "Sign In" : "Create Account"),
+            React.createElement("button", { onClick: mode === 2 ? sendReset : submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: mode === 2 ? 14 : 20 } }, loading ? "\u2026" : mode === 0 ? "Sign In" : mode === 1 ? "Create Account" : "Send Reset Link"),
+            mode === 0 && React.createElement("button", { onClick: () => { setError(""); setMode(2); }, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", marginBottom: 14, marginTop: -8 } }, "Forgot password?"),
+            mode === 2 && React.createElement("button", { onClick: () => { setError(""); setMode(0); }, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", marginBottom: 14 } }, "\u2190 Back to sign in"),
             React.createElement("button", { onClick: () => onEnter(null), style: { width: "100%", padding: "13px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 14, color: "#c9a84c", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em", marginTop: 4 } }, "\uD83C\uDFAD Continue in Demo Mode")),
         toast && React.createElement(Toast, { msg: toast })));
 }
@@ -3896,7 +3974,7 @@ function CastingScreen({ show, onViewUser, isHub }) {
                 const { data: calls } = await supabase.from("casting_calls").select("*").order("created_at", { ascending: false }).limit(50);
                 if (calls && calls.length > 0) {
                     const mapped = calls.map(c => ({
-                        id: c.id, title: c.title, role: c.role, type: c.type, voice: c.voice,
+                        id: c.id, user_id: c.user_id, title: c.title, role: c.role, type: c.type, voice: c.voice,
                         comp: c.comp || c.compensation, company: c.company, location: c.location, date: c.date || c.audition_dates,
                         prep: c.prep || c.prepare, selftape: c.selftape,
                         production_type: c.production_type, synopsis: c.synopsis,
@@ -3914,6 +3992,7 @@ function CastingScreen({ show, onViewUser, isHub }) {
             // Load user-specific data
             const { data: auth } = await supabase.auth.getUser();
             if (!auth.user) return;
+            setMe(auth.user);
             const uid = auth.user.id;
             // Self tapes
             try {
@@ -3949,6 +4028,8 @@ function CastingScreen({ show, onViewUser, isHub }) {
     const [audFilter, setAudFilter] = useState("upcoming");
     const [modal, setModal] = useState(null);
     const [viewingCall, setViewingCall] = useState(null);
+    const [me, setMe] = useState(null);
+    const [reviewingCall, setReviewingCall] = useState(null);
     const SUBS = [
         { key: "calls", label: "\uD83D\uDCE3 Calls" },
         { key: "auditions", label: "\u2b50 Auditions" },
@@ -4107,7 +4188,9 @@ function CastingScreen({ show, onViewUser, isHub }) {
                             c.prep),
                         React.createElement("div", { style: { display: "flex", gap: 10 } },
                             React.createElement("button", { onClick: () => setViewingCall(c), style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "View Details"),
-                            React.createElement("button", { onClick: () => { trackFromCall(c.title, c.role); }, style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#1a0a2e,#c9a84c22)", border: "1px solid #c9a84c44", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\u2B50 Track"),
+                            (me && c.user_id === me.id)
+                                ? React.createElement("button", { onClick: () => setReviewingCall(c), style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#1a0a2e,#4ade8022)", border: "1px solid #4ade8044", borderRadius: 12, color: "#4ade80", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\uD83D\uDCCB Applications")
+                                : React.createElement("button", { onClick: () => { trackFromCall(c.title, c.role); }, style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#1a0a2e,#c9a84c22)", border: "1px solid #c9a84c44", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\u2B50 Track"),
                             React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"),
                             React.createElement("button", { onClick: () => show("Link copied!"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\u2197")))))))),
             sub === "auditions" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
@@ -4222,6 +4305,7 @@ function CastingScreen({ show, onViewUser, isHub }) {
                         : React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "Tap + to add your skills")),
                 React.createElement(ResumeSection, { title: "Representation", onAdd: () => show("Rep editor coming soon") },
                     React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "No representation added yet"))))),
+        reviewingCall && React.createElement(ApplicationsReview, { call: reviewingCall, onClose: () => setReviewingCall(null), show: show, onViewUser: onViewUser }),
         viewingCall && React.createElement(CastingCallDetail, { call: viewingCall, onClose: () => setViewingCall(null), onTrack: () => { trackFromCall(viewingCall.title, viewingCall.role); setViewingCall(null); }, show: show }),
         modal === "post-call" && React.createElement(PostCastingModal, { onClose: () => setModal(null), onSubmit: (d) => { addCall(d); setModal(null); show(`"${d.title}" casting call posted! \uD83C\uDFAD`); } }),
         modal === "add-audition" && React.createElement(AddAuditionModal, { onClose: () => setModal(null), onSubmit: (d) => { addAudition(d); setModal(null); show(`Audition saved! \u2b50`); } }),
@@ -4237,6 +4321,82 @@ const ResumeSection = ({ title, onAdd, children }) => (React.createElement("div"
         React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.4)" } }, title.toUpperCase()),
         React.createElement("button", { onClick: onAdd, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 8, padding: "4px 10px", color: "#c9a84c", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "+ Add")),
     children));
+function ApplicationsReview({ call, onClose, show, onViewUser }) {
+    const [apps, setApps] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState("all");
+    const reload = async () => {
+        setLoading(true);
+        try {
+            const { data } = await supabase.from("casting_applications")
+                .select("*, applicant:applicant_id(name,handle,avatar_url,role)")
+                .eq("call_id", call.id)
+                .order("created_at", { ascending: false });
+            setApps(data || []);
+        } catch (e) { console.warn(e); }
+        setLoading(false);
+    };
+    useEffect(() => { reload(); }, [call.id]);
+    const setStatus = async (app, status) => {
+        setApps(p => p.map(a => a.id === app.id ? Object.assign(Object.assign({}, a), { status }) : a));
+        await supabase.from("casting_applications").update({ status }).eq("id", app.id);
+        // Notify the applicant
+        const labels = { reviewed: "Your audition was reviewed", callback: "\uD83C\uDF89 You got a callback!", passed: "Audition update", cast: "\uD83C\uDFAD You've been cast!" };
+        await notify({
+            userId: app.applicant_id,
+            type: "cast",
+            title: labels[status] || "Audition update",
+            body: (app.character_name ? app.character_name + " \u2014 " : "") + (call.title || ""),
+            link: "auditions",
+        });
+        show("\u2713 " + status + " \u2014 applicant notified");
+    };
+    const STATUSES = [
+        { k: "reviewed", l: "Reviewed", c: "#9ca3af" },
+        { k: "callback", l: "Callback", c: "#fbbf24" },
+        { k: "cast", l: "Cast", c: "#4ade80" },
+        { k: "passed", l: "Pass", c: "#ef4444" },
+    ];
+    const filtered = filter === "all" ? apps : apps.filter(a => a.status === filter);
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 520, background: "#08080f", display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", width: 40, height: 40, borderRadius: "50%", fontSize: 18, cursor: "pointer", flexShrink: 0 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, "Applications"),
+                React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, call.title + " \u00B7 " + apps.length + " submitted"))),
+        // Filter pills
+        React.createElement("div", { style: { display: "flex", gap: 6, padding: "12px 16px", overflowX: "auto", borderBottom: "1px solid rgba(255,255,255,0.06)" } },
+            [["all", "All"]].concat(STATUSES.map(s => [s.k, s.l])).map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setFilter(k), style: { flexShrink: 0, padding: "7px 14px", background: filter === k ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.04)", border: "1px solid " + (filter === k ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.08)"), borderRadius: 16, color: filter === k ? "#c9a84c" : "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" } }, l))),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 16px 40px" } },
+            loading
+                ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                : filtered.length === 0
+                    ? React.createElement("div", { style: { textAlign: "center", padding: "60px 20px", color: "rgba(255,255,255,0.4)" } },
+                        React.createElement("div", { style: { fontSize: 40, marginBottom: 12, opacity: 0.5 } }, "\uD83C\uDFA4"),
+                        React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, filter === "all" ? "No applications yet" : "None marked " + filter),
+                        filter === "all" && React.createElement("div", { style: { fontSize: 12, marginTop: 6 } }, "Submissions will appear here as performers apply."))
+                    : filtered.map(app => {
+                        var _a, _b;
+                        const name = ((_a = app.applicant) === null || _a === void 0 ? void 0 : _a.name) || "Performer";
+                        const avatar = (_b = app.applicant) === null || _b === void 0 ? void 0 : _b.avatar_url;
+                        const statusObj = STATUSES.find(s => s.k === app.status);
+                        return React.createElement("div", { key: app.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, marginBottom: 10 } },
+                            React.createElement("div", { style: { display: "flex", gap: 11, alignItems: "center", marginBottom: 10 } },
+                                React.createElement("div", { onClick: () => app.applicant_id && onViewUser && onViewUser(app.applicant_id), style: { width: 44, height: 44, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15, color: "#1a0a2e", flexShrink: 0, cursor: "pointer" } },
+                                    avatar ? React.createElement("img", { src: avatar, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } }) : name.slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700 } }, name),
+                                    app.character_name && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, "for " + app.character_name)),
+                                statusObj && React.createElement("div", { style: { fontSize: 10, padding: "3px 9px", borderRadius: 12, background: statusObj.c + "22", color: statusObj.c, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" } }, statusObj.l)),
+                            app.note && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5, marginBottom: 10, padding: "10px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 10 } }, app.note),
+                            app.tape_url && React.createElement("a", { href: app.tape_url, target: "_blank", rel: "noopener noreferrer", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#4cb8c4", textDecoration: "none", marginBottom: 12, fontWeight: 600 } }, "\uD83D\uDCF9 Watch self-tape \u2197"),
+                            React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
+                                STATUSES.map(s =>
+                                    React.createElement("button", { key: s.k, onClick: () => setStatus(app, s.k), style: { flex: "1 1 auto", padding: "9px 6px", background: app.status === s.k ? s.c + "26" : "rgba(255,255,255,0.05)", border: "1px solid " + (app.status === s.k ? s.c + "66" : "rgba(255,255,255,0.1)"), borderRadius: 9, color: app.status === s.k ? s.c : "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, s.l))));
+                    }))
+    );
+}
 function ApplyModal({ call, onClose, show, onApplied }) {
     const chars = (call.characters && call.characters.length) ? call.characters : [];
     const [role, setRole] = useState(chars.length ? chars[0].name : "");
