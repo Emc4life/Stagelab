@@ -3558,8 +3558,7 @@ function ProfileScreen({ show }) {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
-                const { data: prof } = await supabase.from("profiles").select("resume_skills").eq("id", user.id).single();
-                if (prof) setResumeSkillsP(prof.resume_skills || "");
+                // resume_skills now comes from the main profile load; only fetch credits here
                 const { data: rc } = await supabase.from("resume_credits").select("*").eq("user_id", user.id).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
                 if (rc) {
                     setResumeCredits(rc.filter(r => r.kind === "credit").map(r => ({ id: r.id, title: r.title, role: r.role || "", company: r.company || "", year: r.year || "" })));
@@ -3591,8 +3590,22 @@ function ProfileScreen({ show }) {
             const { data: authData } = await supabase.auth.getUser();
             if (!authData.user) return;
             const uid = authData.user.id;
-            // Load profile
-            const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).single();
+            // Fire ALL queries in parallel — they don't depend on each other.
+            // This turns ~6 sequential round-trips into 1.
+            const [profR, mediaR, postsR, tapesR, followersR, followingR] = await Promise.all([
+                supabase.from("profiles").select("*").eq("id", uid).single(),
+                supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+                supabase.from("posts").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+                supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+                supabase.from("follows").select("follower_id").eq("following_id", uid),
+                supabase.from("follows").select("following_id").eq("follower_id", uid),
+            ]);
+            const prof = profR && profR.data;
+            const mediaRows = (mediaR && mediaR.data) || [];
+            const postRows = (postsR && postsR.data) || [];
+            const tapeRows = (tapesR && tapesR.data) || [];
+            const followerRows = (followersR && followersR.data) || [];
+            const followingRows = (followingR && followingR.data) || [];
             if (prof) {
                 const p = {
                     name: prof.name || "", handle: prof.handle || "", bio: prof.bio || "",
@@ -3600,39 +3613,31 @@ function ProfileScreen({ show }) {
                     avatar: prof.avatar_url || null, banner: prof.banner_url || null,
                 };
                 setProfile(p); setDraft(p);
+                if (prof.resume_skills !== undefined) setResumeSkillsP(prof.resume_skills || "");
                 try { localStorage.setItem("sl_profile_cache", JSON.stringify(p)); } catch (e) {}
             }
-            // Load MEDIA (photos/videos uploaded directly to profile)
-            const { data: mediaRows } = await supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            // Load POSTS (videos/audio/lyrics/posters published to feed)
-            const { data: postRows } = await supabase.from("posts").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            // Merge: posts + direct media, both show on profile
+            // Merge posts + direct media for the grid
             const merged = [];
-            (postRows || []).forEach(p => {
+            postRows.forEach(p => {
                 merged.push({
                     id: "post-" + p.id, type: p.type || "video",
                     url: p.media_url || p.thumbnail_url, caption: p.title || p.caption || "",
                     likes: p.likes || 0, isPost: true, postId: p.id,
                 });
             });
-            (mediaRows || []).forEach(m => {
+            mediaRows.forEach(m => {
                 merged.push({
                     id: "media-" + m.id, type: m.type, url: m.url, caption: m.caption || "",
                     mediaId: m.id,
                 });
             });
             setMedia(merged);
-            // Self tapes
-            const { data: tapeRows } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
-            if (tapeRows) setTapes(tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at || "").slice(0, 10), status: t.status || "pending", url: t.media_url })));
-            // Stats
-            const { data: followerRows } = await supabase.from("follows").select("follower_id").eq("following_id", uid);
-            const { data: followingRows } = await supabase.from("follows").select("following_id").eq("follower_id", uid);
+            setTapes(tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at || "").slice(0, 10), status: t.status || "pending", url: t.media_url })));
             const finalStats = {
-                posts: postRows?.length || 0,
-                followers: followerRows?.length || 0,
-                following: followingRows?.length || 0,
-                likes: (postRows || []).reduce((a, p) => a + (p.likes || 0), 0),
+                posts: postRows.length,
+                followers: followerRows.length,
+                following: followingRows.length,
+                likes: postRows.reduce((a, p) => a + (p.likes || 0), 0),
             };
             setStats(finalStats);
             try { localStorage.setItem("sl_stats_cache", JSON.stringify(finalStats)); } catch (e) {}
