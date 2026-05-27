@@ -315,6 +315,98 @@ const INIT_CREDITS = [
 ];
 const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 // ---------------------- PERSISTENCE HELPERS --------------------------
+// ═══════════════════════════════════════════════════════════════════
+// CLOUDFLARE STREAM CONFIG
+// After you deploy the Edge Function (see cloudflare_stream_function.txt),
+// paste its URL here. Until then, video uploads fall back to Supabase Storage.
+// ═══════════════════════════════════════════════════════════════════
+const CF_STREAM_UPLOAD_FN = ""; // e.g. "https://dsegdddquztgkdwyzbai.supabase.co/functions/v1/stream-upload"
+const CF_STREAM_ENABLED = () => CF_STREAM_UPLOAD_FN.trim().length > 0;
+
+// Upload a video to Cloudflare Stream via the Edge Function.
+// Returns { uid, playbackUrl, thumbnail } or null on failure.
+async function uploadToCloudflareStream(fileOrBlob, onProgress) {
+    try {
+        const token = localStorage.getItem("sb_token");
+        // 1. Ask our Edge Function for a one-time direct-upload URL
+        const initRes = await fetch(CF_STREAM_UPLOAD_FN, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ action: "create-upload" }),
+        });
+        if (!initRes.ok) { console.error("CF init failed", await initRes.text().catch(()=>"")); return null; }
+        const { uploadURL, uid } = await initRes.json();
+        if (!uploadURL || !uid) return null;
+        // 2. Upload the file directly to Cloudflare with progress
+        await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", uploadURL, true);
+            const form = new FormData();
+            form.append("file", fileOrBlob);
+            xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
+            xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error("upload " + xhr.status));
+            xhr.onerror = () => reject(new Error("network error"));
+            xhr.send(form);
+        });
+        // 3. Cloudflare playback URL (HLS) + thumbnail
+        return {
+            uid,
+            playbackUrl: "https://videodelivery.net/" + uid + "/manifest/video.m3u8",
+            thumbnail: "https://videodelivery.net/" + uid + "/thumbnails/thumbnail.jpg",
+            iframe: "https://iframe.videodelivery.net/" + uid,
+        };
+    } catch (e) {
+        console.error("Cloudflare Stream upload error:", e);
+        return null;
+    }
+}
+
+// HLS-aware video element: plays Cloudflare .m3u8 natively on Safari,
+// uses hls.js elsewhere. Falls back to plain src for mp4/webm.
+function HLSVideo(props) {
+    const { src, vidRef } = props;
+    const localRef = useRef(null);
+    const ref = vidRef || localRef;
+    const isHls = src && src.indexOf(".m3u8") !== -1;
+    useEffect(() => {
+        const video = ref.current;
+        if (!video || !src) return;
+        if (!isHls) { video.src = src; return; }
+        // Native HLS (Safari / iOS)
+        if (video.canPlayType("application/vnd.apple.mpegurl")) {
+            video.src = src;
+            return;
+        }
+        // hls.js for Chrome/Firefox/etc — load lazily from CDN
+        const setup = () => {
+            if (window.Hls && window.Hls.isSupported()) {
+                const hls = new window.Hls();
+                hls.loadSource(src);
+                hls.attachMedia(video);
+                video._hls = hls;
+            } else {
+                video.src = src; // last resort
+            }
+        };
+        if (window.Hls) { setup(); }
+        else {
+            const existing = document.getElementById("hlsjs-cdn");
+            if (existing) { existing.addEventListener("load", setup); }
+            else {
+                const s = document.createElement("script");
+                s.id = "hlsjs-cdn";
+                s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
+                s.onload = setup;
+                document.head.appendChild(s);
+            }
+        }
+        return () => { if (video && video._hls) { try { video._hls.destroy(); } catch (e) {} video._hls = null; } };
+    }, [src, isHls]);
+    const passProps = Object.assign({}, props);
+    delete passProps.src; delete passProps.vidRef;
+    return React.createElement("video", Object.assign({ ref: ref }, passProps));
+}
+
 // ── Notification helper: create a notification for another user ──
 async function notify({ userId, type, title, body, link }) {
     try {
@@ -912,7 +1004,9 @@ function MainApp({ tab, setTab, session }) {
     const [showInbox, setShowInbox] = useState(false);
     const [viewingUser, setViewingUser] = useState(null); // view another user's profile
     const [showTutorial, setShowTutorial] = useState(() => {
-        // Show only if neither localStorage nor (later) profile says it's been seen
+        // Demo mode (no session) ALWAYS shows the tutorial — there's no account to remember it
+        if (!session) return true;
+        // Signed-in users: show only if not seen before (localStorage + profile checked below)
         try { return !localStorage.getItem("sl_tutorial_seen"); } catch (e) { return true; }
     });
     // ── Notifications ──
@@ -941,6 +1035,7 @@ function MainApp({ tab, setTab, session }) {
     };
     // Double-check against the user's saved profile flag (survives localStorage clears + new devices)
     useEffect(() => {
+        if (!session) return; // demo mode: never auto-dismiss from profile flag
         (async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
@@ -991,6 +1086,8 @@ function MainApp({ tab, setTab, session }) {
         showNotifs && React.createElement(NotificationsPanel, { notifications: notifications, onClose: () => setShowNotifs(false), onMarkAllRead: markAllRead, onGoTab: (t) => { setShowNotifs(false); setTab(t); }, show: show }),
         showTutorial && React.createElement(TutorialOverlay, { onClose: async () => {
             setShowTutorial(false);
+            // Demo mode: don't persist "seen" — so a real signup later still gets the tour
+            if (!session) return;
             try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {}
             // Persist to profile so it never shows again on any device
             try {
@@ -1188,7 +1285,7 @@ function VideoCard({ vid, active, offset, liked, reposted, commentCount, onLike,
     };
     return (React.createElement("div", { style: { position: "absolute", inset: "7px 11px", borderRadius: 20, overflow: "hidden", background: vid.bg, transform: `translateY(${ty}%)`, transition: "transform 0.38s cubic-bezier(0.32,0.72,0,1)", willChange: "transform" } },
         React.createElement("div", { style: { position: "absolute", inset: 0 }, onClick: togglePlay },
-            vid.type === "video" && vid.media_url && (React.createElement("video", { ref: vidRef, src: vid.media_url, style: { width: "100%", height: "100%", objectFit: "cover", display: "block" }, playsInline: true, loop: true, muted: false, poster: vid.thumbnail_url || undefined })),
+            vid.type === "video" && vid.media_url && (React.createElement(HLSVideo, { vidRef: vidRef, src: vid.media_url, style: { width: "100%", height: "100%", objectFit: "cover", display: "block" }, playsInline: true, loop: true, muted: false, poster: vid.thumbnail_url || undefined })),
             vid.type === "audio" && vid.media_url && (React.createElement("audio", { ref: audRef, src: vid.media_url, loop: true })),
             vid.type !== "video" && vid.thumbnail_url && (React.createElement("img", { loading: "lazy", decoding: "async", src: vid.thumbnail_url, style: { width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 } }))),
         (vid.type === "audio" || !vid.media_url) && (React.createElement("div", { style: { position: "absolute", top: "30%", left: 0, right: 0, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 3, height: 76, pointerEvents: "none" } }, Array.from({ length: 28 }).map((_, i) => (React.createElement("div", { key: i, className: active && playing ? "bar" : "", style: { width: 7, borderRadius: 4, height: `${18 + Math.sin(i * 0.7) * 14}px`, background: `linear-gradient(to top, ${vid.accent}, ${vid.accent}88)`, transformOrigin: "bottom" } }))))),
@@ -1525,30 +1622,42 @@ function VideoPostTab({ show, setTab }) {
             return;
         }
         const { data: { user } } = await supabase.auth.getUser();
-        let mediaUrl = null;
+        let streamUid = null; let mediaUrl = null;
         // Upload video/audio to Supabase Storage
         const fileOrBlob = recBlob || videoFile;
         if (fileOrBlob && user) {
             show("\u2b06\ufe0f Uploading\u2026");
-            const ext = recBlob ? "webm" : ((videoFile.name || "video").split(".").pop() || "mp4");
-            const path = user.id + "/" + Date.now() + "." + ext;
-            const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + path, {
-                method: "POST",
-                headers: {
-                    "Authorization": "Bearer " + localStorage.getItem("sb_token"),
-                    "Content-Type": fileOrBlob.type || "video/webm",
-                    "x-upsert": "true",
-                    "Cache-Control": "3600",
-                },
-                body: fileOrBlob,
-            });
-            if (uploadRes.ok) {
-                mediaUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/media/" + path;
+            // Prefer Cloudflare Stream for video (adaptive HLS, fast playback) when configured
+            let cfResult = null;
+            if (CF_STREAM_ENABLED()) {
+                cfResult = await uploadToCloudflareStream(fileOrBlob, (pct) => { show("\u2b06\ufe0f Uploading\u2026 " + pct + "%"); });
             }
-            else {
-                const errText = await uploadRes.text().catch(() => "");
-                console.error("Video upload failed:", uploadRes.status, errText);
-                show("\u26a0\ufe0f Upload failed - your post will save without the video file");
+            if (cfResult && cfResult.playbackUrl) {
+                mediaUrl = cfResult.playbackUrl;
+                streamUid = cfResult.uid;
+                if (!thumbnail) thumbnail = cfResult.thumbnail;
+            } else {
+                // Fallback: Supabase Storage (works today, before Cloudflare is set up)
+                const ext = recBlob ? "webm" : ((videoFile.name || "video").split(".").pop() || "mp4");
+                const path = user.id + "/" + Date.now() + "." + ext;
+                const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + path, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + localStorage.getItem("sb_token"),
+                        "Content-Type": fileOrBlob.type || "video/webm",
+                        "x-upsert": "true",
+                        "Cache-Control": "3600",
+                    },
+                    body: fileOrBlob,
+                });
+                if (uploadRes.ok) {
+                    mediaUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/media/" + path;
+                }
+                else {
+                    const errText = await uploadRes.text().catch(() => "");
+                    console.error("Video upload failed:", uploadRes.status, errText);
+                    show("\u26a0\ufe0f Upload failed - your post will save without the video file");
+                }
             }
         }
         if (saveToProfile) {
@@ -1563,6 +1672,7 @@ function VideoPostTab({ show, setTab }) {
                     user_id: user.id, type: "video", title, caption,
                     category, tags, visibility, media_url: mediaUrl,
                     thumbnail_url: thumbnail, collab_open: collab,
+                    stream_uid: streamUid,
                 });
             }
             if (user) {
@@ -1573,6 +1683,7 @@ function VideoPostTab({ show, setTab }) {
                     user_id: user.id, type: "video", title, caption,
                     category, tags, visibility, media_url: mediaUrl,
                     thumbnail_url: thumbnail, collab_open: collab,
+                    stream_uid: streamUid,
                 });
                 // Add to feed immediately
                 const feedPost = {
