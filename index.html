@@ -2152,52 +2152,53 @@ function DiscoverScreen({ show, onViewUser }) {
     const [tab, setTab] = useState("people");
     const [query, setQuery] = useState("");
     const [followed, setFollowed] = useState({});
-    const [saved, setSaved] = useState({});
-    const [realUsers, setRealUsers] = useState([]);
-    const [loadingUsers, setLoadingUsers] = useState(true);
     const [composeTo, setComposeTo] = useState(null);
-    const tabs = [
-        { key: "people", label: "\uD83D\uDC65 People" },
-        { key: "projects", label: "\uD83C\uDFAD Projects" },
-        { key: "calls", label: "\uD83D\uDCE3 Open Calls" },
-        { key: "shows", label: "\uD83D\uDCCD Local Shows" },
-    ];
-    // Load real users from Supabase profiles table
-    // Hydrate from cache instantly (no waiting)
+    const [me, setMe] = useState(null);
+    // Data
+    const cachedDisc = (() => { try { return JSON.parse(localStorage.getItem("sl_discover_cache") || "null"); } catch { return null; } })();
+    const [realUsers, setRealUsers] = useState(cachedDisc || []);
+    const [loadingUsers, setLoadingUsers] = useState(!cachedDisc);
+    const [trending, setTrending] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [loadingTrending, setLoadingTrending] = useState(true);
+    const [loadingEvents, setLoadingEvents] = useState(true);
+    // People filter
+    const [peopleFilter, setPeopleFilter] = useState("all"); // all | actor | director | md | choreo | designer | crew | following | new
     useEffect(() => {
-        try {
-            const cached = JSON.parse(localStorage.getItem("sl_discover_cache") || "null");
-            if (cached && Array.isArray(cached) && cached.length) {
-                setRealUsers(cached);
-                setLoadingUsers(false);
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setMe(user);
+            // Who am I following?
+            if (user) {
+                const { data: fl } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
+                if (fl) {
+                    const map = {};
+                    fl.forEach(f => { map[f.following_id] = true; });
+                    setFollowed(map);
+                }
             }
-        } catch (e) {}
+        })();
     }, []);
-    // Refresh in background
+    // Load people
     useEffect(() => {
         supabase.from("profiles")
-            .select("id,name,handle,role,bio,location,avatar_url")
+            .select("id,name,handle,role,bio,location,avatar_url,created_at")
             .order("created_at", { ascending: false })
-            .limit(30)
+            .limit(50)
             .then(({ data }) => {
             if (data && data.length > 0) {
-                const mapped = data
-                    .filter(p => p.id) // only valid rows
-                    .map((p, i) => {
+                const mapped = data.filter(p => p.id).map(p => {
                     var _a;
-                    return ({
+                    return {
                         id: p.id,
                         name: p.name || ((_a = p.handle) === null || _a === void 0 ? void 0 : _a.replace("@", "")) || "StageLab User",
                         handle: p.handle || "@user",
                         role: p.role || "Theatre Maker",
                         bio: p.bio || "StageLab member",
-                        location: p.location || "Remote",
+                        location: p.location || "",
                         avatar_url: p.avatar_url || null,
-                        avatar: (p.name || p.handle || "U").slice(0, 2).toUpperCase().replace("@", ""),
-                        skills: [],
-                        accent: ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#e8507c", "#50c8a8"][i % 6],
-                        following: false,
-                    });
+                        created_at: p.created_at,
+                    };
                 });
                 setRealUsers(mapped);
                 try { localStorage.setItem("sl_discover_cache", JSON.stringify(mapped)); } catch (e) {}
@@ -2205,115 +2206,165 @@ function DiscoverScreen({ show, onViewUser }) {
             setLoadingUsers(false);
         });
     }, []);
-    const q = query.toLowerCase();
-    // Merge real users with sample data - real users first
-    const allPeople = [...realUsers, ...DISCOVER_PEOPLE.filter(sp => !realUsers.some(ru => ru.id === sp.id))];
-    const filteredPeople = allPeople.filter(p => !q || p.name.toLowerCase().includes(q) ||
-        p.role.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q) ||
-        (p.skills || []).some(s => s.toLowerCase().includes(q)));
-    const filteredProjects = DISCOVER_PROJECTS.filter(p => !q || p.title.toLowerCase().includes(q) ||
-        p.type.toLowerCase().includes(q) ||
-        p.status.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q));
-    const filteredCalls = DISCOVER_CALLS.filter(c => !q || c.title.toLowerCase().includes(q) ||
-        c.company.toLowerCase().includes(q) ||
-        c.type.toLowerCase().includes(q));
-    const toggleFollow = async (id) => {
-        var _a;
-        const wasFollowing = followed[id] || ((_a = DISCOVER_PEOPLE.find(p => p.id === id)) === null || _a === void 0 ? void 0 : _a.following);
-        setFollowed(p => (Object.assign(Object.assign({}, p), { [id]: !wasFollowing })));
-        show(wasFollowing ? "Unfollowed" : "Following! \u2713");
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user)
-            return;
-        if (wasFollowing) {
-            supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", String(id));
+    // Load trending (top creators by recent posts)
+    useEffect(() => {
+        (async () => {
+            try {
+                const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: posts } = await supabase.from("posts").select("user_id,likes,created_at").order("created_at", { ascending: false }).limit(200);
+                if (!posts) { setLoadingTrending(false); return; }
+                const recent = posts.filter(p => p.created_at > since);
+                const score = {};
+                recent.forEach(p => { score[p.user_id] = (score[p.user_id] || 0) + 1 + (p.likes || 0) * 0.5; });
+                const topIds = Object.entries(score).sort((a, b) => b[1] - a[1]).slice(0, 10).map(e => e[0]);
+                if (topIds.length === 0) { setLoadingTrending(false); return; }
+                const { data: profs } = await supabase.from("profiles").select("id,name,handle,role,avatar_url,location").in("id", topIds);
+                if (profs) {
+                    const ordered = topIds.map(id => profs.find(p => p.id === id)).filter(Boolean).map(p => Object.assign(Object.assign({}, p), { postCount: Math.floor(score[p.id]) }));
+                    setTrending(ordered);
+                }
+            } catch (e) { console.warn("Trending load:", e); }
+            setLoadingTrending(false);
+        })();
+    }, []);
+    // Load events (live rooms + production events coming up)
+    useEffect(() => {
+        (async () => {
+            try {
+                const now = new Date().toISOString();
+                const soon = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: evts } = await supabase.from("production_events").select("id,production_id,type,title,starts_at,location").gte("starts_at", now).lte("starts_at", soon).order("starts_at", { ascending: true }).limit(20);
+                if (evts && evts.length) {
+                    const prodIds = [...new Set(evts.map(e => e.production_id))];
+                    const { data: prods } = await supabase.from("productions").select("id,title,poster_url").in("id", prodIds);
+                    const prodMap = {};
+                    (prods || []).forEach(p => { prodMap[p.id] = p; });
+                    setEvents(evts.map(e => Object.assign(Object.assign({}, e), { production: prodMap[e.production_id] })));
+                }
+            } catch (e) { console.warn("Events load:", e); }
+            setLoadingEvents(false);
+        })();
+    }, []);
+    // Filtering people
+    const filteredPeople = (() => {
+        let list = realUsers;
+        const q = query.trim().toLowerCase();
+        if (q) {
+            list = list.filter(p => (p.name || "").toLowerCase().includes(q) || (p.handle || "").toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q) || (p.location || "").toLowerCase().includes(q));
         }
-        else {
-            supabase.from("follows").insert({ follower_id: user.id, following_id: String(id) });
+        // Role filter
+        const roleMatch = (p, kw) => (p.role || "").toLowerCase().includes(kw);
+        if (peopleFilter === "actor") list = list.filter(p => roleMatch(p, "actor") || roleMatch(p, "performer"));
+        else if (peopleFilter === "director") list = list.filter(p => roleMatch(p, "director"));
+        else if (peopleFilter === "md") list = list.filter(p => roleMatch(p, "music"));
+        else if (peopleFilter === "choreo") list = list.filter(p => roleMatch(p, "choreo"));
+        else if (peopleFilter === "designer") list = list.filter(p => roleMatch(p, "design"));
+        else if (peopleFilter === "crew") list = list.filter(p => roleMatch(p, "crew") || roleMatch(p, "stage manager") || roleMatch(p, "tech"));
+        else if (peopleFilter === "following") list = list.filter(p => followed[p.id]);
+        else if (peopleFilter === "new") list = list.filter(p => { const d = new Date(p.created_at || 0); return (Date.now() - d.getTime()) < 14 * 24 * 60 * 60 * 1000; });
+        // Hide self
+        if (me) list = list.filter(p => p.id !== me.id);
+        return list;
+    })();
+    const toggleFollow = async (id) => {
+        const wasFollowed = followed[id];
+        setFollowed(p => Object.assign(Object.assign({}, p), { [id]: !wasFollowed }));
+        if (!me) { show("Sign in to follow"); return; }
+        if (wasFollowed) {
+            await supabase.from("follows").delete().eq("follower_id", me.id).eq("following_id", String(id));
+        } else {
+            await supabase.from("follows").insert({ follower_id: me.id, following_id: String(id) });
             notify({ userId: String(id), type: "follow", title: "New follower", body: "Someone started following you", link: "profile" });
         }
     };
-    const toggleSave = (id) => {
-        setSaved(p => (Object.assign(Object.assign({}, p), { [id]: !p[id] })));
-        show(saved[id] ? "Removed from saved" : "Saved! \uD83D\uDD16");
-    };
+    const ROLE_FILTERS = [
+        { k: "all", l: "All" },
+        { k: "actor", l: "Actors" },
+        { k: "director", l: "Directors" },
+        { k: "md", l: "MDs" },
+        { k: "choreo", l: "Choreo" },
+        { k: "designer", l: "Designers" },
+        { k: "crew", l: "Crew" },
+        { k: "following", l: "Following" },
+        { k: "new", l: "New" },
+    ];
     return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
-        React.createElement("div", { style: { padding: "14px 16px 0", flexShrink: 0 } },
+        // SEARCH BAR (always visible)
+        React.createElement("div", { style: { padding: "14px 16px 10px", flexShrink: 0 } },
             React.createElement("div", { style: { position: "relative" } },
-                React.createElement("span", { style: { position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", fontSize: 14, opacity: 0.4 } }, "\uD83D\uDD0D"),
-                React.createElement("input", { value: query, onChange: e => setQuery(e.target.value), placeholder: "Search people, projects, roles\u2026", style: Object.assign(Object.assign({}, inputSt), { paddingLeft: 38, marginBottom: 0 }) }),
-                query && (React.createElement("button", { onClick: () => setQuery(""), style: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 16, cursor: "pointer" } }, "\u00D7")))),
-        React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0, marginTop: 12 } }, tabs.map(t => (React.createElement("button", { key: t.key, onClick: () => setTab(t.key), style: { flex: 1, padding: "11px 0", background: "none", border: "none",
-                color: tab === t.key ? "#c9a84c" : "rgba(255,255,255,0.42)",
-                fontWeight: tab === t.key ? 700 : 400, fontSize: 13, cursor: "pointer",
-                borderBottom: tab === t.key ? "2px solid #c9a84c" : "2px solid transparent" } }, t.label)))),
-        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "14px 16px 80px" } },
-            tab === "people" && (loadingUsers && realUsers.length === 0
-                ? React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.4)" } },
-                    React.createElement("div", { style: { fontSize: 13 } }, "Loading people\u2026"))
-                : filteredPeople.length === 0
-                    ? React.createElement(EmptyState, { query: query, type: "people" })
-                    : filteredPeople.map(p => (React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { cursor: "pointer", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
-                        React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 10 } },
-                            React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg,${p.accent}44,${p.accent}22)`, border: `2px solid ${p.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 16, flexShrink: 0 } }, p.avatar),
-                            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
-                                    React.createElement("div", null,
-                                        React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif" } }, p.name),
-                                        React.createElement("div", { style: { fontSize: 11, color: p.accent, fontWeight: 600 } }, p.role),
-                                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 } },
-                                            "\uD83D\uDCCD ",
-                                            p.location)),
-                                    React.createElement("button", { onClick: (e) => { e.stopPropagation(); toggleFollow(p.id); }, style: { flexShrink: 0, padding: "7px 14px", background: (followed[p.id] || p.following) ? "rgba(255,255,255,0.08)" : p.accent, border: `1px solid ${(followed[p.id] || p.following) ? "rgba(255,255,255,0.15)" : p.accent}`, borderRadius: 20, color: (followed[p.id] || p.following) ? "rgba(255,255,255,0.6)" : "#1a0a2e", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, (followed[p.id] || p.following) ? "Following" : "Follow")))),
-                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 10 } }, p.bio),
-                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 } }, p.skills.map(s => (React.createElement("span", { key: s, style: { background: p.accent + "18", border: `1px solid ${p.accent}33`, borderRadius: 20, padding: "3px 10px", fontSize: 11, color: p.accent, fontWeight: 600 } }, s)))),
-                        React.createElement("div", { style: { display: "flex", gap: 8 } },
-                            React.createElement("button", { onClick: (e) => { e.stopPropagation(); setComposeTo({ id: p.id, name: p.name }); }, style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDCAC Message"),
-                            React.createElement("button", { onClick: (e) => { e.stopPropagation(); show(`Collab request sent to ${p.name}! \uD83C\uDFAD`); }, style: { flex: 2, padding: "9px", background: p.accent + "22", border: `1px solid ${p.accent}44`, borderRadius: 10, color: p.accent, fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\uD83C\uDFAD Request Collab")))))),
-            tab === "projects" && (filteredProjects.length === 0
-                ? React.createElement(EmptyState, { query: query, type: "projects" })
-                : filteredProjects.map(p => (React.createElement("div", { key: p.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, overflow: "hidden", marginBottom: 12 } },
-                    React.createElement("div", { style: { background: `linear-gradient(135deg,${p.accent}22,${p.accent}0a)`, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" } },
-                        React.createElement("div", null,
-                            React.createElement("div", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, p.title),
-                            React.createElement("div", { style: { fontSize: 11, color: p.accent, marginTop: 1 } }, p.type)),
-                        React.createElement("button", { onClick: () => toggleSave(p.id), style: { background: "none", border: "none", fontSize: 18, cursor: "pointer", opacity: saved[p.id] ? 1 : 0.4 } }, saved[p.id] ? "\uD83D\uDD16" : "\uD83D\uDD16")),
-                    React.createElement("div", { style: { padding: "14px 16px" } },
-                        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" } },
-                            React.createElement("span", { style: { background: p.accent + "22", color: p.accent, borderRadius: 20, padding: "3px 11px", fontSize: 11, fontWeight: 700 } }, p.status),
-                            React.createElement("span", { style: { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 11px", fontSize: 11 } },
-                                "\uD83D\uDCCD ",
-                                p.location),
-                            React.createElement("span", { style: { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 11px", fontSize: 11 } },
-                                "\uD83D\uDC65 ",
-                                p.members,
-                                " members")),
-                        React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.55, marginBottom: 12 } }, p.desc),
-                        React.createElement("div", { style: { display: "flex", gap: 8 } },
-                            React.createElement("button", { onClick: () => show(`Applied to ${p.title}! \uD83C\uDFAD`), style: { flex: 2, padding: "10px", background: `linear-gradient(135deg,${p.accent},${p.accent}cc)`, border: "none", borderRadius: 10, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Apply to Join"),
-                            React.createElement("button", { onClick: () => show("Link copied!"), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u2197 Share"))))))),
-            tab === "calls" && (filteredCalls.length === 0
-                ? React.createElement(EmptyState, { query: query, type: "calls" })
-                : filteredCalls.map(c => (React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
-                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 } },
-                        React.createElement("div", { style: { flex: 1, minWidth: 0, marginRight: 10 } },
-                            React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.3 } }, c.title),
-                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 } }, c.company)),
-                        React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 } },
-                            React.createElement("span", { style: { background: c.type === "Audition" ? "rgba(201,168,76,0.2)" : "rgba(76,184,196,0.2)", color: c.type === "Audition" ? "#c9a84c" : "#4cb8c4", borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 700 } }, c.type),
-                            React.createElement("span", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)" } },
-                                "\u23F0 ",
-                                c.deadline))),
-                    React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 10 } },
-                        c.paid && React.createElement("span", { style: { background: "rgba(74,222,128,0.15)", color: "#4ade80", borderRadius: 20, padding: "2px 9px", fontSize: 10, fontWeight: 700 } }, "\uD83D\uDCB0 Paid"),
-                        c.remote && React.createElement("span", { style: { background: "rgba(96,165,250,0.15)", color: "#60a5fa", borderRadius: 20, padding: "2px 9px", fontSize: 10, fontWeight: 700 } }, "\uD83D\uDCF9 Remote OK")),
-                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, marginBottom: 12 } }, c.desc),
-                    React.createElement("div", { style: { display: "flex", gap: 8 } },
-                        React.createElement("button", { onClick: () => show(`Applied to "${c.title}"! \u2713`), style: { flex: 2, padding: "10px", background: `linear-gradient(135deg,${c.accent},${c.accent}cc)`, border: "none", borderRadius: 10, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Apply Now"),
-                        React.createElement("button", { onClick: () => toggleSave("call-" + c.id), style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, saved["call-" + c.id] ? "\uD83D\uDD16 Saved" : "\uD83D\uDD16 Save")))))),
-            tab === "shows" && React.createElement(LocalShowsPanel, { show: show }), composeTo && React.createElement(ComposeMessageModal, { recipientId: composeTo.id, recipientName: composeTo.name, onClose: () => setComposeTo(null), show: show }))));
+                React.createElement("input", { value: query, onChange: e => setQuery(e.target.value), placeholder: tab === "people" ? "Search people, roles, locations\u2026" : tab === "shows" ? "Search shows by title or venue\u2026" : tab === "trending" ? "Search creators\u2026" : "Search events\u2026", style: { width: "100%", padding: "12px 14px 12px 40px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "#fff", fontSize: 14, outline: "none" } }),
+                React.createElement("span", { style: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.5 } }, "\uD83D\uDD0D"),
+                query && React.createElement("button", { onClick: () => setQuery(""), style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", width: 24, height: 24, borderRadius: "50%", fontSize: 13, cursor: "pointer" } }, "\u00D7"))),
+        // SUB-TABS
+        React.createElement("div", { style: { display: "flex", padding: "0 12px", gap: 4, borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, overflowX: "auto" } },
+            [["people", "\uD83C\uDFAD People"], ["shows", "\uD83D\uDCCD Local Shows"], ["trending", "\uD83D\uDD25 Trending"], ["events", "\uD83D\uDCC5 Events"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setTab(k), style: { padding: "11px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #c9a84c" : "2px solid transparent", color: tab === k ? "#c9a84c" : "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: tab === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap", letterSpacing: "0.04em" } }, l))),
+        // CONTENT
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 16px 40px" } },
+            // PEOPLE TAB
+            tab === "people" && React.createElement("div", null,
+                React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 4 } },
+                    ROLE_FILTERS.map(f =>
+                        React.createElement("button", { key: f.k, onClick: () => setPeopleFilter(f.k), style: { flexShrink: 0, padding: "7px 13px", background: peopleFilter === f.k ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.04)", border: "1px solid " + (peopleFilter === f.k ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.08)"), borderRadius: 16, color: peopleFilter === f.k ? "#c9a84c" : "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" } }, f.l))),
+                loadingUsers && filteredPeople.length === 0
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "Loading people\u2026")
+                    : filteredPeople.length === 0
+                        ? React.createElement("div", { style: { textAlign: "center", padding: 50, color: "rgba(255,255,255,0.4)" } },
+                            React.createElement("div", { style: { fontSize: 38, marginBottom: 10, opacity: 0.5 } }, "\uD83C\uDFAD"),
+                            React.createElement("div", { style: { fontSize: 13 } }, query ? "No one matches " + JSON.stringify(query) : "No one here yet."))
+                        : filteredPeople.map(p =>
+                            React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, marginBottom: 8, cursor: "pointer", alignItems: "center" } },
+                                React.createElement("div", { style: { width: 50, height: 50, borderRadius: "50%", background: p.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 17, color: "#1a0a2e", flexShrink: 0 } },
+                                    p.avatar_url ? React.createElement("img", { src: p.avatar_url, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (p.name || "U").slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name),
+                                    React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginTop: 1 } }, p.role),
+                                    p.location && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 } }, "\uD83D\uDCCD " + p.location)),
+                                React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
+                                    React.createElement("button", { onClick: (e) => { e.stopPropagation(); toggleFollow(p.id); }, style: { padding: "7px 14px", background: followed[p.id] ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: followed[p.id] ? "1px solid rgba(255,255,255,0.15)" : "none", borderRadius: 14, color: followed[p.id] ? "#fff" : "#1a0a2e", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, followed[p.id] ? "Following" : "Follow"),
+                                    React.createElement("button", { onClick: (e) => { e.stopPropagation(); setComposeTo({ id: p.id, name: p.name }); }, style: { padding: "7px 14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 600, cursor: "pointer" } }, "Message"))))),
+            // SHOWS TAB
+            tab === "shows" && React.createElement(LocalShowsPanel, { show: show, query: query }),
+            // TRENDING TAB
+            tab === "trending" && React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14 } }, "Top creators in the last 2 weeks"),
+                loadingTrending
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                    : trending.length === 0
+                        ? React.createElement("div", { style: { textAlign: "center", padding: 50, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No trending creators yet. Be the first \u2728")
+                        : trending.filter(p => !query || (p.name || "").toLowerCase().includes(query.toLowerCase())).map((p, i) =>
+                            React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, marginBottom: 8, cursor: "pointer", alignItems: "center" } },
+                                React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: i < 3 ? "#c9a84c" : "rgba(255,255,255,0.4)", fontFamily: "'Cormorant Garamond',serif", minWidth: 28 } }, "#" + (i + 1)),
+                                React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", background: p.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#1a0a2e", flexShrink: 0 } },
+                                    p.avatar_url ? React.createElement("img", { src: p.avatar_url, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (p.name || "U").slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name),
+                                    React.createElement("div", { style: { fontSize: 11, color: "#c9a84c" } }, p.role || "Creator"),
+                                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 } }, "\uD83D\uDD25 " + p.postCount + " " + (p.postCount === 1 ? "post" : "posts") + " recently"))))),
+            // EVENTS TAB
+            tab === "events" && React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14 } }, "Upcoming rehearsals, auditions, and performances"),
+                loadingEvents
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                    : events.length === 0
+                        ? React.createElement("div", { style: { textAlign: "center", padding: 50, color: "rgba(255,255,255,0.4)" } },
+                            React.createElement("div", { style: { fontSize: 38, marginBottom: 10, opacity: 0.5 } }, "\uD83D\uDCC5"),
+                            React.createElement("div", { style: { fontSize: 13 } }, "No upcoming events yet."))
+                        : events.filter(e => !query || (e.title || "").toLowerCase().includes(query.toLowerCase()) || (e.production && e.production.title || "").toLowerCase().includes(query.toLowerCase())).map(e => {
+                            const dt = new Date(e.starts_at);
+                            const typeIcon = { audition: "\uD83C\uDFA4", callback: "\uD83D\uDCDE", rehearsal: "\uD83C\uDFAD", tech: "\uD83D\uDD27", performance: "\u2728", meeting: "\uD83D\uDCC5", other: "\uD83D\uDCCC" }[e.type] || "\uD83D\uDCCC";
+                            return React.createElement("div", { key: e.id, style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, marginBottom: 8 } },
+                                React.createElement("div", { style: { textAlign: "center", paddingRight: 12, borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: 50 } },
+                                    React.createElement("div", { style: { fontSize: 9, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.08em" } }, dt.toLocaleString("default", { month: "short" }).toUpperCase()),
+                                    React.createElement("div", { style: { fontSize: 20, fontWeight: 700 } }, dt.getDate()),
+                                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.5)" } }, dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 2 } }, typeIcon + " " + (e.type || "EVENT").toUpperCase()),
+                                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.title),
+                                    e.production && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.production.title),
+                                    e.location && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.45)" } }, "\uD83D\uDCCD " + e.location)));
+                        }))),
+        composeTo && React.createElement(ComposeMessageModal, { recipientId: composeTo.id, recipientName: composeTo.name, onClose: () => setComposeTo(null), show: show })));
 }
 // -- Local Shows Panel ------------------------------------------------
 const ZIP_REGEX = /^\d{5}$/;
