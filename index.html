@@ -2163,11 +2163,22 @@ function DiscoverScreen({ show, onViewUser }) {
         { key: "shows", label: "\uD83D\uDCCD Local Shows" },
     ];
     // Load real users from Supabase profiles table
+    // Hydrate from cache instantly (no waiting)
+    useEffect(() => {
+        try {
+            const cached = JSON.parse(localStorage.getItem("sl_discover_cache") || "null");
+            if (cached && Array.isArray(cached) && cached.length) {
+                setRealUsers(cached);
+                setLoadingUsers(false);
+            }
+        } catch (e) {}
+    }, []);
+    // Refresh in background
     useEffect(() => {
         supabase.from("profiles")
             .select("id,name,handle,role,bio,location,avatar_url")
             .order("created_at", { ascending: false })
-            .limit(50)
+            .limit(30)
             .then(({ data }) => {
             if (data && data.length > 0) {
                 const mapped = data
@@ -2189,6 +2200,7 @@ function DiscoverScreen({ show, onViewUser }) {
                     });
                 });
                 setRealUsers(mapped);
+                try { localStorage.setItem("sl_discover_cache", JSON.stringify(mapped)); } catch (e) {}
             }
             setLoadingUsers(false);
         });
@@ -2601,7 +2613,7 @@ function ProductionsScreen({ show, onViewUser }) {
                         return React.createElement("div", { key: p.id, onClick: () => setActiveProduction(p), style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center" } },
                             React.createElement("div", { style: { width: 56, height: 56, borderRadius: 10, background: p.poster_url ? "transparent" : "linear-gradient(135deg,#4a006e,#1a0a2e)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 } },
                                 p.poster_url
-                                    ? React.createElement("img", { src: p.poster_url, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                    ? React.createElement("img", { src: p.poster_url, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } })
                                     : "\uD83C\uDFAD"
                             ),
                             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -2844,7 +2856,7 @@ function MemberRow({ member, isDirector, onView, onRemove }) {
     const roleLabel = (member.role_type || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6 } },
         React.createElement("div", { onClick: () => member.user_id && onView && onView(member.user_id), style: { width: 38, height: 38, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#1a0a2e", flexShrink: 0, cursor: member.user_id ? "pointer" : "default" } },
-            avatar ? React.createElement("img", { src: avatar, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } }) : initials
+            avatar ? React.createElement("img", { src: avatar, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : initials
         ),
         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
             React.createElement("div", { style: { fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, member.character_name ? member.character_name + " — " + name : name),
@@ -3103,7 +3115,7 @@ function AttendanceRoster({ event, members, checkins, onBack, show, reload }) {
                 const statusColor = status === "present" ? "#4ade80" : status === "late" ? "#fbbf24" : status === "absent" ? "#ef4444" : "rgba(255,255,255,0.3)";
                 return React.createElement("div", { key: m.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6 } },
                     React.createElement("div", { style: { width: 36, height: 36, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, color: "#1a0a2e", flexShrink: 0 } },
-                        avatar ? React.createElement("img", { src: avatar, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (name || "U").slice(0, 2).toUpperCase()
+                        avatar ? React.createElement("img", { src: avatar, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (name || "U").slice(0, 2).toUpperCase()
                     ),
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                         React.createElement("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, name),
@@ -3446,14 +3458,14 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
         React.createElement("button", { onClick: onBack, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", left: 16, zIndex: 10, width: 40, height: 40, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50%", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2190"),
         // Cover
         React.createElement("div", { style: { background: profile.banner_url ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 140, overflow: "hidden" } },
-            profile.banner_url && React.createElement("img", { loading: "lazy", src: profile.banner_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+            profile.banner_url && React.createElement("img", { loading: "lazy", decoding: "async", src: profile.banner_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
         ),
         // Avatar + stats
         React.createElement("div", { style: { padding: "0 20px", marginTop: -44 } },
             React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 18, marginBottom: 14 } },
                 React.createElement("div", { style: { width: 90, height: 90, borderRadius: "50%", border: "3px solid #08080f", background: profile.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 32, color: "#1a0a2e", flexShrink: 0 } },
                     profile.avatar_url
-                        ? React.createElement("img", { loading: "lazy", src: profile.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: profile.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
                         : (profile.name || "U").slice(0, 2).toUpperCase()
                 ),
                 React.createElement("div", { style: { display: "flex", flex: 1, justifyContent: "space-around", paddingBottom: 4 } },
@@ -3512,7 +3524,7 @@ function UserProfileView({ userId, onBack, show, onViewUser }) {
                         m.type === "video" || (m.url || "").match(/\.(mp4|webm|mov)$/i)
                             ? React.createElement("video", { src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" }, playsInline: true, muted: true, preload: "metadata" })
                             : m.url
-                                ? React.createElement("img", { loading: "lazy", src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                ? React.createElement("img", { loading: "lazy", decoding: "async", src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
                                 : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, opacity: 0.5 } }, m.type === "video" ? "\uD83C\uDFAC" : "\uD83C\uDFAD"),
                         m.type === "video" && React.createElement("div", { style: { position: "absolute", bottom: 4, left: 4, background: "rgba(0,0,0,0.7)", padding: "2px 5px", borderRadius: 3, fontSize: 9, color: "#fff" } }, "\u25B6")
                     )
@@ -3598,8 +3610,10 @@ function ProfileScreen({ show }) {
     const [profile, setProfile] = useState(cached || PROFILE_DEFAULT);
     const [draft, setDraft] = useState(cached || PROFILE_DEFAULT);
     const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
-    const [media, setMedia] = useState([]);
-    const [tapes, setTapes] = useState([]);
+    const cachedMedia = (() => { try { return JSON.parse(localStorage.getItem("sl_media_cache") || "null"); } catch { return null; } })();
+    const cachedTapes = (() => { try { return JSON.parse(localStorage.getItem("sl_tapes_cache") || "null"); } catch { return null; } })();
+    const [media, setMedia] = useState(cachedMedia || []);
+    const [tapes, setTapes] = useState(cachedTapes || []);
     const [liked, setLiked] = useState([]);
     const [resumeCredits, setResumeCredits] = useState([]);
     const [resumeTraining, setResumeTraining] = useState([]);
@@ -3616,9 +3630,9 @@ function ProfileScreen({ show }) {
             // Fire ALL queries in parallel — they don't depend on each other.
             // This turns ~6 sequential round-trips into 1.
             const [profR, mediaR, postsR, tapesR, followersR, followingR] = await Promise.all([
-                supabase.from("profiles").select("*").eq("id", uid).single(),
-                supabase.from("media").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
-                supabase.from("posts").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+                supabase.from("profiles").select("name,handle,bio,location,website,role,avatar_url,banner_url,resume_skills").eq("id", uid).single(),
+                supabase.from("media").select("id,type,url,caption,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(60),
+                supabase.from("posts").select("id,type,media_url,thumbnail_url,title,caption,likes,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(60),
                 supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
                 supabase.from("follows").select("follower_id").eq("following_id", uid),
                 supabase.from("follows").select("following_id").eq("follower_id", uid),
@@ -3655,7 +3669,10 @@ function ProfileScreen({ show }) {
                 });
             });
             setMedia(merged);
-            setTapes(tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at || "").slice(0, 10), status: t.status || "pending", url: t.media_url })));
+            try { localStorage.setItem("sl_media_cache", JSON.stringify(merged.slice(0, 30))); } catch (e) {}
+            const tapesMapped = tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at || "").slice(0, 10), status: t.status || "pending", url: t.media_url }));
+            setTapes(tapesMapped);
+            try { localStorage.setItem("sl_tapes_cache", JSON.stringify(tapesMapped)); } catch (e) {}
             const finalStats = {
                 posts: postRows.length,
                 followers: followerRows.length,
@@ -3883,7 +3900,7 @@ function EditProfile({ draft, setDraft, onSave, onBack, show, profile, setProfil
         React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "COVER PHOTO"),
         React.createElement("label", { style: { display: "block", marginBottom: 20, cursor: "pointer", position: "relative", borderRadius: 10, overflow: "hidden", background: draft.banner ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040)", height: 120 } },
             React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: pickImage("banner") }),
-            draft.banner && React.createElement("img", { loading: "lazy", src: draft.banner, style: { width: "100%", height: "100%", objectFit: "cover" } }),
+            draft.banner && React.createElement("img", { loading: "lazy", decoding: "async", src: draft.banner, style: { width: "100%", height: "100%", objectFit: "cover" } }),
             React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: draft.banner ? "rgba(0,0,0,0.3)" : "transparent", color: "#fff", fontSize: 12, letterSpacing: "0.1em" } }, draft.banner ? "\uD83D\uDCF7  CHANGE COVER" : "\uD83D\uDCF7  TAP TO ADD COVER")
         ),
         // Avatar
@@ -3892,7 +3909,7 @@ function EditProfile({ draft, setDraft, onSave, onBack, show, profile, setProfil
                 React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: pickImage("avatar") }),
                 React.createElement("div", { style: { width: 86, height: 86, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28 } },
                     draft.avatar
-                        ? React.createElement("img", { loading: "lazy", src: draft.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: draft.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
                         : (draft.name || "U").slice(0, 2).toUpperCase()
                 ),
                 React.createElement("div", { style: { position: "absolute", bottom: 2, right: 2, width: 24, height: 24, background: "#c9a84c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 } }, "\uD83D\uDCF7")
@@ -3955,7 +3972,7 @@ function SettingsPage({ onBack, show }) {
             show("\uD83C\uDFAD Tutorial will show on next launch \u2014 reloading\u2026");
             setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 900);
         }, style: Object.assign(Object.assign({}, ghostBtn), { marginBottom: 10 }) }, "\uD83C\uDFAD Replay Tutorial"),
-        React.createElement("button", { onClick: async () => { try { localStorage.removeItem("sl_profile_cache"); localStorage.removeItem("sl_stats_cache"); } catch(e){} await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
+        React.createElement("button", { onClick: async () => { try { localStorage.removeItem("sl_profile_cache"); localStorage.removeItem("sl_stats_cache"); localStorage.removeItem("sl_media_cache"); localStorage.removeItem("sl_tapes_cache"); localStorage.removeItem("sl_discover_cache"); } catch(e){} await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
 }
 // --------------------------- LIVE -----------------------------------
 const LIVE_CHAT_SEEDS = [
@@ -4646,7 +4663,7 @@ function ApplicationsReview({ call, onClose, show, onViewUser }) {
                         return React.createElement("div", { key: app.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, marginBottom: 10 } },
                             React.createElement("div", { style: { display: "flex", gap: 11, alignItems: "center", marginBottom: 10 } },
                                 React.createElement("div", { onClick: () => app.applicant_id && onViewUser && onViewUser(app.applicant_id), style: { width: 44, height: 44, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15, color: "#1a0a2e", flexShrink: 0, cursor: "pointer" } },
-                                    avatar ? React.createElement("img", { src: avatar, loading: "lazy", style: { width: "100%", height: "100%", objectFit: "cover" } }) : name.slice(0, 2).toUpperCase()),
+                                    avatar ? React.createElement("img", { src: avatar, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : name.slice(0, 2).toUpperCase()),
                                 React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                                     React.createElement("div", { style: { fontSize: 15, fontWeight: 700 } }, name),
                                     app.character_name && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, "for " + app.character_name)),
