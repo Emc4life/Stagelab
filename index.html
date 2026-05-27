@@ -320,7 +320,9 @@ function usePersistedState(key, init) {
     return [val, set];
 }
 // ---------------------------- GLOBAL CSS ----------------------------
-const CSS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap');
+const CSS = `
+@keyframes slpulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#08080f;overscroll-behavior:none;}
 ::-webkit-scrollbar{width:0;}
@@ -673,101 +675,75 @@ const NAV = [
 ];
 function TutorialOverlay({ onClose, onGoTab }) {
     const [step, setStep] = useState(0);
+    // Steps: welcome (centered) -> 6 nav-tab spotlights -> closing (centered)
+    // navIndex maps to which bottom-nav tab to spotlight (null = centered card)
     const steps = [
-        {
-            icon: "\uD83C\uDFAD", accent: "#c9a84c",
-            title: "Welcome to StageLab",
-            tagline: "The stage door to your community",
-            body: "This is the home for musical theatre people. Performers, directors, music directors, choreographers, designers, and dreamers. Whatever your role in the room, there's a place for you here.",
-            tip: "Swipe through to see how it all works. Takes about 30 seconds.",
-        },
-        {
-            icon: "\uD83C\uDFE0", accent: "#e8a87c",
-            title: "The Feed",
-            tagline: "Your daily dose of talent",
-            body: "Scroll a living feed of performances, audio, lyrics, and posters from artists everywhere. Double-tap to like, drop a comment, or share a piece that gives you chills.",
-            tip: "Tap any creator's name to visit their profile and follow them.",
-        },
-        {
-            icon: "\uD83C\uDFAC", accent: "#4cb8c4",
-            title: "Create & Post",
-            tagline: "Share your craft",
-            body: "Got a clip from your last show? A demo you're proud of? Post videos, audio, lyric sheets, or show art straight from the Create tab. Your work lives on your profile for everyone to find.",
-            tip: "Self-tapes, song covers, monologues. It all belongs here.",
-        },
-        {
-            icon: "\uD83D\uDD0D", accent: "#a87cc4",
-            title: "Discover People",
-            tagline: "Find your people",
-            body: "Search the community by role and craft. Looking for a rehearsal pianist? A scene partner? A director for your passion project? They're here. Follow them and slide into the DMs.",
-            tip: "Every profile shows their work, credits, and how to reach them.",
-        },
-        {
-            icon: "\u2B50", accent: "#c9a84c",
-            title: "The Studio",
-            tagline: "Where shows come together",
-            body: "Your creative command center. Block scenes on a real stage diagram with Scene Builder, run an entire production with Productions (cast, schedule, rehearsal check-ins), or go Live with your community.",
-            tip: "Directors: Productions lets you manage your whole show in one place.",
-        },
-        {
-            icon: "\uD83C\uDFA4", accent: "#4ade80",
-            title: "Auditions",
-            tagline: "Get cast. Cast your show.",
-            body: "The casting hub. Browse open calls from companies near you and remote. Posting a show? Add every character, audition date, callback, and rehearsal detail in one notice. Track every audition you submit.",
-            tip: "Tap any call to see the full breakdown: roles, dates, what to prepare.",
-        },
-        {
-            icon: "\uD83D\uDC64", accent: "#e8a87c",
-            title: "Your Profile",
-            tagline: "Your digital headshot wall",
-            body: "Build out your profile with a cover photo, bio, and your best work in a clean grid. This is your home base. The first thing people see when they find you.",
-            tip: "A complete profile gets way more follows and casting interest.",
-        },
-        {
-            icon: "\uD83D\uDC9B", accent: "#c9a84c",
-            title: "You're ready",
-            tagline: "Break a leg",
-            body: "StageLab is young and still growing. You might bump into a glitch here and there as we keep building. Thank you for being one of the early ones. It means everything.",
-            tip: "Now go make something worth a standing ovation.",
-        },
+        { kind: "center", icon: "\uD83C\uDFAD", accent: "#c9a84c", title: "Welcome to StageLab", tagline: "The stage door to your community",
+          body: "The home for musical theatre people. Performers, directors, music directors, choreographers, designers, dreamers. Let's take a quick tour of where everything lives." },
+        { kind: "spotlight", navIndex: 0, icon: "\uD83C\uDFE0", accent: "#e8a87c", title: "Feed", tagline: "Your daily dose of talent",
+          body: "This is your home base. Scroll performances, audio, lyrics, and posters from artists everywhere. Like, comment, and share what moves you." },
+        { kind: "spotlight", navIndex: 1, icon: "\uD83C\uDFAC", accent: "#4cb8c4", title: "Create", tagline: "Share your craft",
+          body: "Tap here to post your own work. Videos, audio, lyric sheets, or show art. Everything you post lives on your profile." },
+        { kind: "spotlight", navIndex: 2, icon: "\uD83D\uDD0D", accent: "#a87cc4", title: "Discover", tagline: "Find your people",
+          body: "Search the community by role and craft. Need a rehearsal pianist? A scene partner? A director? They're here. Follow them and message them." },
+        { kind: "spotlight", navIndex: 3, icon: "\u2B50", accent: "#c9a84c", title: "Studio", tagline: "Where shows come together",
+          body: "Your creative command center. Block scenes with Scene Builder, run a full production with cast and rehearsal check-ins, or go Live." },
+        { kind: "spotlight", navIndex: 4, icon: "\uD83C\uDFA4", accent: "#4ade80", title: "Auditions", tagline: "Get cast. Cast your show.",
+          body: "The casting hub. Browse open calls, post a show with every role and date, submit self-tapes, and build your r\u00e9sum\u00e9 that shows on your profile." },
+        { kind: "spotlight", navIndex: 5, icon: "\uD83D\uDC64", accent: "#e8a87c", title: "Your Profile", tagline: "Your digital headshot wall",
+          body: "Build out your bio, cover photo, and best work. This is the first thing people see when they find you. A complete profile gets more follows and casting interest." },
+        { kind: "center", icon: "\uD83D\uDC9B", accent: "#c9a84c", title: "You're ready", tagline: "Break a leg",
+          body: "StageLab is young and still growing. You might bump into a glitch here and there as we keep building. Thank you for being one of the early ones. Now go make something." },
     ];
     const s = steps[step];
     const isLast = step === steps.length - 1;
+    const total = steps.length;
     const goNext = () => { if (isLast) onClose(); else setStep(step + 1); };
     const goBack = () => step > 0 && setStep(step - 1);
-    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600, background: "radial-gradient(120% 80% at 50% 0%, " + s.accent + "18, #08040e 55%)", display: "flex", flexDirection: "column", transition: "background 0.4s ease" } },
-        // Skip button (top right)
-        React.createElement("button", { onClick: onClose, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", right: 18, zIndex: 3, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)", fontSize: 13, padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 600 } }, "Skip"),
-        // Progress bar at top
-        React.createElement("div", { style: { display: "flex", gap: 5, padding: "calc(20px + env(safe-area-inset-top)) 20px 0", marginTop: 0 } },
-            steps.map((_, i) =>
-                React.createElement("div", { key: i, style: { flex: 1, height: 3, borderRadius: 2, background: i <= step ? s.accent : "rgba(255,255,255,0.12)", transition: "background 0.3s" } })
-            )
+    // Spotlight geometry: 6 tabs evenly spaced. Tab center = (navIndex + 0.5)/6 of width.
+    const NAV_COUNT = 6;
+    const spotlightLeftPct = s.kind === "spotlight" ? ((s.navIndex + 0.5) / NAV_COUNT) * 100 : 50;
+    // Tooltip card sits above the nav for spotlight steps, centered otherwise
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600 } },
+        // Dim layer (full screen)
+        React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(6,3,12,0.88)", transition: "background 0.3s" } }),
+        // Skip button
+        React.createElement("button", { onClick: onClose, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", right: 18, zIndex: 3, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 600 } }, "Skip"),
+        // Progress bar (top)
+        React.createElement("div", { style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", left: 18, right: 90, zIndex: 3, display: "flex", gap: 4, alignItems: "center", height: 30 } },
+            steps.map((_, i) => React.createElement("div", { key: i, style: { flex: 1, height: 3, borderRadius: 2, background: i <= step ? s.accent : "rgba(255,255,255,0.15)", transition: "background 0.3s" } }))
         ),
-        // Main content - centered
-        React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 32px", textAlign: "center" } },
-            // Icon in a glowing circle
-            React.createElement("div", { style: { width: 110, height: 110, borderRadius: "50%", background: "linear-gradient(135deg," + s.accent + "33," + s.accent + "11)", border: "1px solid " + s.accent + "44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56, marginBottom: 28, boxShadow: "0 8px 40px " + s.accent + "33" } }, s.icon),
-            // Tagline
-            React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: s.accent, fontWeight: 700, marginBottom: 10 } }, s.tagline),
-            // Title
-            React.createElement("div", { style: { fontSize: 32, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 16, color: "#fff", lineHeight: 1.05 } }, s.title),
-            // Body
-            React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.65, maxWidth: 340, marginBottom: 20 } }, s.body),
-            // Tip pill
-            React.createElement("div", { style: { fontSize: 12.5, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 16px", maxWidth: 320, lineHeight: 1.5 } },
-                React.createElement("span", { style: { color: s.accent, fontWeight: 700 } }, "Tip: "),
-                s.tip)
+        // Spotlight ring over the real nav tab (only for spotlight steps)
+        s.kind === "spotlight" && React.createElement("div", { style: { position: "absolute", bottom: "calc(env(safe-area-inset-bottom) + 6px)", left: spotlightLeftPct + "%", transform: "translateX(-50%)", width: 60, height: 60, borderRadius: "50%", border: "2px solid " + s.accent, boxShadow: "0 0 0 4px " + s.accent + "44, 0 0 30px " + s.accent + "88", transition: "left 0.4s cubic-bezier(.4,0,.2,1)", pointerEvents: "none" } },
+            // pulsing dot
+            React.createElement("div", { style: { position: "absolute", inset: -2, borderRadius: "50%", border: "2px solid " + s.accent + "66", animation: "slpulse 1.8s ease-out infinite" } })
         ),
-        // Bottom controls
-        React.createElement("div", { style: { padding: "0 24px calc(28px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 12 } },
-            React.createElement("button", { onClick: goNext, style: { width: "100%", padding: "16px", background: "linear-gradient(135deg," + s.accent + ",#e8a87c)", border: "none", borderRadius: 16, color: "#1a0a2e", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px " + s.accent + "44" } }, isLast ? "Enter StageLab" : "Next"),
-            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", height: 20 } },
-                step > 0
-                    ? React.createElement("button", { onClick: goBack, style: { background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontWeight: 600 } }, "\u2190 Back")
-                    : React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.3)" } }, step + 1 + " of " + steps.length)
+        // Pointer arrow from card to spotlight
+        s.kind === "spotlight" && React.createElement("div", { style: { position: "absolute", bottom: "calc(env(safe-area-inset-bottom) + 78px)", left: spotlightLeftPct + "%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderTop: "10px solid #15082a", transition: "left 0.4s cubic-bezier(.4,0,.2,1)", zIndex: 2 } }),
+        // CONTENT CARD
+        s.kind === "center"
+            // Centered full card (welcome / closing)
+            ? React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 32px", textAlign: "center" } },
+                React.createElement("div", { style: { width: 104, height: 104, borderRadius: "50%", background: "linear-gradient(135deg," + s.accent + "33," + s.accent + "11)", border: "1px solid " + s.accent + "44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, marginBottom: 26, boxShadow: "0 8px 40px " + s.accent + "44" } }, s.icon),
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: s.accent, fontWeight: 700, marginBottom: 10 } }, s.tagline),
+                React.createElement("div", { style: { fontSize: 32, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 16, color: "#fff", lineHeight: 1.05 } }, s.title),
+                React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.65, maxWidth: 340, marginBottom: 32 } }, s.body),
+                React.createElement("button", { onClick: goNext, style: { width: "100%", maxWidth: 300, padding: "16px", background: "linear-gradient(135deg," + s.accent + ",#e8a87c)", border: "none", borderRadius: 16, color: "#1a0a2e", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px " + s.accent + "44" } }, isLast ? "Enter StageLab" : "Start Tour"),
+                step > 0 && React.createElement("button", { onClick: goBack, style: { marginTop: 14, background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontWeight: 600 } }, "\u2190 Back")
             )
-        )
+            // Spotlight tooltip card (sits above nav)
+            : React.createElement("div", { style: { position: "absolute", left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom) + 96px)", background: "linear-gradient(135deg,#1a0a2e,#15082a)", border: "1px solid " + s.accent + "55", borderRadius: 20, padding: "20px", boxShadow: "0 10px 50px rgba(0,0,0,0.6)", maxWidth: 440, margin: "0 auto" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
+                    React.createElement("div", { style: { width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg," + s.accent + "33," + s.accent + "11)", border: "1px solid " + s.accent + "44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, s.icon),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: s.accent, fontWeight: 700, marginBottom: 2 } }, s.tagline),
+                        React.createElement("div", { style: { fontSize: 21, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", color: "#fff", lineHeight: 1 } }, s.title))),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.78)", lineHeight: 1.6, marginBottom: 16 } }, s.body),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+                    step > 0 && React.createElement("button", { onClick: goBack, style: { padding: "12px 18px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Back"),
+                    React.createElement("button", { onClick: goNext, style: { flex: 1, padding: "13px", background: "linear-gradient(135deg," + s.accent + ",#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Next"),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 600, flexShrink: 0, minWidth: 34, textAlign: "right" } }, (step + 1) + "/" + total))
+            )
     );
 }
 
@@ -3547,6 +3523,12 @@ function SettingsPage({ onBack, show }) {
         React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 } }, [["Change Password", "password"], ["Linked Accounts", "links"], ["Download My Data", "data"]].map(([l, k]) => (React.createElement("button", { key: k, onClick: () => show(`Opening ${l}\u2026`), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500, fontSize: 13, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" } },
             l,
             React.createElement("span", { style: { opacity: 0.4, fontSize: 16 } }, "\u203A"))))),
+        React.createElement("button", { onClick: async () => {
+            try { localStorage.removeItem("sl_tutorial_seen"); } catch (e) {}
+            try { const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ tutorial_seen: false }).eq("id", user.id); } catch (e) {}
+            show("\uD83C\uDFAD Tutorial will show on next launch \u2014 reloading\u2026");
+            setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 900);
+        }, style: Object.assign(Object.assign({}, ghostBtn), { marginBottom: 10 }) }, "\uD83C\uDFAD Replay Tutorial"),
         React.createElement("button", { onClick: async () => { try { localStorage.removeItem("sl_profile_cache"); localStorage.removeItem("sl_stats_cache"); } catch(e){} await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
 }
 // --------------------------- LIVE -----------------------------------
