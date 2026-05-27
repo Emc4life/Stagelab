@@ -473,6 +473,16 @@ function AuthScreen({ onEnter, onOnboard }) {
     const [error, setError] = useState("");
     const [toast, setToast] = useState("");
     const showToast = (m) => { setToast(m); setTimeout(() => setToast(""), 2600); };
+    const resendVerification = async () => {
+        if (!email.trim()) { setError("Enter your email"); return; }
+        setError(""); setLoading(true);
+        try {
+            // Re-trigger signup confirmation email
+            await supabase.auth.signUp({ email: email.trim(), password: password || Math.random().toString(36), options: { data: { name } } });
+            showToast("\uD83D\uDCE7 Verification email resent");
+        } catch (e) { showToast("\uD83D\uDCE7 If that account exists, we resent it"); }
+        setLoading(false);
+    };
     const sendReset = async () => {
         if (!email.trim()) { setError("Enter your email first"); return; }
         setError(""); setLoading(true);
@@ -513,7 +523,12 @@ function AuthScreen({ onEnter, onOnboard }) {
                 });
                 if (err)
                     throw err;
-                // Wait a moment for the DB trigger to create the profile row
+                // If email confirmation is required, there's no session yet
+                if (!data.session) {
+                    setMode(3); // verify-email state
+                    setLoading(false);
+                    return;
+                }
                 showToast("Account created! Let's set up your profile \uD83C\uDFAD");
                 setTimeout(() => onOnboard(data.session), 1000);
             }
@@ -523,6 +538,18 @@ function AuthScreen({ onEnter, onOnboard }) {
         }
         setLoading(false);
     };
+    if (mode === 3) {
+        return React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e 0%,#08040e 100%)", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", color: "#fff", textAlign: "center" } },
+            React.createElement("style", null, CSS),
+            React.createElement("div", { style: { width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c33,#c9a84c11)", border: "1px solid #c9a84c44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, marginBottom: 24 } }, "\uD83D\uDCE7"),
+            React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 12 } }, "Check your inbox"),
+            React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, maxWidth: 320, marginBottom: 8 } }, "We sent a verification link to"),
+            React.createElement("div", { style: { fontSize: 15, color: "#c9a84c", fontWeight: 700, marginBottom: 24 } }, email),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, maxWidth: 320, marginBottom: 30 } }, "Tap the link in the email to activate your account, then come back and sign in."),
+            React.createElement("button", { onClick: resendVerification, disabled: loading, style: { width: "100%", maxWidth: 300, padding: "14px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 14, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12 } }, loading ? "\u2026" : "Resend email"),
+            React.createElement("button", { onClick: () => { setMode(0); setError(""); }, style: { width: "100%", maxWidth: 300, padding: "14px", background: "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: "#1a0a2e", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, "Back to Sign In"),
+            toast && React.createElement(Toast, { msg: toast }));
+    }
     return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e 0%,#08040e 100%)", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", color: "#fff", overflowY: "auto", WebkitOverflowScrolling: "touch" } },
         React.createElement("style", null, CSS),
         React.createElement("div", { style: { marginBottom: 20 } },
@@ -2881,6 +2908,19 @@ function CheckinTab({ production, events, members, me, isDirector, show, reload 
         const newVal = !event.checkin_open;
         await supabase.from("production_events").update({ checkin_open: newVal }).eq("id", event.id);
         show(newVal ? "Check-in opened" : "Check-in closed");
+        // When opening check-in, notify all cast/crew with an account
+        if (newVal && members && members.length) {
+            const when = new Date(event.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            members.filter(m => m.user_id).forEach(m => {
+                notify({
+                    userId: m.user_id,
+                    type: "checkin",
+                    title: "Check-in is open",
+                    body: (event.title || "Rehearsal") + " \u00B7 " + when + (event.location ? " \u00B7 " + event.location : ""),
+                    link: "production:" + (production && production.id),
+                });
+            });
+        }
         reload();
     };
     if (selectedEvent && isDirector) {
