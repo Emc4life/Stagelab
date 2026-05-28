@@ -320,7 +320,7 @@ const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 // After you deploy the Edge Function (see cloudflare_stream_function.txt),
 // paste its URL here. Until then, video uploads fall back to Supabase Storage.
 // ═══════════════════════════════════════════════════════════════════
-const CF_STREAM_UPLOAD_FN = ""; // e.g. "https://dsegdddquztgkdwyzbai.supabase.co/functions/v1/stream-upload"
+const CF_STREAM_UPLOAD_FN = "https://dsegdddquztgkdwyzbai.supabase.co/functions/v1/stream-upload";
 const CF_STREAM_ENABLED = () => CF_STREAM_UPLOAD_FN.trim().length > 0;
 
 // Upload a video to Cloudflare Stream via the Edge Function.
