@@ -1668,26 +1668,20 @@ function VideoPostTab({ show, setTab }) {
         }
         else {
             if (user) {
-                supabase.from("posts").insert({
-                    user_id: user.id, type: "video", title, caption,
-                    category, tags, visibility, media_url: mediaUrl,
-                    thumbnail_url: thumbnail, collab_open: collab,
-                    stream_uid: streamUid,
-                });
-            }
-            if (user) {
                 // Get user profile first for feed card
                 const { data: prof } = await supabase.from("profiles").select("name,handle,avatar_url,role").eq("id", user.id).single();
                 // Insert post
-                await supabase.from("posts").insert({
+                const { data: insertedRows, error: insertErr } = await supabase.from("posts").insert({
                     user_id: user.id, type: "video", title, caption,
                     category, tags, visibility, media_url: mediaUrl,
                     thumbnail_url: thumbnail, collab_open: collab,
                     stream_uid: streamUid,
                 });
+                if (insertErr) console.error("Post insert error:", insertErr);
+                const realId = (insertedRows && insertedRows[0] && insertedRows[0].id) || ("local-" + Date.now());
                 // Add to feed immediately
                 const feedPost = {
-                    id: "local-" + Date.now(),
+                    id: realId, user_id: user.id, post_id: realId,
                     creator: (prof === null || prof === void 0 ? void 0 : prof.name) || "You",
                     handle: (prof === null || prof === void 0 ? void 0 : prof.handle) || "@you",
                     role: (prof === null || prof === void 0 ? void 0 : prof.role) || "",
@@ -1700,8 +1694,16 @@ function VideoPostTab({ show, setTab }) {
                 };
                 setVideos(prev => [feedPost, ...prev]);
             }
-            show("\uD83D\uDE80 Video published to your feed!");
-            setTimeout(() => setTab(0), 600);
+            show("\u2728 Posted! Taking you to the feed\u2026");
+            // Reset Create form for next time
+            setTimeout(() => {
+                try {
+                    setStep(0);
+                    setTitle(""); setCaption(""); setTags([]);
+                    setVideoFile(null); setRecBlob(null); setThumbnail(null);
+                } catch (e) {}
+                setTab(0);
+            }, 900);
         }
     };
     const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
