@@ -1,0 +1,4185 @@
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import InboxOverlay from './views/Inbox/InboxOverlay';
+import Sheet from './components/Sheet';
+import SubPage from './components/SubPage';
+import SceneBuilderScreen from './views/SceneBuilder/SceneBuilderScreen';
+import FeedScreen from './views/Feed/FeedScreen';
+import HLSVideo from './components/HLSVideo';
+import { notify } from './utils/notifications';
+import usePersistedState from './hooks/usePersistedState';
+import { supabase } from './services/supabase';
+
+
+
+// -- Supabase client --------------------------------------------------
+const SUPA_URL = "https://dsegdddquztgkdwyzbai.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZWdkZGRxdXp0Z2tkd3l6YmFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTMxODUsImV4cCI6MjA5MTE4OTE4NX0.vF76Ptppf7-Z_oNzyr3XEtlwc6xp_3H78Foktx0-En0";
+// Minimal inline Supabase client - no external dependency needed
+// -- Debug helper - call window.debugStageLab() in browser console --
+window.debugStageLab = async () => {
+    const log = (msg) => { console.log("[StageLab]", msg); };
+    log("=== DEBUG START ===");
+    // 1. Check auth
+    const { data: { user } } = await supabase.auth.getUser();
+    log("User: " + (user ? user.id + " / " + user.email : "NOT LOGGED IN"));
+    if (!user) {
+        log("STOP: not authenticated");
+        return;
+    }
+    // 2. Check token
+    const token = localStorage.getItem("sb_token");
+    log("Token: " + (token ? token.slice(0, 20) + "..." : "MISSING"));
+    // 3. Check profile
+    const { data: prof, error: profErr } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    log("Profile: " + (profErr ? "ERROR: " + JSON.stringify(profErr) : JSON.stringify(prof)));
+    // 4. Check posts
+    const { data: posts, error: postsErr } = await supabase.from("posts").select("id,title,type,media_url").eq("user_id", user.id).limit(5);
+    log("My posts: " + (postsErr ? "ERROR: " + JSON.stringify(postsErr) : (posts === null || posts === void 0 ? void 0 : posts.length) + " found: " + JSON.stringify(posts)));
+    // 5. Check all public posts
+    const { data: allPosts, error: allErr } = await supabase.from("posts").select("id,title,user_id").eq("visibility", "public").limit(5);
+    log("Public posts: " + (allErr ? "ERROR: " + JSON.stringify(allErr) : (allPosts === null || allPosts === void 0 ? void 0 : allPosts.length) + " found"));
+    // 6. Check profiles table
+    const { data: allProfs, error: profsErr } = await supabase.from("profiles").select("id,name,handle,role").limit(10);
+    log("All profiles: " + (profsErr ? "ERROR: " + JSON.stringify(profsErr) : (allProfs === null || allProfs === void 0 ? void 0 : allProfs.length) + " found: " + JSON.stringify(allProfs === null || allProfs === void 0 ? void 0 : allProfs.map(p => p.name + "/" + p.handle))));
+    // 7. Test storage upload
+    log("Testing storage upload...");
+    const testBlob = new Blob(["test"], { type: "text/plain" });
+    const testFile = new File([testBlob], "test.txt", { type: "text/plain" });
+    const testPath = user.id + "/debug-" + Date.now() + ".txt";
+    const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + testPath, { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "text/plain", "x-upsert": "true" }, body: testFile });
+    log("Storage upload test: " + uploadRes.status + " " + (uploadRes.ok ? "OK \u2705" : "FAILED \u274c - " + await uploadRes.text()));
+    log("=== DEBUG END ===");
+    alert("Debug complete - check browser console (Safari: Develop > Web Inspector > Console)");
+};
+// ----------------------------------- DATA -----------------------------------
+const INIT_VIDEOS = [
+    { id: 1, creator: "Elena Vasquez", handle: "@elenavsings", avatar: "EV", title: "Act II opener - full run", type: "video", likes: 1240, comments: 87, shares: 312, reposts: 94, gifts: 23, accent: "#c9a84c", bg: "linear-gradient(160deg,#1a0a2e,#2d1040)", note: "\u266a", tier: "gold" },
+    { id: 2, creator: "Marcus Bell", handle: "@marcusbell_mt", avatar: "MB", title: "Raw rehearsal - just piano", type: "audio", likes: 876, comments: 54, shares: 201, reposts: 67, gifts: 11, accent: "#4cb8c4", bg: "linear-gradient(160deg,#0a1a1a,#0f2d2a)", note: "\u2669", tier: "silver" },
+    { id: 3, creator: "Priya Nair", handle: "@priyanairwrites", avatar: "PN", title: "New lyrics drop - verse 3", type: "lyrics", likes: 542, comments: 39, shares: 118, reposts: 45, gifts: 8, accent: "#e8a87c", bg: "linear-gradient(160deg,#1a0f0a,#2d1a10)", note: "\u2726", tier: "platinum" },
+    { id: 4, creator: "Jonah Strauss", handle: "@jonahstrauss", avatar: "JS", title: "Pit orchestra - sitzprobe", type: "audio", likes: 2100, comments: 143, shares: 589, reposts: 201, gifts: 44, accent: "#a084e8", bg: "linear-gradient(160deg,#0a0a1a,#10152d)", note: "\u266c", tier: "gold" },
+];
+const INIT_COMMENTS = {
+    1: [{ id: 1, user: "MelodyMaker", avatar: "MM", text: "This is absolutely stunning \uD83C\uDFB6", time: "2h", likes: 14, liked: false }],
+    2: [{ id: 3, user: "TheatreKid99", avatar: "TK", text: "Marcus never misses. That vibrato \uD83D\uDE2D", time: "1h", likes: 9, liked: false }],
+    3: [{ id: 4, user: "LyricLover", avatar: "LL", text: "Verse 3 is your best work yet Priya!!", time: "45m", likes: 22, liked: false }],
+    4: [{ id: 5, user: "OrchestraFan", avatar: "OF", text: "The brass section is on FIRE \uD83D\uDD25", time: "2h", likes: 31, liked: false }],
+};
+const INIT_MESSAGES = [
+    { id: 1, user: "Elena Vasquez", avatar: "EV", accent: "#c9a84c", time: "10m", unread: 2, msgs: [{ from: "Elena Vasquez", text: "Hey! Loved your latest piece \uD83C\uDFB6", time: "10m" }, { from: "Elena Vasquez", text: "Would you be open to collaborating?", time: "9m" }] },
+    { id: 2, user: "Marcus Bell", avatar: "MB", accent: "#4cb8c4", time: "1h", unread: 0, msgs: [{ from: "Marcus Bell", text: "Can you send the lead sheets?", time: "1h" }] },
+    { id: 3, user: "Jonah Strauss", avatar: "JS", accent: "#a084e8", time: "3h", unread: 1, msgs: [{ from: "Jonah Strauss", text: "The sitzprobe is confirmed for Friday", time: "3h" }] },
+    { id: 4, user: "Priya Nair", avatar: "PN", accent: "#e8a87c", time: "1d", unread: 0, msgs: [{ from: "Priya Nair", text: "New draft of Act II lyrics attached", time: "1d" }] },
+];
+const TIERS = {
+    silver: { label: "Silver", color: "#b0bec5", price: "$4.99/mo", perks: ["Early access to new works", "Members-only livestreams", "Direct message access"] },
+    gold: { label: "Gold", color: "#c9a84c", price: "$12.99/mo", perks: ["All Silver perks", "Download stems & sheet music", "Monthly workshop invite"] },
+    platinum: { label: "Platinum", color: "#e0d0ff", price: "$29.99/mo", perks: ["All Gold perks", "1-on-1 feedback session", "Credit in productions"] },
+};
+const GIFTS = [
+    { emoji: "\uD83C\uDF39", label: "Rose", amount: 0.99 },
+    { emoji: "\u2b50", label: "Star", amount: 2.99 },
+    { emoji: "\uD83C\uDFAD", label: "Mask", amount: 4.99 },
+    { emoji: "\uD83C\uDFC6", label: "Trophy", amount: 9.99 },
+    { emoji: "\uD83D\uDC8E", label: "Diamond", amount: 19.99 },
+    { emoji: "\uD83D\uDC51", label: "Crown", amount: 49.99 },
+];
+const POSTER_THEMES = [
+    { bg: "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", accent: "#c9a84c", name: "Midnight Gold" },
+    { bg: "linear-gradient(160deg,#0a1a1a,#0f2d2a,#0a1020)", accent: "#4cb8c4", name: "Teal Storm" },
+    { bg: "linear-gradient(160deg,#1a0f0a,#2d1a10,#1a0a10)", accent: "#e8a87c", name: "Amber Stage" },
+    { bg: "linear-gradient(160deg,#0a0a1a,#10152d,#0a1510)", accent: "#a084e8", name: "Purple Haze" },
+];
+const COLLABS = [
+    { role: "Tenor Lead", project: "The Last Waltz", location: "San Diego / Remote", accent: "#c9a84c", bio: "Seeking a dramatic tenor, A2-Bb4, movement experience preferred." },
+    { role: "Composer", project: "Neon Dreams", location: "Virtual", accent: "#4cb8c4", bio: "Looking for a composer comfortable with electronic + orchestral hybrid." },
+    { role: "Lyricist", project: "Borrowed Time", location: "New York / Hybrid", accent: "#e8a87c", bio: "Playwright needs a lyricist for a 90-min two-hander. Contemporary style." },
+];
+const LIVE_ROOMS = [
+    { id: 1, title: "The Midnight Serenade - Rehearsal", host: "Alex Rivera", listeners: 27, accent: "#c9a84c" },
+    { id: 2, title: "Song Feedback Circle", host: "Elena Voss", listeners: 51, accent: "#4cb8c4" },
+    { id: 3, title: "Act II Workshop - Open Session", host: "Jonah Strauss", listeners: 14, accent: "#a084e8" },
+];
+// -- Casting data --------------------------------------------------------------
+const INIT_CASTING_CALLS = [
+    { id: 1, title: "Into the Woods", role: "The Witch", type: "Lead", voice: "Mezzo-Soprano", comp: "Paid", date: "April 20 \u00b7 2:0 PM", location: "The Old Globe, San Diego", prep: "16 bars up-tempo + ballad. Sides on request.", company: "Old Globe Theatre", selftape: true, posted: "1h ago", emoji: "\uD83C\uDF32" },
+    { id: 2, title: "Hamilton", role: "Ensemble / Swing", type: "Ensemble", voice: "Any", comp: "Paid", date: "April 25 \u00b7 10:0 AM", location: "La Jolla Playhouse", prep: "One up-tempo 16 bars. Dance call follows.", company: "La Jolla Playhouse", selftape: false, posted: "3h ago", emoji: "\uD83C\uDFA9" },
+    { id: 3, title: "Neon Requiem", role: "Lead - Echo", type: "Lead", voice: "Soprano", comp: "Stipend", date: "May 2 \u00b7 Remote", location: "Remote / Self-Tape", prep: "Full Act 1 scene + original song. Under 4 min.", company: "StageLab Dev Workshop", selftape: true, posted: "1d ago", emoji: "\u26a1" },
+    { id: 4, title: "The Midnight Serenade", role: "Jazz Vocalist", type: "Supporting", voice: "Alto", comp: "Paid", date: "May 5 \u00b7 3:0 PM", location: "Balboa Theatre, San Diego", prep: "Jazz standard, 2-3 min.", company: "SD Musical Theatre", selftape: true, posted: "2d ago", emoji: "\uD83C\uDF19" },
+];
+const INIT_AUDITIONS = [
+    { id: 1, show: "Into the Woods", role: "The Witch", company: "Old Globe", date: "April 20 \u00b7 2:0 PM", location: "The Old Globe", prep: "16 bars + ballad", status: "upcoming", emoji: "\uD83C\uDF32" },
+    { id: 2, show: "Hamilton", role: "Ensemble", company: "La Jolla", date: "April 25 \u00b7 10:0 AM", location: "La Jolla Playhouse", prep: "16 bars up-tempo", status: "callback", emoji: "\uD83C\uDFA9" },
+    { id: 3, show: "Company", role: "Amy", company: "Cygnet Theatre", date: "March 18 \u00b7 1:0 PM", location: "Cygnet Theatre", prep: "Act 2 sides", status: "completed", emoji: "\uD83E\uDD42" },
+];
+const INIT_SELFTAPES = [
+    { id: 1, show: "Neon Requiem", scene: "Act 1 Sc 3 + original song", deadline: "April 25", submitTo: "casting@stagelabdev.com", status: "submitted", emoji: "\u26a1" },
+    { id: 2, show: "The Last Waltz", scene: "'Goodbye Until Tomorrow'", deadline: "May 1", submitTo: "director@lastwaltz.com", status: "pending", emoji: "\uD83C\uDF39" },
+];
+const INIT_CREDITS = [
+    { title: "Into the Woods", role: "Rapunzel", company: "SDSU Theatre", year: "2023" },
+    { title: "Sweeney Todd", role: "Mrs. Lovett", company: "Pacific Conservatory", year: "2022" },
+    { title: "Rent", role: "Maureen", company: "San Diego Rep", year: "2021" },
+    { title: "Company", role: "Amy", company: "Cygnet Theatre", year: "2020" },
+];
+const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+// ---------------------- PERSISTENCE HELPERS --------------------------
+// ═══════════════════════════════════════════════════════════════════
+// CLOUDFLARE STREAM CONFIG
+// After you deploy the Edge Function (see cloudflare_stream_function.txt),
+// paste its URL here. Until then, video uploads fall back to Supabase Storage.
+// ═══════════════════════════════════════════════════════════════════
+const CF_STREAM_UPLOAD_FN = "https://dsegdddquztgkdwyzbai.supabase.co/functions/v1/stream-upload";
+const CF_STREAM_ENABLED = () => CF_STREAM_UPLOAD_FN.trim().length > 0;
+
+// Upload a video to Cloudflare Stream via the Edge Function.
+// Returns { uid, playbackUrl, thumbnail } or null on failure.
+async function uploadToCloudflareStream(fileOrBlob, onProgress) {
+    try {
+        const token = localStorage.getItem("sb_token");
+        // 1. Ask our Edge Function for a one-time direct-upload URL
+        const initRes = await fetch(CF_STREAM_UPLOAD_FN, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ action: "create-upload" }),
+        });
+        if (!initRes.ok) { console.error("CF init failed", await initRes.text().catch(()=>"")); return null; }
+        const { uploadURL, uid } = await initRes.json();
+        if (!uploadURL || !uid) return null;
+        // 2. Upload the file directly to Cloudflare with progress
+        await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", uploadURL, true);
+            const form = new FormData();
+            form.append("file", fileOrBlob);
+            xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
+            xhr.onload = () => (xhr.status >= 200 && xhr.status < 300) ? resolve() : reject(new Error("upload " + xhr.status));
+            xhr.onerror = () => reject(new Error("network error"));
+            xhr.send(form);
+        });
+        // 3. Cloudflare playback URL (HLS) + thumbnail
+        return {
+            uid,
+            playbackUrl: "https://videodelivery.net/" + uid + "/manifest/video.m3u8",
+            thumbnail: "https://videodelivery.net/" + uid + "/thumbnails/thumbnail.jpg",
+            iframe: "https://iframe.videodelivery.net/" + uid,
+        };
+    } catch (e) {
+        console.error("Cloudflare Stream upload error:", e);
+        return null;
+    }
+}
+
+// HLS-aware video element: plays Cloudflare .m3u8 natively on Safari,
+// uses hls.js elsewhere. Falls back to plain src for mp4/webm.
+// ---------------------------- GLOBAL CSS ----------------------------
+const CSS = `
+@keyframes slpulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#08080f;overscroll-behavior:none;}
+::-webkit-scrollbar{width:0;}
+@keyframes barPulse{0%,100%{transform:scaleY(0.55);opacity:0.65;}50%{transform:scaleY(1);opacity:1;}}
+.bar{animation:barPulse 1.2s ease-in-out infinite;}
+@keyframes liveDot{0%,100%{opacity:1;}50%{opacity:0.2;}}
+@keyframes speaking{0%{transform:scale(1);box-shadow:0 0 20px var(--sa,#c9a84c)44;}100%{transform:scale(1.7);box-shadow:0 0 40px var(--sa,#c9a84c)88;}}
+@keyframes spotlight{0%,100%{transform:translateX(-50%) translateY(-30%);}50%{transform:translateX(-50%) translateY(-45%);}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes pop{0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}}
+@keyframes floatUp{0%{transform:translateY(0);opacity:1;}100%{transform:translateY(-120px);opacity:0;}}
+.overlay-enter{animation:slideUp 0.32s cubic-bezier(0.32,0.72,0,1) forwards;}
+.fade-in{animation:fadeIn 0.25s ease forwards;}
+.pop{animation:pop 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.3);}
+input,textarea,button,select{font-family:'DM Sans',sans-serif;}`; /* loaded from styles.css */
+// -------------- BRAND LOGO ------------------------------------------
+const SLogo = ({ size = 32, showText = false, textSize = 17 }) => (React.createElement("div", { style: { display: "flex", alignItems: "center", gap: showText ? 10 : 0 } },
+    React.createElement("svg", { width: size, height: size, viewBox: "0 0 100 100", fill: "none" },
+        React.createElement("defs", null,
+            React.createElement("linearGradient", { id: "sg", x1: "20", y1: "80", x2: "80", y2: "20", gradientUnits: "userSpaceOnUse" },
+                React.createElement("stop", { offset: "0%", stopColor: "#f5c518" }),
+                React.createElement("stop", { offset: "45%", stopColor: "#f07020" }),
+                React.createElement("stop", { offset: "100%", stopColor: "#e040a0" }))),
+        React.createElement("rect", { width: "100", height: "100", fill: "#4a006e" }),
+        React.createElement("path", { d: "M 64 18 C 80 18 84 28 80 36 C 76 44 62 48 50 52 C 36 57 24 63 24 74 C 24 84 34 88 46 86 C 54 84 62 80 66 74", stroke: "url(#sg)", strokeWidth: "14", strokeLinecap: "round", fill: "none" }),
+        React.createElement("line", { x1: "24", y1: "74", x2: "16", y2: "78", stroke: "url(#sg)", strokeWidth: "14", strokeLinecap: "round" })),
+    showText && (React.createElement("span", { style: { fontFamily: "'DM Sans',sans-serif", fontWeight: 700, fontSize: textSize, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1 } }, "StageLab"))));
+// ------------------------------ ROOT --------------------------------
+function StageLab() {
+    // Detect password-recovery link (Supabase redirects with #access_token=...&type=recovery)
+    const recovery = (() => {
+        try {
+            const h = window.location.hash || "";
+            if (h.includes("type=recovery") && h.includes("access_token=")) {
+                const params = new URLSearchParams(h.replace(/^#/, ""));
+                const tok = params.get("access_token");
+                if (tok) { try { localStorage.setItem("sb_token", tok); } catch (e) {} return tok; }
+            }
+        } catch (e) {}
+        return null;
+    })();
+    // Synchronous token check — no async wait for first paint
+    const initialToken = (() => { try { return localStorage.getItem("sb_token"); } catch (e) { return null; } })();
+    const [page, setPage] = useState(recovery ? "reset" : (initialToken ? "app" : "auth"));
+    const [tab, setTab] = useState(0);
+    const [session, setSession] = useState(initialToken ? { access_token: initialToken } : null);
+    useEffect(() => {
+        // Verify session in background — only redirect to auth if token is invalid
+        if (initialToken) {
+            supabase.auth.getSession().then(({ data }) => {
+                if (data.session) setSession(data.session);
+                // Don't kick to auth here even if invalid - let API errors handle that gracefully
+            });
+        }
+        // Listen for auth state changes (sign in / sign out)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+            if (event === "SIGNED_OUT" || !s) {
+                setSession(null);
+                setPage("auth");
+            }
+            // SIGNED_IN handled by AuthScreen directly to avoid race conditions
+        });
+        return () => subscription.unsubscribe();
+    }, []);
+    if (page === "reset")
+        return React.createElement(ResetPasswordScreen, { onDone: () => { try { window.location.hash = ""; } catch (e) {} setPage("app"); }, onCancel: () => { try { window.location.hash = ""; } catch (e) {} setPage("auth"); } });
+    if (page === "auth")
+        return React.createElement(AuthScreen, { onEnter: (s) => { setSession(s); setPage("app"); }, onOnboard: (s) => { setSession(s); setPage("onboard"); } });
+    if (page === "onboard")
+        return React.createElement(OnboardScreen, { onDone: () => setPage("app"), session: session });
+    return React.createElement(MainApp, { tab: tab, setTab: setTab, session: session });
+}
+// -------------------------------- AUTH ------------------------------
+function ResetPasswordScreen({ onDone, onCancel }) {
+    const [pw, setPw] = useState("");
+    const [pw2, setPw2] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [toast, setToast] = useState("");
+    const submit = async () => {
+        if (pw.length < 6) { setError("Password must be at least 6 characters"); return; }
+        if (pw !== pw2) { setError("Passwords don't match"); return; }
+        setError(""); setLoading(true);
+        try {
+            await supabase.auth.updateUserPassword(pw);
+            setToast("\u2713 Password updated!");
+            setTimeout(onDone, 1400);
+        } catch (e) {
+            setError(e.message || "Could not update password. The reset link may have expired.");
+            setLoading(false);
+        }
+    };
+    const inp = { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", marginBottom: 12 };
+    return React.createElement("div", { style: { minHeight: "100dvh", background: "radial-gradient(120% 80% at 50% 0%, rgba(201,168,76,0.12), #08040e 55%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "30px 24px" } },
+        React.createElement("div", { style: { width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c33,#c9a84c11)", border: "1px solid #c9a84c44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34, marginBottom: 20 } }, "\uD83D\uDD11"),
+        React.createElement("div", { style: { fontSize: 26, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 8, color: "#fff" } }, "Set a new password"),
+        React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 26, maxWidth: 300, lineHeight: 1.5 } }, "Choose a new password for your StageLab account."),
+        React.createElement("div", { style: { width: "100%", maxWidth: 360 } },
+            React.createElement("input", { value: pw, onChange: e => setPw(e.target.value), placeholder: "New password", type: "password", style: inp }),
+            React.createElement("input", { value: pw2, onChange: e => setPw2(e.target.value), placeholder: "Confirm new password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: inp }),
+            error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
+            React.createElement("button", { onClick: submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: 12 } }, loading ? "\u2026" : "Update Password"),
+            React.createElement("button", { onClick: onCancel, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer" } }, "Cancel")),
+        toast && React.createElement(Toast, { msg: toast }));
+}
+function AuthScreen({ onEnter, onOnboard }) {
+    const [mode, setMode] = useState(0); // 0=signin 1=signup
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [toast, setToast] = useState("");
+    const showToast = (m) => { setToast(m); setTimeout(() => setToast(""), 2600); };
+    const resendVerification = async () => {
+        if (!email.trim()) { setError("Enter your email"); return; }
+        setError(""); setLoading(true);
+        try {
+            // Re-trigger signup confirmation email
+            await supabase.auth.signUp({ email: email.trim(), password: password || Math.random().toString(36), options: { data: { name } } });
+            showToast("\uD83D\uDCE7 Verification email resent");
+        } catch (e) { showToast("\uD83D\uDCE7 If that account exists, we resent it"); }
+        setLoading(false);
+    };
+    const sendReset = async () => {
+        if (!email.trim()) { setError("Enter your email first"); return; }
+        setError(""); setLoading(true);
+        try {
+            await supabase.auth.resetPasswordForEmail(email.trim());
+            showToast("\uD83D\uDCE7 Reset link sent! Check your email");
+            setTimeout(() => setMode(0), 1800);
+        } catch (e) {
+            setError(e.message || "Could not send reset email");
+        }
+        setLoading(false);
+    };
+    const submit = async () => {
+        if (!email.trim() || !password.trim()) {
+            setError("Please enter email and password.");
+            return;
+        }
+        if (mode === 1 && !name.trim()) {
+            setError("Please enter your name.");
+            return;
+        }
+        setError("");
+        setLoading(true);
+        try {
+            if (mode === 0) {
+                // -- Sign In --
+                const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+                if (err)
+                    throw err;
+                showToast("Welcome back! \uD83C\uDFAD");
+                setTimeout(() => onEnter(data.session), 700);
+            }
+            else {
+                // -- Sign Up --
+                const { data, error: err } = await supabase.auth.signUp({
+                    email, password,
+                    options: { data: { name } }
+                });
+                if (err)
+                    throw err;
+                // If email confirmation is required, there's no session yet
+                if (!data.session) {
+                    setMode(3); // verify-email state
+                    setLoading(false);
+                    return;
+                }
+                showToast("Account created! Let's set up your profile \uD83C\uDFAD");
+                setTimeout(() => onOnboard(data.session), 1000);
+            }
+        }
+        catch (e) {
+            setError(e.message || "Something went wrong");
+        }
+        setLoading(false);
+    };
+    if (mode === 3) {
+        return React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e 0%,#08040e 100%)", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 28px", color: "#fff", textAlign: "center" } },
+            React.createElement("style", null, CSS),
+            React.createElement("div", { style: { width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#c9a84c33,#c9a84c11)", border: "1px solid #c9a84c44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, marginBottom: 24 } }, "\uD83D\uDCE7"),
+            React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 12 } }, "Check your inbox"),
+            React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, maxWidth: 320, marginBottom: 8 } }, "We sent a verification link to"),
+            React.createElement("div", { style: { fontSize: 15, color: "#c9a84c", fontWeight: 700, marginBottom: 24 } }, email),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, maxWidth: 320, marginBottom: 30 } }, "Tap the link in the email to activate your account, then come back and sign in."),
+            React.createElement("button", { onClick: resendVerification, disabled: loading, style: { width: "100%", maxWidth: 300, padding: "14px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 14, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 12 } }, loading ? "\u2026" : "Resend email"),
+            React.createElement("button", { onClick: () => { setMode(0); setError(""); }, style: { width: "100%", maxWidth: 300, padding: "14px", background: "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: "#1a0a2e", fontSize: 15, fontWeight: 700, cursor: "pointer" } }, "Back to Sign In"),
+            toast && React.createElement(Toast, { msg: toast }));
+    }
+    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e 0%,#08040e 100%)", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", color: "#fff", overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+        React.createElement("style", null, CSS),
+        React.createElement("div", { style: { marginBottom: 20 } },
+            React.createElement(SLogo, { size: 90 })),
+        React.createElement("div", { style: { fontSize: 42, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", letterSpacing: "-0.02em", marginBottom: 4, color: "#fff" } }, "StageLab"),
+        React.createElement("div", { style: { fontSize: 11, color: "#f06a35", letterSpacing: "0.2em", marginTop: 5, marginBottom: 36 } }, "MUSICAL THEATRE \u00B7 LIVE"),
+        React.createElement("div", { style: { width: "100%", maxWidth: 380 } },
+            React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.15)", marginBottom: 22 } }, ["Sign In", "Sign Up"].map((t, i) => (React.createElement("button", { key: t, onClick: () => { setMode(i); setError(""); }, style: { flex: 1, background: "none", border: "none", color: mode === i ? "#c9a84c" : "rgba(255,255,255,0.4)", fontWeight: mode === i ? 700 : 400, fontSize: 13, padding: "10px 0", borderBottom: mode === i ? "2px solid #c9a84c" : "2px solid transparent", cursor: "pointer", letterSpacing: "0.05em" } }, t)))),
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 11, marginBottom: 14 } },
+                mode === 1 && (React.createElement("input", { value: name, onChange: e => setName(e.target.value), placeholder: "Full name", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
+                React.createElement("input", { value: email, onChange: e => setEmail(e.target.value), placeholder: "Email address", type: "email", style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }),
+                mode !== 2 && React.createElement("input", { value: password, onChange: e => setPassword(e.target.value), placeholder: "Password", type: "password", onKeyDown: e => e.key === "Enter" && submit(), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } })),
+            error && React.createElement("div", { style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#f87171", marginBottom: 12 } }, error),
+            React.createElement("button", { onClick: mode === 2 ? sendReset : submit, disabled: loading, style: { width: "100%", padding: "15px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: loading ? "not-allowed" : "pointer", marginBottom: mode === 2 ? 14 : 20 } }, loading ? "\u2026" : mode === 0 ? "Sign In" : mode === 1 ? "Create Account" : "Send Reset Link"),
+            mode === 0 && React.createElement("button", { onClick: () => { setError(""); setMode(2); }, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", marginBottom: 14, marginTop: -8 } }, "Forgot password?"),
+            mode === 2 && React.createElement("button", { onClick: () => { setError(""); setMode(0); }, style: { width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", marginBottom: 14 } }, "\u2190 Back to sign in"),
+            React.createElement("button", { onClick: () => onEnter(null), style: { width: "100%", padding: "13px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 14, color: "#c9a84c", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em", marginTop: 4 } }, "\uD83C\uDFAD Continue in Demo Mode")),
+        toast && React.createElement(Toast, { msg: toast })));
+}
+const AInput = ({ placeholder, type = "text" }) => (React.createElement("input", { type: type, placeholder: placeholder, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none" } }));
+// --------------------------- ONBOARD -------------------------------
+const ROLES = ["Actor", "Singer", "Dancer", "Composer", "Lyricist", "Musical Director", "Director", "Choreographer", "Playwright", "Producer", "Stage Manager", "Designer", "Pit Musician", "Other"];
+const SKILLS_LIST = ["Soprano", "Mezzo", "Alto", "Tenor", "Baritone", "Bass", "Jazz", "Classical", "Contemporary", "Hip-Hop", "Tap", "Ballet", "Character", "Improv", "Piano", "Guitar", "Violin", "Conducting"];
+function OnboardScreen({ onDone, session }) {
+    var _a, _b, _c, _d;
+    const [step, setStep] = useState(0); // 0=role 1=bio 2=photo
+    const [role, setRole] = useState("");
+    const [bio, setBio] = useState("");
+    const [location, setLocation] = useState("");
+    const [handle, setHandle] = useState("");
+    const [skills, setSkills] = useState([]);
+    const [avatar, setAvatar] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [name, setName] = useState(((_b = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.user_metadata) === null || _b === void 0 ? void 0 : _b.name) ||
+        ((_d = (_c = session === null || session === void 0 ? void 0 : session.user) === null || _c === void 0 ? void 0 : _c.email) === null || _d === void 0 ? void 0 : _d.split("@")[0]) || "");
+    const toggleSkill = (s) => setSkills(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
+    const saveAndContinue = async () => {
+        var _a;
+        if (step === 0 && !role) {
+            return;
+        }
+        if (step < 2) {
+            setStep(s => s + 1);
+            return;
+        }
+        setSaving(true);
+        const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
+        // Get token - try multiple sources since signup token may not be in localStorage yet
+        const token = localStorage.getItem("sb_token")
+            || (session === null || session === void 0 ? void 0 : session.access_token)
+            || null;
+        if (!uid) {
+            // No user - skip upload, go straight to app
+            setSaving(false);
+            onDone();
+            return;
+        }
+        let avatarUrl = null;
+        // Upload avatar - skip if no token (won't work) or no avatar chosen
+        if (avatar && token) {
+            try {
+                // Convert data URI to blob without using fetch() which can fail on data: URIs
+                let blob;
+                if (avatar.startsWith("data:")) {
+                    // Parse data URI manually
+                    const [header, b64] = avatar.split(",");
+                    const mimeMatch = header.match(/:(.*?);/);
+                    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+                    const binary = atob(b64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++)
+                        bytes[i] = binary.charCodeAt(i);
+                    blob = new Blob([bytes], { type: mime });
+                }
+                else {
+                    // Object URL - fetch it
+                    const r = await fetch(avatar);
+                    blob = await r.blob();
+                }
+                const ext = blob.type.includes("png") ? "png" : "jpg";
+                const path = uid + "/avatar." + ext;
+                const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/avatars/" + path, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": blob.type || "image/jpeg",
+                        "x-upsert": "true",
+                        "Cache-Control": "3600",
+                    },
+                    body: blob,
+                });
+                if (uploadRes.ok) {
+                    avatarUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/avatars/" + path;
+                }
+                else {
+                    const errText = await uploadRes.text().catch(() => uploadRes.status);
+                    console.warn("Avatar upload failed:", uploadRes.status, errText);
+                    // Don't block - continue without avatar
+                }
+            }
+            catch (e) {
+                console.warn("Avatar upload error:", e);
+                // Don't block onboarding if upload fails
+            }
+        }
+        // Build clean handle
+        const cleanHandle = handle
+            ? (handle.startsWith("@") ? handle : "@" + handle)
+            : "@" + (name || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_");
+        // Save profile - this is the critical part
+        try {
+            const updateData = {
+                name: (name || "").trim(),
+                handle: cleanHandle,
+                role: role || "",
+                bio: (bio || "").trim(),
+                location: (location || "").trim(),
+            };
+            if (avatarUrl) updateData.avatar_url = avatarUrl;
+            // Try UPDATE first
+            const { error: updateErr } = await supabase.from("profiles").update(updateData).eq("id", uid);
+            if (updateErr) {
+                console.warn("Update failed, trying insert:", updateErr);
+                // Fallback: row might not exist yet, INSERT it
+                const { error: insertErr } = await supabase.from("profiles").insert({ id: uid, ...updateData });
+                if (insertErr) console.error("Insert also failed:", insertErr);
+            }
+            // Verify it saved by reading back
+            const { data: check } = await supabase.from("profiles").select("*").eq("id", uid).single();
+            console.log("Profile saved:", check);
+        }
+        catch (e) {
+            console.error("Profile save exception:", e);
+        }
+        setSaving(false);
+        onDone();
+    };
+    const STEPS = ["Your Role", "About You", "Profile Photo"];
+    return (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#08040e)", height: "100dvh", display: "flex", flexDirection: "column", color: "#fff", overflow: "hidden" } },
+        React.createElement("style", null, CSS),
+        React.createElement("div", { style: { padding: "20px 24px 0" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+                React.createElement(SLogo, { size: 28, showText: true, textSize: 14 }),
+                React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)" } },
+                    "Step ",
+                    step + 1,
+                    " of 3")),
+            React.createElement("div", { style: { height: 3, background: "rgba(255,255,255,0.1)", borderRadius: 2 } },
+                React.createElement("div", { style: { width: `${((step + 1) / 3) * 100}%`, height: "100%", background: "linear-gradient(90deg,#c9a84c,#e8a87c)", borderRadius: 2, transition: "width 0.4s ease" } }))),
+        React.createElement("div", { style: { flex: 1, padding: "32px 24px 40px", overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+            step === 0 && (React.createElement("div", { className: "fade-in" },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "What's your role?"),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 } }, "Tell the community what you do in musical theatre"),
+                React.createElement("div", { style: { marginBottom: 20 } },
+                    React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "YOUR NAME"),
+                    React.createElement("input", { value: name, onChange: e => setName(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none", marginBottom: 14 }, placeholder: "Your stage name" }),
+                    React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "HANDLE"),
+                    React.createElement("div", { style: { position: "relative" } },
+                        React.createElement("span", { style: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.4)", fontSize: 15 } }, "@"),
+                        React.createElement("input", { value: handle, onChange: e => setHandle(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase()), style: { width: "100%", padding: "13px 16px 13px 28px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 15, outline: "none" }, placeholder: "yourhandle" }))),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } }, "PRIMARY ROLE"),
+                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 24 } }, ROLES.map(r => (React.createElement("button", { key: r, onClick: () => setRole(r), style: { padding: "10px 16px", background: role === r ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: `1px solid ${role === r ? "transparent" : "rgba(255,255,255,0.12)"}`, borderRadius: 24, color: role === r ? "#1a0a2e" : "rgba(255,255,255,0.7)", fontWeight: role === r ? 700 : 400, fontSize: 13, cursor: "pointer", transition: "all 0.15s" } }, r)))),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } },
+                    "SKILLS & VOICE TYPE ",
+                    React.createElement("span", { style: { color: "rgba(255,255,255,0.3)", fontWeight: 400 } }, "(pick all that apply)")),
+                React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 } }, SKILLS_LIST.map(s => (React.createElement("button", { key: s, onClick: () => toggleSkill(s), style: { padding: "7px 14px", background: skills.includes(s) ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.4)", border: `1px solid ${skills.includes(s) ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: skills.includes(s) ? "#c9a84c" : "rgba(255,255,255,0.55)", fontWeight: skills.includes(s) ? 700 : 400, fontSize: 12, cursor: "pointer" } }, s)))))),
+            step === 1 && (React.createElement("div", { className: "fade-in" },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "About you"),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 28 } }, "Help collaborators find and connect with you"),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 } }, "BIO"),
+                React.createElement("textarea", { value: bio, onChange: e => setBio(e.target.value), rows: 5, style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", resize: "none", marginBottom: 20, lineHeight: 1.6 }, placeholder: "Tell your story \u2014 your training, credits, what you're working on, what you're looking for\u2026" }),
+                React.createElement("div", { style: { textAlign: "right", fontSize: 11, color: bio.length > 300 ? "#f87171" : "rgba(255,255,255,0.3)", marginTop: -16, marginBottom: 20 } },
+                    bio.length,
+                    "/300"),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 8 } }, "LOCATION"),
+                React.createElement("input", { value: location, onChange: e => setLocation(e.target.value), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12, color: "#fff", fontSize: 14, outline: "none", marginBottom: 24 }, placeholder: "City, State (e.g. San Diego, CA)" }),
+                (bio || location) && (React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px", marginBottom: 8 } },
+                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 8 } }, "PROFILE PREVIEW"),
+                    React.createElement("div", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, name || "Your Name"),
+                    React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8 } }, role || "Your Role"),
+                    bio && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 } }, bio),
+                    location && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 8 } },
+                        "\uD83D\uDCCD ",
+                        location))))),
+            step === 2 && (React.createElement("div", { className: "fade-in" },
+                React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "Add a photo"),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 32 } }, "Help people recognise you in the community"),
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 32 } },
+                    React.createElement("div", { style: { width: 120, height: 120, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, position: "relative" } }, avatar
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : React.createElement("span", { style: { fontSize: 48, color: "rgba(255,255,255,0.3)" } }, "\uD83D\uDC64")),
+                    React.createElement("label", { style: { cursor: "pointer" } },
+                        React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: e => {
+                                var _a;
+                                const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
+                                if (!f)
+                                    return;
+                                const r = new FileReader();
+                                r.onload = ev => setAvatar(ev.target.result);
+                                r.readAsDataURL(f);
+                            } }),
+                        React.createElement("div", { style: { padding: "12px 28px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 24, color: "#c9a84c", fontWeight: 700, fontSize: 14, cursor: "pointer" } }, avatar ? "Change Photo" : "\uD83D\uDCF7 Choose Photo")),
+                    !avatar && (React.createElement("button", { onClick: async () => {
+                            var _a;
+                            // Save profile data even if skipping photo
+                            setSaving(true);
+                            const uid = (_a = session === null || session === void 0 ? void 0 : session.user) === null || _a === void 0 ? void 0 : _a.id;
+                            if (uid) {
+                                const cleanHandle = handle
+                                    ? (handle.startsWith("@") ? handle : "@" + handle)
+                                    : "@" + (name || "user").toLowerCase().replace(/[^a-z0-9_]/g, "_");
+                                await supabase.from("profiles").update({
+                                    name: (name || "").trim(), handle: cleanHandle,
+                                    role: role || "", bio: (bio || "").trim(), location: (location || "").trim(),
+                                }).eq("id", uid);
+                            }
+                            setSaving(false);
+                            onDone();
+                        }, style: { marginTop: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "Skip photo for now"))),
+                React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px" } },
+                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", marginBottom: 12 } }, "YOUR PROFILE SUMMARY"),
+                    React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "center" } },
+                        React.createElement("div", { style: { width: 52, height: 52, borderRadius: "50%", border: "2px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.15)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" } }, avatar ? React.createElement("img", { loading: "lazy", decoding: "async", src: avatar, style: { width: "100%", height: "100%", objectFit: "cover" } }) : React.createElement("span", { style: { fontSize: 22 } }, "\uD83D\uDC64")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif" } }, name || "Your Name"),
+                            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, role || "Your Role"),
+                            location && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)", marginTop: 2 } },
+                                "\uD83D\uDCCD ",
+                                location))),
+                    skills.length > 0 && (React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 } }, skills.slice(0, 6).map(s => (React.createElement("span", { key: s, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 20, padding: "3px 10px", fontSize: 11, color: "#c9a84c" } }, s))))))))),
+        React.createElement("div", { style: { padding: "16px 24px 40px", background: "linear-gradient(0deg,rgba(8,4,14,0.98),transparent)", flexShrink: 0 } },
+            React.createElement("button", { onClick: saveAndContinue, disabled: saving || (step === 0 && !role), style: { width: "100%", padding: "16px", background: (saving || (step === 0 && !role)) ? "rgba(255,255,255,0.08)" : "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: (saving || (step === 0 && !role)) ? "rgba(255,255,255,0.3)" : "#1a0a2e", fontWeight: 700, fontSize: 16, cursor: (saving || (step === 0 && !role)) ? "not-allowed" : "pointer" } }, saving ? "Creating your profile\u2026" : step < 2 ? "Continue \u2192" : "\uD83C\uDFAD Enter StageLab"),
+            step > 0 && (React.createElement("button", { onClick: () => setStep(s => s - 1), style: { width: "100%", marginTop: 10, background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 13, cursor: "pointer" } }, "\u2190 Back")))));
+}
+// --------------------------- MAIN APP -------------------------------
+// 5-tab bottom nav - Feed | Create | Discover | Studio | Me
+const NAV = [
+    { icon: "\uD83C\uDFE0", label: "Feed" },
+    { icon: "\uD83C\uDFAC", label: "Create" },
+    { icon: "\uD83D\uDD0D", label: "Discover" },
+    { icon: "\u2B50", label: "Studio" },
+    { icon: "\uD83C\uDFA4", label: "Auditions" },
+    { icon: "\uD83D\uDC64", label: "Me" },
+];
+function TutorialOverlay({ onClose, onGoTab }) {
+    const [step, setStep] = useState(0);
+    // Steps: welcome (centered) -> 6 nav-tab spotlights -> closing (centered)
+    // navIndex maps to which bottom-nav tab to spotlight (null = centered card)
+    const steps = [
+        { kind: "center", icon: "\uD83C\uDFAD", accent: "#c9a84c", title: "Welcome to StageLab", tagline: "The stage door to your community",
+          body: "The home for musical theatre people. Performers, directors, music directors, choreographers, designers, dreamers. Let's take a quick tour of where everything lives." },
+        { kind: "spotlight", navIndex: 0, icon: "\uD83C\uDFE0", accent: "#e8a87c", title: "Feed", tagline: "Your daily dose of talent",
+          body: "This is your home base. Scroll performances, audio, lyrics, and posters from artists everywhere. Like, comment, and share what moves you." },
+        { kind: "spotlight", navIndex: 1, icon: "\uD83C\uDFAC", accent: "#4cb8c4", title: "Create", tagline: "Share your craft",
+          body: "Tap here to post your own work. Videos, audio, lyric sheets, or show art. Everything you post lives on your profile." },
+        { kind: "spotlight", navIndex: 2, icon: "\uD83D\uDD0D", accent: "#a87cc4", title: "Discover", tagline: "Find your people",
+          body: "Search the community by role and craft. Need a rehearsal pianist? A scene partner? A director? They're here. Follow them and message them." },
+        { kind: "spotlight", navIndex: 3, icon: "\u2B50", accent: "#c9a84c", title: "Studio", tagline: "Where shows come together",
+          body: "Your creative command center. Block scenes with Scene Builder, run a full production with cast and rehearsal check-ins, or go Live." },
+        { kind: "spotlight", navIndex: 4, icon: "\uD83C\uDFA4", accent: "#4ade80", title: "Auditions", tagline: "Get cast. Cast your show.",
+          body: "The casting hub. Browse open calls, post a show with every role and date, submit self-tapes, and build your r\u00e9sum\u00e9 that shows on your profile." },
+        { kind: "spotlight", navIndex: 5, icon: "\uD83D\uDC64", accent: "#e8a87c", title: "Your Profile", tagline: "Your digital headshot wall",
+          body: "Build out your bio, cover photo, and best work. This is the first thing people see when they find you. A complete profile gets more follows and casting interest." },
+        { kind: "center", icon: "\uD83D\uDC9B", accent: "#c9a84c", title: "You're ready", tagline: "Break a leg",
+          body: "StageLab is young and still growing. You might bump into a glitch here and there as we keep building. Thank you for being one of the early ones. Now go make something." },
+    ];
+    const s = steps[step];
+    const isLast = step === steps.length - 1;
+    const total = steps.length;
+    const goNext = () => { if (isLast) onClose(); else setStep(step + 1); };
+    const goBack = () => step > 0 && setStep(step - 1);
+    // Spotlight geometry: 6 tabs evenly spaced. Tab center = (navIndex + 0.5)/6 of width.
+    const NAV_COUNT = 6;
+    const spotlightLeftPct = s.kind === "spotlight" ? ((s.navIndex + 0.5) / NAV_COUNT) * 100 : 50;
+    // Tooltip card sits above the nav for spotlight steps, centered otherwise
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 600 } },
+        // Dim layer (full screen)
+        React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(6,3,12,0.88)", transition: "background 0.3s" } }),
+        // Skip button
+        React.createElement("button", { onClick: onClose, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", right: 18, zIndex: 3, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "7px 14px", borderRadius: 20, cursor: "pointer", fontWeight: 600 } }, "Skip"),
+        // Progress bar (top)
+        React.createElement("div", { style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", left: 18, right: 90, zIndex: 3, display: "flex", gap: 4, alignItems: "center", height: 30 } },
+            steps.map((_, i) => React.createElement("div", { key: i, style: { flex: 1, height: 3, borderRadius: 2, background: i <= step ? s.accent : "rgba(255,255,255,0.15)", transition: "background 0.3s" } }))
+        ),
+        // Spotlight ring over the real nav tab (only for spotlight steps)
+        s.kind === "spotlight" && React.createElement("div", { style: { position: "absolute", bottom: "calc(env(safe-area-inset-bottom) + 6px)", left: spotlightLeftPct + "%", transform: "translateX(-50%)", width: 60, height: 60, borderRadius: "50%", border: "2px solid " + s.accent, boxShadow: "0 0 0 4px " + s.accent + "44, 0 0 30px " + s.accent + "88", transition: "left 0.4s cubic-bezier(.4,0,.2,1)", pointerEvents: "none" } },
+            // pulsing dot
+            React.createElement("div", { style: { position: "absolute", inset: -2, borderRadius: "50%", border: "2px solid " + s.accent + "66", animation: "slpulse 1.8s ease-out infinite" } })
+        ),
+        // Pointer arrow from card to spotlight
+        s.kind === "spotlight" && React.createElement("div", { style: { position: "absolute", bottom: "calc(env(safe-area-inset-bottom) + 78px)", left: spotlightLeftPct + "%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderTop: "10px solid #15082a", transition: "left 0.4s cubic-bezier(.4,0,.2,1)", zIndex: 2 } }),
+        // CONTENT CARD
+        s.kind === "center"
+            // Centered full card (welcome / closing)
+            ? React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 32px", textAlign: "center" } },
+                React.createElement("div", { style: { width: 104, height: 104, borderRadius: "50%", background: "linear-gradient(135deg," + s.accent + "33," + s.accent + "11)", border: "1px solid " + s.accent + "44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, marginBottom: 26, boxShadow: "0 8px 40px " + s.accent + "44" } }, s.icon),
+                React.createElement("div", { style: { fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: s.accent, fontWeight: 700, marginBottom: 10 } }, s.tagline),
+                React.createElement("div", { style: { fontSize: 32, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 16, color: "#fff", lineHeight: 1.05 } }, s.title),
+                React.createElement("div", { style: { fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.65, maxWidth: 340, marginBottom: 32 } }, s.body),
+                React.createElement("button", { onClick: goNext, style: { width: "100%", maxWidth: 300, padding: "16px", background: "linear-gradient(135deg," + s.accent + ",#e8a87c)", border: "none", borderRadius: 16, color: "#1a0a2e", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px " + s.accent + "44" } }, isLast ? "Enter StageLab" : "Start Tour"),
+                step > 0 && React.createElement("button", { onClick: goBack, style: { marginTop: 14, background: "none", border: "none", color: "rgba(255,255,255,0.45)", fontSize: 13, cursor: "pointer", fontWeight: 600 } }, "\u2190 Back")
+            )
+            // Spotlight tooltip card (sits above nav)
+            : React.createElement("div", { style: { position: "absolute", left: 16, right: 16, bottom: "calc(env(safe-area-inset-bottom) + 96px)", background: "linear-gradient(135deg,#1a0a2e,#15082a)", border: "1px solid " + s.accent + "55", borderRadius: 20, padding: "20px", boxShadow: "0 10px 50px rgba(0,0,0,0.6)", maxWidth: 440, margin: "0 auto" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
+                    React.createElement("div", { style: { width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg," + s.accent + "33," + s.accent + "11)", border: "1px solid " + s.accent + "44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, s.icon),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: s.accent, fontWeight: 700, marginBottom: 2 } }, s.tagline),
+                        React.createElement("div", { style: { fontSize: 21, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", color: "#fff", lineHeight: 1 } }, s.title))),
+                React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.78)", lineHeight: 1.6, marginBottom: 16 } }, s.body),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+                    step > 0 && React.createElement("button", { onClick: goBack, style: { padding: "12px 18px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Back"),
+                    React.createElement("button", { onClick: goNext, style: { flex: 1, padding: "13px", background: "linear-gradient(135deg," + s.accent + ",#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Next"),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 600, flexShrink: 0, minWidth: 34, textAlign: "right" } }, (step + 1) + "/" + total))
+            )
+    );
+}
+
+function NotificationsPanel({ notifications, onClose, onMarkAllRead, onGoTab, show }) {
+    const iconFor = (t) => ({
+        follow: "\uD83D\uDC64", comment: "\uD83D\uDCAC", like: "\u2764\uFE0F", message: "\uD83D\uDCE9",
+        application: "\uD83C\uDFA4", checkin: "\u2705", cast: "\uD83C\uDFAD",
+    }[t] || "\uD83D\uDD14");
+    const timeAgo = (iso) => {
+        if (!iso) return "";
+        const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 60) return "now";
+        if (diff < 3600) return Math.floor(diff / 60) + "m";
+        if (diff < 86400) return Math.floor(diff / 3600) + "h";
+        if (diff < 604800) return Math.floor(diff / 86400) + "d";
+        return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
+    };
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 500, background: "#08080f", display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        // Header
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", width: 40, height: 40, borderRadius: "50%", fontSize: 18, cursor: "pointer", flexShrink: 0 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, fontSize: 18, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Notifications"),
+            notifications.some(n => !n.read) && React.createElement("button", { onClick: onMarkAllRead, style: { background: "none", border: "none", color: "#c9a84c", fontSize: 12, fontWeight: 600, cursor: "pointer" } }, "Mark all read")),
+        // List
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+            notifications.length === 0
+                ? React.createElement("div", { style: { textAlign: "center", padding: "80px 30px", color: "rgba(255,255,255,0.4)" } },
+                    React.createElement("div", { style: { fontSize: 44, marginBottom: 14, opacity: 0.5 } }, "\uD83D\uDD14"),
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 600, marginBottom: 6, color: "rgba(255,255,255,0.6)" } }, "All caught up"),
+                    React.createElement("div", { style: { fontSize: 13, lineHeight: 1.5, maxWidth: 240, margin: "0 auto" } }, "New follows, comments, messages, and audition submissions will show up here."))
+                : notifications.map(n =>
+                    React.createElement("div", { key: n.id, onClick: () => { if (n.link) { if (n.link === "auditions") onGoTab(4); else if (n.link.startsWith("production")) onGoTab(3); else show("Opening\u2026"); } }, style: { display: "flex", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: n.read ? "transparent" : "rgba(201,168,76,0.06)", cursor: n.link ? "pointer" : "default", alignItems: "flex-start" } },
+                        React.createElement("div", { style: { width: 40, height: 40, borderRadius: "50%", background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 } }, iconFor(n.type)),
+                        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, marginBottom: 2 } }, n.title),
+                            n.body && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.4 } }, n.body)),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", flexShrink: 0 } }, timeAgo(n.created_at)),
+                        !n.read && React.createElement("div", { style: { width: 8, height: 8, borderRadius: "50%", background: "#c9a84c", flexShrink: 0, marginTop: 6 } }))
+                ))
+    );
+}
+function MainApp({ tab, setTab, session }) {
+    const [toast, setToast] = useState("");
+    const [liveRoom, setLiveRoom] = useState(null);
+    const [showInbox, setShowInbox] = useState(false);
+    const [viewingUser, setViewingUser] = useState(null); // view another user's profile
+    const [showTutorial, setShowTutorial] = useState(() => {
+        // Demo mode (no session) ALWAYS shows the tutorial — there's no account to remember it
+        if (!session) return true;
+        // Signed-in users: show only if not seen before (localStorage + profile checked below)
+        try { return !localStorage.getItem("sl_tutorial_seen"); } catch (e) { return true; }
+    });
+    // ── Notifications ──
+    const [notifications, setNotifications] = useState([]);
+    const [showNotifs, setShowNotifs] = useState(false);
+    const notifUnread = notifications.filter(n => !n.read).length;
+    const loadNotifs = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
+            if (data) setNotifications(data);
+        } catch (e) { /* table may not exist yet */ }
+    };
+    useEffect(() => {
+        loadNotifs();
+        const iv = setInterval(loadNotifs, 30000); // poll every 30s
+        return () => clearInterval(iv);
+    }, []);
+    const markAllRead = async () => {
+        setNotifications(p => p.map(n => Object.assign(Object.assign({}, n), { read: true })));
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) await supabase.from("notifications").update({ read: true }).eq("user_id", user.id);
+        } catch (e) {}
+    };
+    // Double-check against the user's saved profile flag (survives localStorage clears + new devices)
+    useEffect(() => {
+        if (!session) return; // demo mode: never auto-dismiss from profile flag
+        (async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data: prof } = await supabase.from("profiles").select("tutorial_seen").eq("id", user.id).single();
+                if (prof && prof.tutorial_seen) {
+                    // Already seen on another device — don't show, and sync localStorage
+                    setShowTutorial(false);
+                    try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {}
+                }
+            } catch (e) { /* column may not exist yet; ignore */ }
+        })();
+    }, []);
+    // FIX 1: persisted state survives refresh
+    const [videos, setVideos] = useState(INIT_VIDEOS); // seeded + DB loaded
+    const [comments, setComments] = useState(INIT_COMMENTS); // seeded + DB loaded
+    const [messages, setMessages] = useState(INIT_MESSAGES); // loaded from DB
+    const show = (m) => { setToast(m); setTimeout(() => setToast(""), 2600); };
+    // FIX 2: totalUnread is derived live so badge always matches stored unread counts
+    const totalUnread = messages.reduce((a, m) => a + m.unread, 0);
+    return (React.createElement("div", { style: { background: "#08080f", minHeight: "100dvh", display: "flex", flexDirection: "column", color: "#fff" } },
+        React.createElement("style", null, CSS),
+        React.createElement("header", { style: { background: "linear-gradient(180deg,rgba(8,4,14,0.98),rgba(18,7,36,0.98))", borderBottom: "1px solid rgba(255,255,255,0.07)", position: "sticky", top: 0, zIndex: 100 } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: 480, margin: "0 auto", padding: "max(10px, env(safe-area-inset-top)) 16px 9px" } },
+                React.createElement(SLogo, { size: 32, showText: true, textSize: 17 }),
+                React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+                    React.createElement("button", { onClick: () => setShowInbox(true), style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", position: "relative", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" } },
+                        "\u2709",
+                        totalUnread > 0 && (React.createElement("span", { style: { position: "absolute", top: 4, right: 4, minWidth: 16, height: 16, background: "#c9a84c", borderRadius: 8, fontSize: 9, fontWeight: 700, color: "#1a0a2e", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #08080f", padding: "0 3px" } }, totalUnread))),
+                    React.createElement("button", { onClick: () => { setShowNotifs(true); }, style: { background: "rgba(255,255,255,0.07)", border: "none", borderRadius: 10, width: 36, height: 36, color: "#fff", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" } },
+                        "\uD83D\uDD14",
+                        notifUnread > 0 && React.createElement("span", { style: { position: "absolute", top: 3, right: 3, minWidth: 15, height: 15, background: "#ef4444", borderRadius: 8, fontSize: 9, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid #08080f", padding: "0 3px" } }, notifUnread > 9 ? "9+" : notifUnread))))),
+        React.createElement("nav", { style: { position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.95))", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-around", padding: "8px 0 max(8px, env(safe-area-inset-bottom))" } }, NAV.map((n, i) => (React.createElement("button", { key: n.label, onClick: () => setTab(i), style: { flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", minWidth: 0, minHeight: 44 } },
+            React.createElement("div", { style: { width: tab === i ? 26 : 21, height: tab === i ? 26 : 21, borderRadius: tab === i ? 10 : "50%", background: tab === i ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: tab === i ? 18 : 16, transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)", position: "relative" } },
+                React.createElement("span", { style: { color: n.live ? (tab === i ? "#1a0a2e" : "#ef4444") : (tab === i ? "#1a0a2e" : "rgba(255,255,255,0.55)"), animation: n.live && tab !== i ? "liveDot 1.5s infinite" : "none" } }, n.icon),
+                n.label === "Live" && tab !== i && React.createElement("span", { style: { position: "absolute", top: -2, right: -2, width: 7, height: 7, background: "#ef4444", borderRadius: "50%", border: "1.5px solid #08080f", animation: "liveDot 1.5s infinite" } })),
+            React.createElement("span", { style: { fontSize: 9, fontWeight: tab === i ? 700 : 400, color: tab === i ? "#c9a84c" : "rgba(255,255,255,0.35)", letterSpacing: "0.04em" } }, n.label))))),
+        React.createElement("div", { style: { flex: 1, overflow: "hidden", position: "relative" } },
+            tab === 0 && React.createElement(FeedScreen, { videos: videos, setVideos: setVideos, comments: comments, setComments: setComments, show: show, onViewUser: (id) => setViewingUser(id) }),
+            tab === 1 && React.createElement(CreateScreen, { show: show, setTab: setTab }),
+            tab === 2 && React.createElement(DiscoverScreen, { show: show, onViewUser: (id) => setViewingUser(id) }),
+            tab === 3 && React.createElement(StudioScreen, { show: show, onJoin: setLiveRoom, onViewUser: (id) => setViewingUser(id), setLiveRoom: setLiveRoom }),
+            tab === 5 && React.createElement(ProfileScreen, { show: show }),
+            tab === 4 && React.createElement(AuditionsScreen, { show: show, onViewUser: (id) => setViewingUser(id) })),
+        liveRoom && React.createElement(LiveRoomOverlay, { room: liveRoom, onLeave: () => { setLiveRoom(null); show("\uD83D\uDC4B Left the room"); }, show: show }),
+        showInbox && React.createElement(InboxOverlay, { messages: messages, setMessages: setMessages, onClose: () => setShowInbox(false), show: show }),
+        viewingUser && React.createElement(UserProfileView, { userId: viewingUser, onBack: () => setViewingUser(null), show: show, onViewUser: (id) => setViewingUser(id) }),
+        showNotifs && React.createElement(NotificationsPanel, { notifications: notifications, onClose: () => setShowNotifs(false), onMarkAllRead: markAllRead, onGoTab: (t) => { setShowNotifs(false); setTab(t); }, show: show }),
+        showTutorial && React.createElement(TutorialOverlay, { onClose: async () => {
+            setShowTutorial(false);
+            // Demo mode: don't persist "seen" — so a real signup later still gets the tour
+            if (!session) return;
+            try { localStorage.setItem("sl_tutorial_seen", "1"); } catch (e) {}
+            // Persist to profile so it never shows again on any device
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) await supabase.from("profiles").update({ tutorial_seen: true }).eq("id", user.id);
+            } catch (e) { /* column may not exist; localStorage still covers it */ }
+        }, onGoTab: (t) => setTab(t) }),
+        toast && React.createElement(Toast, { msg: toast })));
+}
+// --------------------------- FEED -----------------------------------
+function CreateScreen({ show, setTab }) {
+    const [sub, setSub] = useState(0);
+    const TABS = ["\uD83C\uDFAC Video", "\uD83C\uDFB5 Audio", "\uD83C\uDFA8 Poster", "\u270d\ufe0f Lyrics"];
+    return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
+        React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 } }, TABS.map((t, i) => (React.createElement("button", { key: t, onClick: () => setSub(i), style: { flex: 1, padding: "13px 4px", background: "none", border: "none",
+                color: sub === i ? "#c9a84c" : "rgba(255,255,255,0.4)",
+                fontWeight: sub === i ? 700 : 400, fontSize: 11, cursor: "pointer",
+                borderBottom: sub === i ? "2px solid #c9a84c" : "2px solid transparent",
+                whiteSpace: "nowrap" } }, t)))),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+            sub === 0 && React.createElement(VideoPostTab, { show: show, setTab: setTab }),
+            sub === 1 && React.createElement(AudioPostTab, { show: show, setTab: setTab }),
+            sub === 2 && React.createElement(PosterMakerTab, { show: show, setTab: setTab }),
+            sub === 3 && React.createElement(LyricsPostTab, { show: show, setTab: setTab }))));
+}
+// -- Shared step progress bar ------------------------------------------
+function StepBar({ step, steps }) {
+    return (React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginBottom: 20 } }, steps.map((label, i) => (React.createElement(React.Fragment, { key: i },
+        React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
+            React.createElement("div", { style: { width: 28, height: 28, borderRadius: "50%",
+                    background: i < step ? "#c9a84c" : i === step ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.08)",
+                    border: i === step ? "none" : "none",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 700,
+                    color: i <= step ? "#1a0a2e" : "rgba(255,255,255,0.3)",
+                    boxShadow: i === step ? "0 0 12px #c9a84c66" : "none",
+                    transition: "all 0.3s" } }, i < step ? "\u2713" : i + 1),
+            React.createElement("span", { style: { fontSize: 9, color: i === step ? "#c9a84c" : "rgba(255,255,255,0.3)", fontWeight: i === step ? 700 : 400, letterSpacing: "0.05em" } }, label)),
+        i < steps.length - 1 && (React.createElement("div", { style: { flex: 1, height: 2, borderRadius: 1, background: i < step ? "#c9a84c" : "rgba(255,255,255,0.08)", marginBottom: 14, transition: "background 0.3s" } })))))));
+}
+// --- Video Post Tab ---------------------------------------------------
+function VideoPostTab({ show, setTab }) {
+    const [mode, setMode] = useState("upload"); // upload | record
+    const [videoFile, setVideoFile] = useState(null);
+    const [videoURL, setVideoURL] = useState(null);
+    const [thumbnail, setThumbnail] = useState(null);
+    const [title, setTitle] = useState("");
+    const [caption, setCaption] = useState("");
+    const [category, setCategory] = useState("Performance");
+    const [visibility, setVisibility] = useState("public");
+    const [collab, setCollab] = useState(false);
+    const [allowComments, setAllowComments] = useState(true);
+    const [tags, setTags] = useState([]);
+    const [tagIn, setTagIn] = useState("");
+    const [filters, setFilters] = useState({ brightness: 100, contrast: 100, saturation: 100 });
+    const [trim, setTrim] = useState({ start: 0, end: 60 });
+    const [speed, setSpeed] = useState(1);
+    const [volume, setVolume] = useState(80);
+    const [step, setStep] = useState(0);
+    // Recording state
+    const [recording, setRecording] = useState(false);
+    const [recTime, setRecTime] = useState(0);
+    const [recBlob, setRecBlob] = useState(null);
+    const videoRef = useRef(null);
+    const mediaRecRef = useRef(null);
+    const streamRef = useRef(null);
+    const recTimer = useRef(null);
+    const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    const CATS = ["Performance", "Rehearsal", "Workshop", "Behind the Scenes", "Original Work", "Cover", "Tutorial"];
+    const addTag = () => { if (tagIn.trim() && !tags.includes(tagIn.trim())) {
+        setTags(p => [...p, tagIn.trim()]);
+        setTagIn("");
+    } };
+    const handleFile = (e) => {
+        var _a;
+        const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (!f)
+            return;
+        setVideoFile(f);
+        setVideoURL(URL.createObjectURL(f));
+        setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
+        setStep(1);
+    };
+    const handleThumb = (e) => {
+        var _a;
+        const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
+        if (!f)
+            return;
+        const r = new FileReader();
+        r.onload = ev => setThumbnail(ev.target.result);
+        r.readAsDataURL(f);
+    };
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play();
+            }
+            const rec = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9,opus" });
+            const chunks = [];
+            rec.ondataavailable = e => { if (e.data.size > 0)
+                chunks.push(e.data); };
+            rec.onstop = () => {
+                const blob = new Blob(chunks, { type: "video/webm" });
+                setRecBlob(blob);
+                setVideoURL(URL.createObjectURL(blob));
+                setTitle("My Recording");
+                setStep(1);
+                stream.getTracks().forEach(t => t.stop());
+            };
+            rec.start(100);
+            mediaRecRef.current = rec;
+            setRecording(true);
+            setRecTime(0);
+            recTimer.current = setInterval(() => setRecTime(t => t + 1), 1000);
+        }
+        catch (e) {
+            show("\uD83D\uDCF7 Camera access denied - check browser permissions");
+        }
+    };
+    const stopRecording = () => {
+        var _a;
+        (_a = mediaRecRef.current) === null || _a === void 0 ? void 0 : _a.stop();
+        clearInterval(recTimer.current);
+        setRecording(false);
+    };
+    // Cleanup on unmount
+    useEffect(() => () => {
+        var _a;
+        (_a = streamRef.current) === null || _a === void 0 ? void 0 : _a.getTracks().forEach(t => t.stop());
+        clearInterval(recTimer.current);
+    }, []);
+    const publish = async (saveToProfile = false) => {
+        if (!title.trim()) {
+            show("\u26a0\ufe0f Please add a title before publishing.");
+            return;
+        }
+        const { data: { user } } = await supabase.auth.getUser();
+        let streamUid = null; let mediaUrl = null;
+        // Upload video/audio to Supabase Storage
+        const fileOrBlob = recBlob || videoFile;
+        if (fileOrBlob && user) {
+            show("\u2b06\ufe0f Uploading\u2026");
+            // Prefer Cloudflare Stream for video (adaptive HLS, fast playback) when configured
+            let cfResult = null;
+            if (CF_STREAM_ENABLED()) {
+                cfResult = await uploadToCloudflareStream(fileOrBlob, (pct) => { show("\u2b06\ufe0f Uploading\u2026 " + pct + "%"); });
+            }
+            let finalThumbnail = thumbnail;
+            if (cfResult && cfResult.playbackUrl) {
+                mediaUrl = cfResult.playbackUrl;
+                streamUid = cfResult.uid;
+                if (!finalThumbnail) finalThumbnail = cfResult.thumbnail;
+            } else {
+                // Fallback: Supabase Storage (works today, before Cloudflare is set up)
+                const ext = recBlob ? "webm" : ((videoFile.name || "video").split(".").pop() || "mp4");
+                const path = user.id + "/" + Date.now() + "." + ext;
+                const uploadRes = await fetch("https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/media/" + path, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + localStorage.getItem("sb_token"),
+                        "Content-Type": fileOrBlob.type || "video/webm",
+                        "x-upsert": "true",
+                        "Cache-Control": "3600",
+                    },
+                    body: fileOrBlob,
+                });
+                if (uploadRes.ok) {
+                    mediaUrl = "https://dsegdddquztgkdwyzbai.supabase.co/storage/v1/object/public/media/" + path;
+                }
+                else {
+                    const errText = await uploadRes.text().catch(() => "");
+                    console.error("Video upload failed:", uploadRes.status, errText);
+                    show("\u26a0\ufe0f Upload failed - your post will save without the video file");
+                }
+            }
+        }
+        if (saveToProfile) {
+            if (user && mediaUrl) {
+                supabase.from("media").insert({ user_id: user.id, type: "video", url: mediaUrl, caption: title });
+            }
+            show("\uD83D\uDCBE Saved to your profile media!");
+        }
+        else {
+            if (user) {
+                // Get user profile first for feed card
+                const { data: prof } = await supabase.from("profiles").select("name,handle,avatar_url,role").eq("id", user.id).single();
+                // Insert post
+                const { data: insertedRows, error: insertErr } = await supabase.from("posts").insert({
+                    user_id: user.id, type: "video", title, caption,
+                    category, tags, visibility, media_url: mediaUrl,
+                    thumbnail_url: finalThumbnail, collab_open: collab,
+                    stream_uid: streamUid,
+                });
+                if (insertErr) console.error("Post insert error:", insertErr);
+                const realId = (insertedRows && insertedRows[0] && insertedRows[0].id) || ("local-" + Date.now());
+                // Add to feed immediately
+                const feedPost = {
+                    id: realId, user_id: user.id, post_id: realId,
+                    creator: (prof === null || prof === void 0 ? void 0 : prof.name) || "You",
+                    handle: (prof === null || prof === void 0 ? void 0 : prof.handle) || "@you",
+                    role: (prof === null || prof === void 0 ? void 0 : prof.role) || "",
+                    avatar: ((prof === null || prof === void 0 ? void 0 : prof.name) || "Y").slice(0, 2).toUpperCase(),
+                    avatar_url: (prof === null || prof === void 0 ? void 0 : prof.avatar_url) || null,
+                    title, caption, type: "video",
+                    likes: 0, comments: 0, shares: 0, reposts: 0, gifts: 0,
+                    media_url: mediaUrl, thumbnail_url: finalThumbnail, collab_open: collab,
+                    accent: "#c9a84c", bg: "linear-gradient(160deg,#1a0a2e,#2d1040)", note: "\u266a", tier: "silver",
+                };
+                setVideos(prev => [feedPost, ...prev]);
+            }
+            show("\u2728 Posted! Taking you to the feed\u2026");
+            // Reset Create form for next time
+            setTimeout(() => {
+                try {
+                    setStep(0);
+                    setTitle(""); setCaption(""); setTags([]);
+                    setVideoFile(null); setRecBlob(null); setThumbnail(null);
+                } catch (e) {}
+                setTab(0);
+            }, 900);
+        }
+    };
+    const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    // -- Step 0: Upload or Record --
+    if (step === 0)
+        return (React.createElement("div", { style: { padding: "18px 16px 80px" } },
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 14 } }, "Post a Video"),
+            React.createElement("div", { style: { display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: 3, marginBottom: 18 } }, [["upload", "\uD83D\uDCC1 Upload"], ["record", "\uD83D\uDCF9 Record"]].map(([m, l]) => (React.createElement("button", { key: m, onClick: () => setMode(m), style: { flex: 1, padding: "9px", background: mode === m ? "#c9a84c" : "none", border: "none", borderRadius: 10, color: mode === m ? "#1a0a2e" : "rgba(255,255,255,0.5)", fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
+            mode === "upload" ? (React.createElement(React.Fragment, null,
+                React.createElement("label", { style: { display: "block", width: "100%", aspectRatio: "16/9", background: "linear-gradient(160deg,#1a0a2e,#0d0515)", border: "2px dashed rgba(201,168,76,0.35)", borderRadius: 16, cursor: "pointer", position: "relative", overflow: "hidden", marginBottom: 16 } },
+                    React.createElement("input", { type: "file", accept: "video/*", style: { display: "none" }, onChange: handleFile }),
+                    React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 } },
+                        React.createElement("div", { style: { width: 56, height: 56, borderRadius: 16, background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 } }, "\uD83C\uDFAC"),
+                        React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#c9a84c" } }, "Tap to select video"),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.3)" } }, "MP4 \u00B7 MOV \u00B7 up to 2GB"))),
+                React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "QUICK PICK"),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } }, [["\uD83C\uDFA4", "Performance", "Share your act"], ["\uD83C\uDFB9", "Rehearsal", "Raw & unedited"], ["\uD83C\uDFAD", "Workshop", "Teaching moment"], ["\uD83C\uDF1F", "Original Work", "Your creation"]].map(([emoji, label, sub]) => (React.createElement("label", { key: label, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } },
+                    React.createElement("input", { type: "file", accept: "video/*", style: { display: "none" }, onChange: handleFile }),
+                    React.createElement("span", { style: { fontSize: 22 } }, emoji),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 12, fontWeight: 700 } }, label),
+                        React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)" } }, sub)))))))) : (React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center" } },
+                React.createElement("div", { style: { width: "100%", aspectRatio: "16/9", background: "#0", borderRadius: 16, overflow: "hidden", position: "relative", marginBottom: 16 } },
+                    React.createElement("video", { ref: videoRef, muted: true, playsInline: true, style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
+                    !recording && !recBlob && (React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" } },
+                        React.createElement("div", { style: { textAlign: "center", color: "rgba(255,255,255,0.4)" } },
+                            React.createElement("div", { style: { fontSize: 36, marginBottom: 8 } }, "\uD83D\uDCF9"),
+                            React.createElement("div", { style: { fontSize: 13 } }, "Tap Record to start camera")))),
+                    recording && (React.createElement("div", { style: { position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.85)", borderRadius: 20, padding: "4px 12px" } },
+                        React.createElement("span", { style: { width: 8, height: 8, borderRadius: "50%", background: "#fff", animation: "liveDot 1s infinite", display: "inline-block" } }),
+                        React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#fff" } },
+                            "REC ",
+                            fmt(recTime))))),
+                React.createElement("div", { style: { display: "flex", gap: 14, alignItems: "center" } }, !recording ? (React.createElement("button", { onClick: startRecording, style: { width: 68, height: 68, borderRadius: "50%", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "4px solid rgba(255,255,255,0.2)", fontSize: 28, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u23FA")) : (React.createElement("button", { onClick: stopRecording, style: { width: 68, height: 68, borderRadius: "50%", background: "#ef4444", border: "4px solid rgba(255,255,255,0.03)", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: "liveDot 1s infinite" } }, "\u23F9"))),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 10, textAlign: "center" } }, recording ? `Recording\u2026 ${fmt(recTime)}` : "Tap \u23fa to start recording")))));
+    // -- Step 1: Edit --
+    if (step === 1)
+        return (React.createElement("div", { style: { padding: "16px 16px 80px" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 } },
+                React.createElement("button", { onClick: () => { setStep(0); setVideoURL(null); }, style: { background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer" } }, "\u2190"),
+                React.createElement("span", { style: { fontSize: 14, fontWeight: 700 } }, "Edit Video"),
+                React.createElement("button", { onClick: () => setStep(2), style: { padding: "8px 18px", background: "#c9a84c", border: "none", borderRadius: 10, color: "#1a0a2e", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Next \u2192")),
+            React.createElement("div", { style: { borderRadius: 14, overflow: "hidden", background: "#0", marginBottom: 16, position: "relative" } },
+                videoURL && React.createElement("video", { ref: videoRef, src: videoURL, style: { width: "100%", maxHeight: 200, objectFit: "contain", display: "block", filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%)` }, playsInline: true, loop: true }),
+                React.createElement("button", { onClick: () => { if (videoRef.current) {
+                        videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+                    } }, style: { position: "absolute", inset: 0, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } },
+                    React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 } }, "\u25B6"))),
+            React.createElement(Label, null, "TRIM"),
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+                React.createElement("div", { style: { height: 36, background: "rgba(255,255,255,0.06)", borderRadius: 8, position: "relative", marginBottom: 12, overflow: "hidden" } },
+                    React.createElement("div", { style: { position: "absolute", left: `${(trim.start / 120) * 100}%`, right: `${((120 - trim.end) / 120) * 100}%`, top: 0, bottom: 0, background: "rgba(201,168,76,0.25)", border: "1px solid rgba(201,168,76,0.6)" } }),
+                    React.createElement("div", { style: { position: "absolute", inset: "5px 0", display: "flex", gap: 1, padding: "0 3px", opacity: 0.35 } }, Array.from({ length: 50 }).map((_, i) => React.createElement("div", { key: i, style: { flex: 1, borderRadius: 1, height: `${20 + Math.sin(i * 0.5) * 60}%`, background: "#c9a84c", alignSelf: "flex-end" } }))),
+                    React.createElement("div", { style: { position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 700 } },
+                        trim.end - trim.start,
+                        "s")),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+                    React.createElement(SliderRow, { label: "Start", value: trim.start, min: 0, max: trim.end - 1, accent: "#c9a84c", unit: "s", onChange: v => setTrim(p => (Object.assign(Object.assign({}, p), { start: v }))) }),
+                    React.createElement(SliderRow, { label: "End", value: trim.end, min: trim.start + 1, max: 120, accent: "#4cb8c4", unit: "s", onChange: v => setTrim(p => (Object.assign(Object.assign({}, p), { end: v }))) }))),
+            React.createElement(Label, null, "FILTERS"),
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+                [["Brightness", filters.brightness, "brightness", "#c9a84c"], ["Contrast", filters.contrast, "contrast", "#4cb8c4"], ["Saturation", filters.saturation, "saturation", "#e8a87c"]].map(([l, v, k, a]) => (React.createElement(SliderRow, { key: k, label: l, value: v, min: 0, max: 200, accent: a, unit: "%", onChange: val => setFilters(p => (Object.assign(Object.assign({}, p), { [k]: val }))) }))),
+                React.createElement("button", { onClick: () => setFilters({ brightness: 100, contrast: 100, saturation: 100 }), style: { background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 11, cursor: "pointer", marginTop: 4 } }, "\u21BA Reset")),
+            React.createElement(Label, null, "SPEED"),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, SPEEDS.map(s => React.createElement("button", { key: s, onClick: () => setSpeed(s), style: { flex: 1, padding: "8px 0", background: speed === s ? "#c9a84c22" : "rgba(255,255,255,0.5)", border: `1px solid ${speed === s ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, color: speed === s ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: speed === s ? 700 : 400, fontSize: 11, cursor: "pointer" } },
+                s,
+                "x"))),
+            React.createElement(Label, null, "VOLUME"),
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+                React.createElement(SliderRow, { label: "Volume", value: volume, min: 0, max: 100, accent: "#a084e8", unit: "%", onChange: setVolume })),
+            React.createElement(Label, null, "THUMBNAIL"),
+            React.createElement("div", { style: { display: "flex", gap: 10, alignItems: "center", marginBottom: 14 } },
+                React.createElement("div", { style: { width: 80, height: 48, borderRadius: 10, overflow: "hidden", background: "#1a0a2e", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 } }, thumbnail ? React.createElement("img", { loading: "lazy", decoding: "async", src: thumbnail, style: { width: "100%", height: "100%", objectFit: "cover" } }) : "\uD83D\uDDBC"),
+                React.createElement("label", { style: { flex: 1, padding: "10px", background: "rgba(255,255,255,0.05)", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, cursor: "pointer", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.5)" } },
+                    React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: handleThumb }),
+                    thumbnail ? "Change thumbnail" : "Upload thumbnail")),
+            React.createElement("button", { onClick: () => setStep(2), style: primaryBtn("#c9a84c") }, "Continue \u2192")));
+    // -- Step 2: Details & Publish --
+    return (React.createElement("div", { style: { padding: "16px 16px 80px" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 } },
+            React.createElement("button", { onClick: () => setStep(1), style: { background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 20, cursor: "pointer" } }, "\u2190"),
+            React.createElement("span", { style: { fontSize: 14, fontWeight: 700 } }, "Post Details"),
+            React.createElement("div", { style: { width: 36 } })),
+        React.createElement(Label, null, "TITLE *"),
+        React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), style: Object.assign(Object.assign({}, inputSt), { borderColor: title ? "rgba(255,255,255,0.12)" : "rgba(239,68,68,0.5)", marginBottom: 14 }), placeholder: "Give your video a title\u2026" }),
+        React.createElement(Label, null, "CAPTION"),
+        React.createElement("textarea", { value: caption, onChange: e => setCaption(e.target.value), rows: 2, style: Object.assign(Object.assign({}, inputSt), { resize: "none", marginBottom: 14 }), placeholder: "What's the story behind this?" }),
+        React.createElement(Label, null, "CATEGORY"),
+        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 } }, CATS.map(c => React.createElement("button", { key: c, onClick: () => setCategory(c), style: { padding: "6px 12px", background: category === c ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${category === c ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: category === c ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: category === c ? 700 : 400, fontSize: 11, cursor: "pointer" } }, c))),
+        React.createElement(Label, null, "TAGS"),
+        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 } }, tags.map((t, i) => React.createElement("span", { key: t, style: { background: "rgba(201,168,76,0.14)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 20, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center", gap: 5 } },
+            "#",
+            t,
+            React.createElement("button", { onClick: () => setTags(p => p.filter((_, j) => j !== i)), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 13, cursor: "pointer", lineHeight: 1 } }, "\u00D7")))),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+            React.createElement("input", { value: tagIn, onChange: e => setTagIn(e.target.value), onKeyDown: e => { if (e.key === "Enter")
+                    addTag(); }, placeholder: "Add tag\u2026", style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }),
+            React.createElement("button", { onClick: addTag, style: { padding: "0 14px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 18, cursor: "pointer" } }, "+")),
+        React.createElement(Label, null, "VISIBILITY"),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, [["\uD83C\uDF0D", "public", "Everyone"], ["\uD83D\uDC65", "followers", "Followers"], ["\uD83D\uDD12", "private", "Only me"]].map(([icon, val, label]) => (React.createElement("button", { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: "9px 4px", background: visibility === val ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.4)", border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: "pointer", textAlign: "center" } },
+            React.createElement("div", { style: { fontSize: 16, marginBottom: 2 } }, icon),
+            label)))),
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "2px 0", marginBottom: 16 } }, [["Open for Collaboration", "Let others request to work with you", collab, () => setCollab(p => !p)],
+            ["Allow Comments", "Others can comment", allowComments, () => setAllowComments(p => !p)]].map(([label, sub, val, fn]) => (React.createElement("div", { key: label, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.04)" } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, label),
+                React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)" } }, sub)),
+            React.createElement(Toggle, { on: val, onToggle: fn }))))),
+        React.createElement("button", { onClick: () => publish(false), style: primaryBtn("#c9a84c") }, "\uD83D\uDE80 Publish to Feed"),
+        React.createElement("button", { onClick: () => publish(true), style: Object.assign(Object.assign({}, primaryBtn("rgba(255,255,255,0.1)")), { color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }) }, "\uD83D\uDCBE Save to Profile Only"),
+        React.createElement("button", { onClick: () => show("Draft saved \u2713"), style: ghostBtn }, "Save as Draft")));
+}
+// --- Audio Post Tab ---------------------------------------------------
+function AudioPostTab({ show, setTab }) {
+    const [mode, setMode] = useState("upload"); // upload | record
+    const [audioFile, setAudioFile] = useState(null);
+    const [audioURL, setAudioURL] = useState(null);
+    const [title, setTitle] = useState("");
+    const [caption, setCaption] = useState("");
+    const [type, setType] = useState("Recording");
+    const [tags, setTags] = useState([]);
+    const [tagIn, setTagIn] = useState("");
+    const [playing, setPlaying] = useState(false);
+    const [volume, setVolume] = useState(80);
+    const [collab, setCollab] = useState(false);
+    const [visibility, setVisibility] = useState("public");
+    // Recording
+    const [recording, setRecording] = useState(false);
+    const [recTime, setRecTime] = useState(0);
+    const [recBlob, setRecBlob] = useState(null);
+    const [waveData, setWaveData] = useState(Array.from({ length: 48 }, () => 30 + Math.random() * 50));
+    const mediaRecRef = useRef(null);
+    const streamRef = useRef(null);
+    const recTimer = useRef(null);
+    const audioRef = useRef(null);
+    const analyserRef = useRef(null);
+    const animRef = useRef(null);
+    const TYPES = ["Recording", "Demo", "Live Take", "Rehearsal Audio", "Composition", "Voice Memo"];
+    const addTag = () => { if (tagIn.trim()) {
+        setTags(p => [...p, tagIn.trim()]);
+        setTagIn("");
+    } };
+    const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = stream;
+            // Live waveform via AnalyserNode
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 128;
+            source.connect(analyser);
+            analyserRef.current = analyser;
+            const draw = () => {
+                const data = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(data);
+                setWaveData(Array.from(data.slice(0, 48)).map(v => 8 + (v / 255) * 88));
+                animRef.current = requestAnimationFrame(draw);
+            };
+            draw();
+            const rec = new MediaRecorder(stream);
+            const chunks = [];
+            rec.ondataavailable = e => { if (e.data.size > 0)
+                chunks.push(e.data); };
+            rec.onstop = () => {
+                cancelAnimationFrame(animRef.current);
+                ctx.close();
+                const blob = new Blob(chunks, { type: "audio/webm" });
+                setRecBlob(blob);
+                setAudioURL(URL.createObjectURL(blob));
+                setTitle("My Recording " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+                stream.getTracks().forEach(t => t.stop());
+            };
+            rec.start(100);
+            mediaRecRef.current = rec;
+            setRecording(true);
+            setRecTime(0);
+            recTimer.current = setInterval(() => setRecTime(t => t + 1), 1000);
+        }
+        catch (e) {
+            show("\uD83C\uDF99 Mic access denied - check browser permissions");
+        }
+    };
+    const stopRecording = () => {
+        var _a;
+        (_a = mediaRecRef.current) === null || _a === void 0 ? void 0 : _a.stop();
+        clearInterval(recTimer.current);
+        setRecording(false);
+    };
+    const togglePlay = () => {
+        if (!audioRef.current)
+            return;
+        audioRef.current.paused ? audioRef.current.play() : audioRef.current.pause();
+        setPlaying(p => !p);
+    };
+    useEffect(() => () => {
+        var _a;
+        (_a = streamRef.current) === null || _a === void 0 ? void 0 : _a.getTracks().forEach(t => t.stop());
+        clearInterval(recTimer.current);
+        cancelAnimationFrame(animRef.current);
+    }, []);
+    const publish = async (saveToProfile = false) => {
+        if (!title.trim()) {
+            show("\u26a0\ufe0f Add a title first");
+            return;
+        }
+        if (saveToProfile) {
+            show("\uD83D\uDCBE Saved to your profile media!");
+        }
+        else {
+            // Save audio post to Supabase
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                supabase.from("posts").insert({ user_id: user.id, type: "audio", title, caption, tags, visibility, collab_open: collab });
+            }
+            show("\uD83C\uDFB5 Audio posted to your feed!");
+            setTimeout(() => setTab(0), 600);
+        }
+    };
+    return (React.createElement("div", { style: { padding: "18px 16px 80px" } },
+        React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 14 } }, "Post Audio"),
+        React.createElement("div", { style: { display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: 3, marginBottom: 18 } }, [["upload", "\uD83D\uDCC1 Upload"], ["record", "\uD83C\uDF99 Record"]].map(([m, l]) => (React.createElement("button", { key: m, onClick: () => setMode(m), style: { flex: 1, padding: "9px", background: mode === m ? "#c9a84c" : "none", border: "none", borderRadius: 10, color: mode === m ? "#1a0a2e" : "rgba(255,255,255,0.5)", fontWeight: mode === m ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
+        mode === "upload" ? (React.createElement("label", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "22px", background: audioFile ? "rgba(201,168,76,0.08)" : "rgba(255,255,255,0.4)", border: `1px dashed ${audioFile ? "#c9a84c" : "rgba(255,255,255,0.2)"}`, borderRadius: 16, cursor: "pointer", marginBottom: 16 } },
+            React.createElement("input", { type: "file", accept: "audio/*", style: { display: "none" }, onChange: e => {
+                    var _a;
+                    const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0];
+                    if (!f)
+                        return;
+                    setAudioFile(f);
+                    setAudioURL(URL.createObjectURL(f));
+                    setTitle(f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
+                } }),
+            React.createElement("span", { style: { fontSize: 32 } }, audioFile ? "\uD83C\uDFB5" : "\uD83C\uDF99"),
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: audioFile ? "#c9a84c" : "rgba(255,255,255,0.7)" } }, audioFile ? audioFile.name : "Tap to upload audio"),
+                React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 } }, audioFile ? "Audio ready" : "MP3 \u00b7 WAV \u00b7 AAC \u00b7 M4A")))) : (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#0d0515)", borderRadius: 16, padding: "20px", marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "center" } },
+            React.createElement("div", { style: { display: "flex", gap: 1.5, height: 64, alignItems: "flex-end", width: "100%", marginBottom: 16 } }, waveData.map((h, i) => (React.createElement("div", { key: i, style: { flex: 1, borderRadius: 2, height: `${h}%`, background: recording ? `linear-gradient(to top,#c9a84c,#e8a87c)` : "rgba(255,255,255,0.15)", transition: recording ? "none" : "height 0.3s", transformOrigin: "bottom" } })))),
+            React.createElement("div", { style: { fontSize: 28, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", color: recording ? "#ef4444" : "rgba(255,255,255,0.4)", marginBottom: 16, letterSpacing: "0.05em" } }, fmt(recTime)),
+            !recording ? (React.createElement("button", { onClick: startRecording, style: { width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "4px solid rgba(255,255,255,0.2)", fontSize: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\uD83C\uDF99")) : (React.createElement("button", { onClick: stopRecording, style: { width: 72, height: 72, borderRadius: "50%", background: "#ef4444", border: "4px solid rgba(255,255,255,0.03)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", animation: "liveDot 1s infinite" } },
+                React.createElement("div", { style: { width: 24, height: 24, background: "#fff", borderRadius: 4 } }))),
+            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 10 } }, recording ? "Recording - tap to stop" : "Tap to start recording"),
+            audioURL && !recording && (React.createElement("div", { style: { marginTop: 14, width: "100%", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 } },
+                React.createElement("audio", { ref: audioRef, src: audioURL, onEnded: () => setPlaying(false) }),
+                React.createElement("button", { onClick: togglePlay, style: { width: 36, height: 36, borderRadius: "50%", background: "#c9a84c", border: "none", color: "#1a0a2e", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, playing ? "\u23f8" : "\u25b6"),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("div", { style: { fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)" } }, "Recording preview"),
+                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.4)" } },
+                        fmt(recTime),
+                        " \u00B7 ready to post")))))),
+        audioURL && mode === "upload" && (React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#0d0515)", borderRadius: 14, padding: "14px", marginBottom: 16 } },
+            React.createElement("audio", { ref: audioRef, src: audioURL, onEnded: () => setPlaying(false) }),
+            React.createElement("div", { style: { display: "flex", gap: 2, height: 48, alignItems: "flex-end", marginBottom: 10 } }, Array.from({ length: 48 }).map((_, i) => (React.createElement("div", { key: i, className: playing ? "bar" : "", style: { flex: 1, borderRadius: 2, height: `${15 + Math.abs(Math.sin(i * 0.4) * 70)}%`, background: "linear-gradient(to top,#c9a84c,#e8a87c88)", transformOrigin: "bottom" } })))),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+                React.createElement("button", { onClick: togglePlay, style: { width: 38, height: 38, borderRadius: "50%", background: "#c9a84c", border: "none", color: "#1a0a2e", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, playing ? "\u23f8" : "\u25b6"),
+                React.createElement("div", { style: { flex: 1, height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2 } },
+                    React.createElement("div", { style: { width: playing ? "30%" : "0%", height: "100%", background: "#c9a84c", borderRadius: 2, transition: "width 0.5s linear" } }))))),
+        React.createElement(Label, null, "TITLE"),
+        React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), style: Object.assign(Object.assign({}, inputSt), { marginBottom: 14 }), placeholder: "Recording title\u2026" }),
+        React.createElement(Label, null, "CAPTION"),
+        React.createElement("textarea", { value: caption, onChange: e => setCaption(e.target.value), rows: 2, style: Object.assign(Object.assign({}, inputSt), { resize: "none", marginBottom: 14 }), placeholder: "What's this recording?" }),
+        React.createElement(Label, null, "TYPE"),
+        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 } }, TYPES.map(t => React.createElement("button", { key: t, onClick: () => setType(t), style: { padding: "6px 12px", background: type === t ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${type === t ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: type === t ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: type === t ? 700 : 400, fontSize: 11, cursor: "pointer" } }, t))),
+        React.createElement(Label, null, "VOLUME"),
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } },
+            React.createElement(SliderRow, { label: "Volume", value: volume, min: 0, max: 100, accent: "#a084e8", unit: "%", onChange: setVolume })),
+        React.createElement(Label, null, "TAGS"),
+        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 } }, tags.map((t, i) => React.createElement("span", { key: t, style: { background: "rgba(201,168,76,0.14)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 20, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center", gap: 5 } },
+            "#",
+            t,
+            React.createElement("button", { onClick: () => setTags(p => p.filter((_, j) => j !== i)), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 13, cursor: "pointer" } }, "\u00D7")))),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+            React.createElement("input", { value: tagIn, onChange: e => setTagIn(e.target.value), onKeyDown: e => { if (e.key === "Enter")
+                    addTag(); }, placeholder: "Add tag\u2026", style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }),
+            React.createElement("button", { onClick: addTag, style: { padding: "0 14px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 18, cursor: "pointer" } }, "+")),
+        React.createElement(Label, null, "VISIBILITY"),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, [["\uD83C\uDF0D", "public", "Everyone"], ["\uD83D\uDC65", "followers", "Followers"], ["\uD83D\uDD12", "private", "Only me"]].map(([icon, val, label]) => (React.createElement("button", { key: val, onClick: () => setVisibility(val), style: { flex: 1, padding: "9px 4px", background: visibility === val ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.4)", border: `1px solid ${visibility === val ? "#c9a84c" : "rgba(255,255,255,0.08)"}`, borderRadius: 12, color: visibility === val ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: visibility === val ? 700 : 400, fontSize: 11, cursor: "pointer", textAlign: "center" } },
+            React.createElement("div", { style: { fontSize: 16, marginBottom: 2 } }, icon),
+            label)))),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "13px 16px", marginBottom: 18 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, "Open for Collaboration"),
+                React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.35)" } }, "Invite others to add to this track")),
+            React.createElement(Toggle, { on: collab, onToggle: () => setCollab(p => !p) })),
+        React.createElement("button", { onClick: () => publish(false), style: primaryBtn("#c9a84c") }, "\uD83C\uDFB5 Post Audio"),
+        React.createElement("button", { onClick: () => publish(true), style: Object.assign(Object.assign({}, primaryBtn("rgba(255,255,255,0.1)")), { color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.15)" }) }, "\uD83D\uDCBE Save to Profile Only"),
+        React.createElement("button", { onClick: () => show("Draft saved \u2713"), style: ghostBtn }, "Save as Draft")));
+}
+// --- Poster Maker Tab -------------------------------------------------
+function PosterMakerTab({ show, setTab }) {
+    const [pTheme, setPTheme] = useState(0);
+    const [pTitle, setPTitle] = useState("The Midnight Serenade");
+    const [pSub, setPSub] = useState("An Original Musical");
+    const [pDate, setPDate] = useState("April 19, 2026");
+    const [pVenue, setPVenue] = useState("The Grand Stage Theatre");
+    const [pTag, setPTag] = useState("WORLD PREMIERE");
+    const [pCast, setPCast] = useState("");
+    const [pDirector, setPDirector] = useState("");
+    const [bgImg, setBgImg] = useState(null);
+    const [logoImg, setLogoImg] = useState(null);
+    const pt = POSTER_THEMES[pTheme];
+    const handleBgImg = (e) => { var _a; const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0]; if (!f)
+        return; const r = new FileReader(); r.onload = ev => setBgImg(ev.target.result); r.readAsDataURL(f); };
+    const handleLogoImg = (e) => { var _a; const f = (_a = e.target.files) === null || _a === void 0 ? void 0 : _a[0]; if (!f)
+        return; const r = new FileReader(); r.onload = ev => setLogoImg(ev.target.result); r.readAsDataURL(f); };
+    return (React.createElement("div", { style: { padding: "18px 16px 80px" } },
+        React.createElement("div", { style: { borderRadius: 20, overflow: "hidden", height: 310, position: "relative", marginBottom: 20,
+                background: bgImg ? `url(${bgImg}) center/cover no-repeat` : pt.bg } },
+            bgImg && React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.52)" } }),
+            React.createElement("div", { style: { position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: "200%", height: "200%", background: `radial-gradient(circle, ${pt.accent}22 0%, transparent 60%)`, animation: "spotlight 8s ease-in-out infinite", pointerEvents: "none" } }),
+            React.createElement("div", { style: { position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "200%", height: "75%", background: "linear-gradient(to top, rgba(0,0,0,0.9), transparent)", pointerEvents: "none" } }),
+            React.createElement("div", { style: { position: "absolute", top: 14, left: 14, bottom: 14, right: 14, border: `1px solid ${pt.accent}44`, borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, padding: "16px 12px" } },
+                logoImg && React.createElement("img", { loading: "lazy", decoding: "async", src: logoImg, style: { height: 36, objectFit: "contain", marginBottom: 4 } }),
+                React.createElement("div", { style: { fontSize: 9, color: pt.accent, letterSpacing: "0.32em", textAlign: "center" } }, pTag),
+                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontSize: clamp(pTitle), fontWeight: 700, textAlign: "center", lineHeight: 1.15, color: "#fff" } }, pTitle),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.62)", textAlign: "center" } }, pSub),
+                React.createElement("div", { style: { width: 32, height: 1, background: pt.accent } }),
+                React.createElement("div", { style: { fontSize: 11, color: pt.accent, letterSpacing: "0.08em" } }, pDate),
+                React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.42)" } }, pVenue),
+                pCast && React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.55)", textAlign: "center", marginTop: 2 } },
+                    "Starring: ",
+                    pCast),
+                pDirector && React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.35)", textAlign: "center" } },
+                    "Dir. ",
+                    pDirector),
+                React.createElement("div", { style: { position: "absolute", bottom: 8, right: 10, fontSize: 7, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em" } }, "STAGELAB"))),
+        React.createElement(Label, null, "THEME"),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+            POSTER_THEMES.map((t, i) => (React.createElement("button", { key: t.name, onClick: () => { setPTheme(i); setBgImg(null); }, style: { flex: 1, height: 38, borderRadius: 10, background: t.bg, border: `2px solid ${pTheme === i && !bgImg ? t.accent : "transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, pTheme === i && !bgImg && React.createElement("span", { style: { color: t.accent, fontSize: 14 } }, "\u2713")))),
+            React.createElement("label", { style: { width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: `2px solid ${bgImg ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }, title: "Custom background photo" },
+                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: handleBgImg }),
+                "\uD83D\uDDBC"),
+            React.createElement("label", { style: { width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: `2px solid ${logoImg ? "#4cb8c4" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }, title: "Add logo/crest" },
+                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: handleLogoImg }),
+                "\u269C\uFE0F")),
+        React.createElement(Label, null, "SHOW DETAILS"),
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "14px 16px", marginBottom: 14 } }, [["BADGE", pTag, setPTag, "e.g. WORLD PREMIERE"], ["TITLE", pTitle, setPTitle, "Show title"], ["SUBTITLE", pSub, setPSub, "e.g. An Original Musical"], ["DATE", pDate, setPDate, "April 19, 2026"], ["VENUE", pVenue, setPVenue, "Theatre name"], ["STARRING", pCast, setPCast, "Lead cast (optional)"], ["DIRECTED BY", pDirector, setPDirector, "Director (optional)"]].map(([l, v, s, ph]) => (React.createElement("div", { key: l, style: { marginBottom: 11 } },
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", marginBottom: 4 } }, l),
+            React.createElement("input", { value: v, onChange: e => s(e.target.value), placeholder: ph, style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }))))),
+        React.createElement("button", { onClick: () => show("\uD83D\uDDBC Poster saved to your camera roll!"), style: primaryBtn(pt.accent) }, "\u2B07 Download Poster"),
+        React.createElement("button", { onClick: () => { show("\u2713 Poster shared to your feed!"); setTab(0); }, style: ghostBtn }, "Share to Feed")));
+}
+// --- Lyrics Post Tab --------------------------------------------------
+function LyricsPostTab({ show, setTab }) {
+    const [title, setTitle] = useState("");
+    const [lyrics, setLyrics] = useState("");
+    const [mood, setMood] = useState("Original");
+    const [collab, setCollab] = useState(false);
+    const [tags, setTags] = useState([]);
+    const [tagIn, setTagIn] = useState("");
+    const [theme, setTheme] = useState(0);
+    const [accentCol, setAccentCol] = useState("#c9a84c");
+    const [showPrev, setShowPrev] = useState(true);
+    const MOODS = ["Original", "Ballad", "Up-Tempo", "Jazz", "Rock", "Contemporary", "Folk", "Cabaret"];
+    const ACCENTS = ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#ef4444", "#4ade80"];
+    const STRUCTURES = ["Verse", "Pre-Chorus", "Chorus", "Bridge", "Outro", "Tag"];
+    const addTag = () => { if (tagIn.trim()) {
+        setTags(p => [...p, tagIn.trim()]);
+        setTagIn("");
+    } };
+    const charCount = lyrics.length;
+    const insertSection = (label) => {
+        const insert = `\n[${label}]\n`;
+        setLyrics(p => p + insert);
+    };
+    return (React.createElement("div", { style: { padding: "18px 16px 80px" } },
+        React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 4 } }, "Post Lyrics"),
+        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginBottom: 16 } }, "Share your words with the world"),
+        React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 16, alignItems: "center" } },
+            React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em" } }, "ACCENT"),
+            ACCENTS.map(c => (React.createElement("button", { key: c, onClick: () => setAccentCol(c), style: { width: 26, height: 26, borderRadius: "50%", background: c, border: `3px solid ${accentCol === c ? "#fff" : "transparent"}`, cursor: "pointer", flexShrink: 0 } }))),
+            React.createElement("button", { onClick: () => setShowPrev(p => !p), style: { marginLeft: "auto", padding: "5px 12px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" } },
+                showPrev ? "Hide" : "Show",
+                " preview")),
+        showPrev && (title || lyrics) && (React.createElement("div", { style: { background: POSTER_THEMES[theme].bg, borderRadius: 16, padding: "20px 18px", marginBottom: 16, border: `1px solid ${accentCol}33`, position: "relative", overflow: "hidden" } },
+            React.createElement("div", { style: { position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: "200%", height: "200%", background: `radial-gradient(circle, ${accentCol}12 0%, transparent 60%)`, pointerEvents: "none" } }),
+            title && React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 8, textAlign: "center" } }, title),
+            React.createElement("div", { style: { width: 28, height: 1, background: accentCol, margin: "0 auto 12px" } }),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.85, whiteSpace: "pre-line", textAlign: "center", fontFamily: "'Cormorant Garamond',serif", fontStyle: "italic" } },
+                lyrics.slice(0, 240),
+                lyrics.length > 240 ? "\n\u2026" : ""),
+            React.createElement("div", { style: { marginTop: 10, textAlign: "center" } },
+                React.createElement("span", { style: { fontSize: 9, color: accentCol, letterSpacing: "0.15em" } }, "\u2014 Alex Rivera")))),
+        React.createElement(Label, null, "SONG TITLE"),
+        React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), style: Object.assign(Object.assign({}, inputSt), { marginBottom: 14 }), placeholder: "Song or poem title\u2026" }),
+        React.createElement("div", { style: { display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" } }, STRUCTURES.map(s => (React.createElement("button", { key: s, onClick: () => insertSection(s), style: { padding: "5px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, color: "rgba(255,255,255,0.5)", fontSize: 11, cursor: "pointer" } },
+            "+ ",
+            s)))),
+        React.createElement(Label, null,
+            "LYRICS / WORDS ",
+            React.createElement("span", { style: { color: "rgba(255,255,255,0.3)", fontWeight: 400 } },
+                "(",
+                charCount,
+                " chars)")),
+        React.createElement("textarea", { value: lyrics, onChange: e => setLyrics(e.target.value), rows: 10, style: Object.assign(Object.assign({}, inputSt), { resize: "vertical", fontFamily: "'Cormorant Garamond',serif", fontSize: 14, lineHeight: 1.85, marginBottom: 6 }), placeholder: "[Verse 1]\nWrite your opening lines here\u2026\n\n[Chorus]\nYour hook\u2026" }),
+        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.25)", marginBottom: 14 } }, "Tip: Use [Verse], [Chorus], [Bridge] labels for structure"),
+        React.createElement(Label, null, "MOOD / STYLE"),
+        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 } }, MOODS.map(m => (React.createElement("button", { key: m, onClick: () => setMood(m), style: { padding: "7px 14px", background: mood === m ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${mood === m ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: mood === m ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: mood === m ? 700 : 400, fontSize: 12, cursor: "pointer" } }, m)))),
+        React.createElement(Label, null, "CARD BACKGROUND"),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } }, POSTER_THEMES.map((t, i) => (React.createElement("button", { key: t.name, onClick: () => setTheme(i), style: { flex: 1, height: 32, borderRadius: 8, background: t.bg, border: `2px solid ${theme === i ? accentCol : "transparent"}`, cursor: "pointer" } })))),
+        React.createElement(Label, null, "TAGS"),
+        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 } }, tags.map((t, i) => (React.createElement("span", { key: t, style: { background: "rgba(201,168,76,0.14)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 20, padding: "5px 12px", fontSize: 12, color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center", gap: 6 } },
+            "#",
+            t,
+            React.createElement("button", { onClick: () => setTags(p => p.filter((_, j) => j !== i)), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", lineHeight: 1, padding: 0 } }, "\u00D7"))))),
+        React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 14 } },
+            React.createElement("input", { value: tagIn, onChange: e => setTagIn(e.target.value), onKeyDown: e => { if (e.key === "Enter")
+                    addTag(); }, placeholder: "Add a tag\u2026", style: Object.assign(Object.assign({}, inputSt), { marginBottom: 0 }) }),
+            React.createElement("button", { onClick: addTag, style: { padding: "0 16px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 18, cursor: "pointer" } }, "+")),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.03)", borderRadius: 14, padding: "13px 16px", marginBottom: 20 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, "Open for Collaboration"),
+                React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)" } }, "Others can add music or arrange this")),
+            React.createElement(Toggle, { on: collab, onToggle: () => setCollab(p => !p) })),
+        React.createElement("button", { onClick: () => { if (!title.trim()) {
+                show("\u26a0\ufe0f Add a song title first");
+                return;
+            } if (!lyrics.trim()) {
+                show("\u26a0\ufe0f Add some lyrics first");
+                return;
+            } show("\u270d\ufe0f Lyrics posted to your feed!"); setTab(0); }, style: primaryBtn("#c9a84c") }, "\u270D\uFE0F Post Lyrics"),
+        React.createElement("button", { onClick: () => show("\uD83D\uDCDD Draft saved \u2713"), style: ghostBtn }, "Save as Draft")));
+}
+// --------------------------- DISCOVER -------------------------------
+// -- Discover data ----------------------------------------------------
+const DISCOVER_PEOPLE = [
+    { id: 1, name: "Sofia Chen", handle: "@sofiac", role: "Composer & Producer", location: "New York, NY", skills: ["Jazz", "Orchestration", "Piano"], accent: "#c9a84c", following: false, avatar: "SC", bio: "Award-winning composer. 3 off-Broadway credits. Looking for lyricists." },
+    { id: 2, name: "Marcus Bell", handle: "@marcusb", role: "Musical Director", location: "Chicago, IL", skills: ["Conducting", "Vocal Direction", "Piano"], accent: "#4cb8c4", following: false, avatar: "MB", bio: "Musical director with 10 years regional theatre. Available for new works." },
+    { id: 3, name: "Dana Flores", handle: "@danaf", role: "Playwright & Director", location: "Los Angeles, CA", skills: ["Playwriting", "Direction", "Dramaturgy"], accent: "#e8a87c", following: true, avatar: "DF", bio: "Two-time NAMT semifinalist. Passionate about new musical development." },
+    { id: 4, name: "Jamie Lee", handle: "@jamiel", role: "Percussionist", location: "Nashville, TN", skills: ["Drums", "Arrangement", "Rock Musical"], accent: "#a084e8", following: false, avatar: "JL", bio: "Drummer and arranger. Rock musical specialist. Stipend projects preferred." },
+    { id: 5, name: "Priya Nair", handle: "@priyan", role: "Lyricist & Poet", location: "Remote", skills: ["Lyrics", "Poetry", "Contemporary"], accent: "#e8507c", following: false, avatar: "PN", bio: "Lyricist focused on diverse stories. Fluent in English, Hindi, and Tamil." },
+    { id: 6, name: "Jonah Strauss", handle: "@jonahs", role: "Conductor & Arranger", location: "Boston, MA", skills: ["Conducting", "Strings", "Film Score"], accent: "#50c8a8", following: true, avatar: "JS", bio: "Berklee grad. Film score composer and pit conductor for regional tours." },
+];
+const DISCOVER_PROJECTS = [
+    { id: 1, title: "The Midnight Serenade", type: "Jazz Musical", status: "Seeking Lyricist", location: "San Diego / Remote", accent: "#c9a84c", members: 3, desc: "1920s New Orleans murder mystery. Act I complete. Need sharp, witty lyrics with a blues edge." },
+    { id: 2, title: "Neon Requiem", type: "Rock Musical", status: "Workshop Stage", location: "New York", accent: "#a084e8", members: 5, desc: "Dystopian 2049. Strong belters needed. 3-day paid workshop in May." },
+    { id: 3, title: "Static", type: "Contemporary", status: "Seeking Composer", location: "Remote Friendly", accent: "#4cb8c4", members: 2, desc: "Two-hander about a long-distance couple. Indie/folk sound. Intimate and modern." },
+    { id: 4, title: "Borrowed Time", type: "Drama Musical", status: "Open Auditions", location: "New York / Hybrid", accent: "#e8a87c", members: 4, desc: "90-min two-hander. Lyricist attached. Need lead performers - soprano and baritone." },
+    { id: 5, title: "The Last Waltz", type: "Period Musical", status: "Seeking Tenor Lead", location: "San Diego / Remote", accent: "#e8507c", members: 6, desc: "1940s period piece. Dramatic tenor A2-Bb4. Movement experience preferred." },
+];
+const DISCOVER_CALLS = [
+    { id: 1, title: "Into the Woods - The Witch", company: "Old Globe Theatre", deadline: "Apr 20", type: "Audition", paid: true, remote: false, accent: "#c9a84c", desc: "Mezzo-soprano. 16 bars + ballad. Dance call follows." },
+    { id: 2, title: "Ensemble - In the Heights", company: "La Jolla Playhouse", deadline: "Apr 25", type: "Audition", paid: true, remote: false, accent: "#4cb8c4", desc: "All voice types. Up-tempo 16 bars. All ethnicities encouraged." },
+    { id: 3, title: "Composer - Neon Dreams", company: "Independent", deadline: "May 10", type: "Collab Call", paid: false, remote: true, accent: "#a084e8", desc: "Electronic + orchestral hybrid. Looking for composer with film score background." },
+    { id: 4, title: "Lead Vocalist - Static", company: "New Works Festival", deadline: "May 15", type: "Collab Call", paid: true, remote: true, accent: "#e8a87c", desc: "Self-tape accepted. Contemporary sound. Strong actor-singer." },
+];
+function DiscoverScreen({ show, onViewUser }) {
+    const [tab, setTab] = useState("people");
+    const [query, setQuery] = useState("");
+    const [followed, setFollowed] = useState({});
+    const [composeTo, setComposeTo] = useState(null);
+    const [me, setMe] = useState(null);
+    // Data
+    const cachedDisc = (() => { try { return JSON.parse(localStorage.getItem("sl_discover_cache") || "null"); } catch { return null; } })();
+    const [realUsers, setRealUsers] = useState(cachedDisc || []);
+    const [loadingUsers, setLoadingUsers] = useState(!cachedDisc);
+    const [trending, setTrending] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [loadingTrending, setLoadingTrending] = useState(true);
+    const [loadingEvents, setLoadingEvents] = useState(true);
+    // People filter
+    const [peopleFilter, setPeopleFilter] = useState("all"); // all | actor | director | md | choreo | designer | crew | following | new
+    useEffect(() => {
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setMe(user);
+            // Who am I following?
+            if (user) {
+                const { data: fl } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
+                if (fl) {
+                    const map = {};
+                    fl.forEach(f => { map[f.following_id] = true; });
+                    setFollowed(map);
+                }
+            }
+        })();
+    }, []);
+    // Load people
+    useEffect(() => {
+        supabase.from("profiles")
+            .select("id,name,handle,role,bio,location,avatar_url,created_at")
+            .order("created_at", { ascending: false })
+            .limit(50)
+            .then(({ data }) => {
+            if (data && data.length > 0) {
+                const mapped = data.filter(p => p.id).map(p => {
+                    var _a;
+                    return {
+                        id: p.id,
+                        name: p.name || ((_a = p.handle) === null || _a === void 0 ? void 0 : _a.replace("@", "")) || "StageLab User",
+                        handle: p.handle || "@user",
+                        role: p.role || "Theatre Maker",
+                        bio: p.bio || "StageLab member",
+                        location: p.location || "",
+                        avatar_url: p.avatar_url || null,
+                        created_at: p.created_at,
+                    };
+                });
+                setRealUsers(mapped);
+                try { localStorage.setItem("sl_discover_cache", JSON.stringify(mapped)); } catch (e) {}
+            }
+            setLoadingUsers(false);
+        });
+    }, []);
+    // Load trending (top creators by recent posts)
+    useEffect(() => {
+        (async () => {
+            try {
+                const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: posts } = await supabase.from("posts").select("user_id,likes,created_at").order("created_at", { ascending: false }).limit(200);
+                if (!posts) { setLoadingTrending(false); return; }
+                const recent = posts.filter(p => p.created_at > since);
+                const score = {};
+                recent.forEach(p => { score[p.user_id] = (score[p.user_id] || 0) + 1 + (p.likes || 0) * 0.5; });
+                const topIds = Object.entries(score).sort((a, b) => b[1] - a[1]).slice(0, 10).map(e => e[0]);
+                if (topIds.length === 0) { setLoadingTrending(false); return; }
+                const { data: profs } = await supabase.from("profiles").select("id,name,handle,role,avatar_url,location").in("id", topIds);
+                if (profs) {
+                    const ordered = topIds.map(id => profs.find(p => p.id === id)).filter(Boolean).map(p => Object.assign(Object.assign({}, p), { postCount: Math.floor(score[p.id]) }));
+                    setTrending(ordered);
+                }
+            } catch (e) { console.warn("Trending load:", e); }
+            setLoadingTrending(false);
+        })();
+    }, []);
+    // Load events (live rooms + production events coming up)
+    useEffect(() => {
+        (async () => {
+            try {
+                const now = new Date().toISOString();
+                const soon = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: evts } = await supabase.from("production_events").select("id,production_id,type,title,starts_at,location").gte("starts_at", now).lte("starts_at", soon).order("starts_at", { ascending: true }).limit(20);
+                if (evts && evts.length) {
+                    const prodIds = [...new Set(evts.map(e => e.production_id))];
+                    const { data: prods } = await supabase.from("productions").select("id,title,poster_url").in("id", prodIds);
+                    const prodMap = {};
+                    (prods || []).forEach(p => { prodMap[p.id] = p; });
+                    setEvents(evts.map(e => Object.assign(Object.assign({}, e), { production: prodMap[e.production_id] })));
+                }
+            } catch (e) { console.warn("Events load:", e); }
+            setLoadingEvents(false);
+        })();
+    }, []);
+    // Filtering people
+    const filteredPeople = (() => {
+        let list = realUsers;
+        const q = query.trim().toLowerCase();
+        if (q) {
+            list = list.filter(p => (p.name || "").toLowerCase().includes(q) || (p.handle || "").toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q) || (p.location || "").toLowerCase().includes(q));
+        }
+        // Role filter
+        const roleMatch = (p, kw) => (p.role || "").toLowerCase().includes(kw);
+        if (peopleFilter === "actor") list = list.filter(p => roleMatch(p, "actor") || roleMatch(p, "performer"));
+        else if (peopleFilter === "director") list = list.filter(p => roleMatch(p, "director"));
+        else if (peopleFilter === "md") list = list.filter(p => roleMatch(p, "music"));
+        else if (peopleFilter === "choreo") list = list.filter(p => roleMatch(p, "choreo"));
+        else if (peopleFilter === "designer") list = list.filter(p => roleMatch(p, "design"));
+        else if (peopleFilter === "crew") list = list.filter(p => roleMatch(p, "crew") || roleMatch(p, "stage manager") || roleMatch(p, "tech"));
+        else if (peopleFilter === "following") list = list.filter(p => followed[p.id]);
+        else if (peopleFilter === "new") list = list.filter(p => { const d = new Date(p.created_at || 0); return (Date.now() - d.getTime()) < 14 * 24 * 60 * 60 * 1000; });
+        // Hide self
+        if (me) list = list.filter(p => p.id !== me.id);
+        return list;
+    })();
+    const toggleFollow = async (id) => {
+        const wasFollowed = followed[id];
+        setFollowed(p => Object.assign(Object.assign({}, p), { [id]: !wasFollowed }));
+        if (!me) { show("Sign in to follow"); return; }
+        if (wasFollowed) {
+            await supabase.from("follows").delete().eq("follower_id", me.id).eq("following_id", String(id));
+        } else {
+            await supabase.from("follows").insert({ follower_id: me.id, following_id: String(id) });
+            notify({ userId: String(id), type: "follow", title: "New follower", body: "Someone started following you", link: "profile" });
+        }
+    };
+    const ROLE_FILTERS = [
+        { k: "all", l: "All" },
+        { k: "actor", l: "Actors" },
+        { k: "director", l: "Directors" },
+        { k: "md", l: "MDs" },
+        { k: "choreo", l: "Choreo" },
+        { k: "designer", l: "Designers" },
+        { k: "crew", l: "Crew" },
+        { k: "following", l: "Following" },
+        { k: "new", l: "New" },
+    ];
+    return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
+        // SEARCH BAR (always visible)
+        React.createElement("div", { style: { padding: "14px 16px 10px", flexShrink: 0 } },
+            React.createElement("div", { style: { position: "relative" } },
+                React.createElement("input", { value: query, onChange: e => setQuery(e.target.value), placeholder: tab === "people" ? "Search people, roles, locations\u2026" : tab === "shows" ? "Search shows by title or venue\u2026" : tab === "trending" ? "Search creators\u2026" : "Search events\u2026", style: { width: "100%", padding: "12px 14px 12px 40px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "#fff", fontSize: 14, outline: "none" } }),
+                React.createElement("span", { style: { position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.5 } }, "\uD83D\uDD0D"),
+                query && React.createElement("button", { onClick: () => setQuery(""), style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", width: 24, height: 24, borderRadius: "50%", fontSize: 13, cursor: "pointer" } }, "\u00D7"))),
+        // SUB-TABS
+        React.createElement("div", { style: { display: "flex", padding: "0 12px", gap: 4, borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, overflowX: "auto" } },
+            [["people", "\uD83C\uDFAD People"], ["shows", "\uD83D\uDCCD Local Shows"], ["trending", "\uD83D\uDD25 Trending"], ["events", "\uD83D\uDCC5 Events"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setTab(k), style: { padding: "11px 14px", background: "none", border: "none", borderBottom: tab === k ? "2px solid #c9a84c" : "2px solid transparent", color: tab === k ? "#c9a84c" : "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: tab === k ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap", letterSpacing: "0.04em" } }, l))),
+        // CONTENT
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 16px 40px" } },
+            // PEOPLE TAB
+            tab === "people" && React.createElement("div", null,
+                React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 4 } },
+                    ROLE_FILTERS.map(f =>
+                        React.createElement("button", { key: f.k, onClick: () => setPeopleFilter(f.k), style: { flexShrink: 0, padding: "7px 13px", background: peopleFilter === f.k ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.04)", border: "1px solid " + (peopleFilter === f.k ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.08)"), borderRadius: 16, color: peopleFilter === f.k ? "#c9a84c" : "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" } }, f.l))),
+                loadingUsers && filteredPeople.length === 0
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "Loading people\u2026")
+                    : filteredPeople.length === 0
+                        ? React.createElement("div", { style: { textAlign: "center", padding: 50, color: "rgba(255,255,255,0.4)" } },
+                            React.createElement("div", { style: { fontSize: 38, marginBottom: 10, opacity: 0.5 } }, "\uD83C\uDFAD"),
+                            React.createElement("div", { style: { fontSize: 13 } }, query ? "No one matches " + JSON.stringify(query) : "No one here yet."))
+                        : filteredPeople.map(p =>
+                            React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, marginBottom: 8, cursor: "pointer", alignItems: "center" } },
+                                React.createElement("div", { style: { width: 50, height: 50, borderRadius: "50%", background: p.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 17, color: "#1a0a2e", flexShrink: 0 } },
+                                    p.avatar_url ? React.createElement("img", { src: p.avatar_url, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (p.name || "U").slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name),
+                                    React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginTop: 1 } }, p.role),
+                                    p.location && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 1 } }, "\uD83D\uDCCD " + p.location)),
+                                React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 } },
+                                    React.createElement("button", { onClick: (e) => { e.stopPropagation(); toggleFollow(p.id); }, style: { padding: "7px 14px", background: followed[p.id] ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: followed[p.id] ? "1px solid rgba(255,255,255,0.15)" : "none", borderRadius: 14, color: followed[p.id] ? "#fff" : "#1a0a2e", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, followed[p.id] ? "Following" : "Follow"),
+                                    React.createElement("button", { onClick: (e) => { e.stopPropagation(); setComposeTo({ id: p.id, name: p.name }); }, style: { padding: "7px 14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 600, cursor: "pointer" } }, "Message"))))),
+            // SHOWS TAB
+            tab === "shows" && React.createElement(LocalShowsPanel, { show: show, query: query }),
+            // TRENDING TAB
+            tab === "trending" && React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14 } }, "Top creators in the last 2 weeks"),
+                loadingTrending
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                    : trending.length === 0
+                        ? React.createElement("div", { style: { textAlign: "center", padding: 50, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No trending creators yet. Be the first \u2728")
+                        : trending.filter(p => !query || (p.name || "").toLowerCase().includes(query.toLowerCase())).map((p, i) =>
+                            React.createElement("div", { key: p.id, onClick: () => onViewUser && onViewUser(p.id), style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, marginBottom: 8, cursor: "pointer", alignItems: "center" } },
+                                React.createElement("div", { style: { fontSize: 20, fontWeight: 700, color: i < 3 ? "#c9a84c" : "rgba(255,255,255,0.4)", fontFamily: "'Cormorant Garamond',serif", minWidth: 28 } }, "#" + (i + 1)),
+                                React.createElement("div", { style: { width: 44, height: 44, borderRadius: "50%", background: p.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#1a0a2e", flexShrink: 0 } },
+                                    p.avatar_url ? React.createElement("img", { src: p.avatar_url, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (p.name || "U").slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.name),
+                                    React.createElement("div", { style: { fontSize: 11, color: "#c9a84c" } }, p.role || "Creator"),
+                                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2 } }, "\uD83D\uDD25 " + p.postCount + " " + (p.postCount === 1 ? "post" : "posts") + " recently"))))),
+            // EVENTS TAB
+            tab === "events" && React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14 } }, "Upcoming rehearsals, auditions, and performances"),
+                loadingEvents
+                    ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                    : events.length === 0
+                        ? React.createElement("div", { style: { textAlign: "center", padding: 50, color: "rgba(255,255,255,0.4)" } },
+                            React.createElement("div", { style: { fontSize: 38, marginBottom: 10, opacity: 0.5 } }, "\uD83D\uDCC5"),
+                            React.createElement("div", { style: { fontSize: 13 } }, "No upcoming events yet."))
+                        : events.filter(e => !query || (e.title || "").toLowerCase().includes(query.toLowerCase()) || (e.production && e.production.title || "").toLowerCase().includes(query.toLowerCase())).map(e => {
+                            const dt = new Date(e.starts_at);
+                            const typeIcon = { audition: "\uD83C\uDFA4", callback: "\uD83D\uDCDE", rehearsal: "\uD83C\uDFAD", tech: "\uD83D\uDD27", performance: "\u2728", meeting: "\uD83D\uDCC5", other: "\uD83D\uDCCC" }[e.type] || "\uD83D\uDCCC";
+                            return React.createElement("div", { key: e.id, style: { display: "flex", gap: 12, padding: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, marginBottom: 8 } },
+                                React.createElement("div", { style: { textAlign: "center", paddingRight: 12, borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: 50 } },
+                                    React.createElement("div", { style: { fontSize: 9, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.08em" } }, dt.toLocaleString("default", { month: "short" }).toUpperCase()),
+                                    React.createElement("div", { style: { fontSize: 20, fontWeight: 700 } }, dt.getDate()),
+                                    React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.5)" } }, dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 2 } }, typeIcon + " " + (e.type || "EVENT").toUpperCase()),
+                                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.title),
+                                    e.production && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, e.production.title),
+                                    e.location && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.45)" } }, "\uD83D\uDCCD " + e.location)));
+                        }))),
+        composeTo && React.createElement(ComposeMessageModal, { recipientId: composeTo.id, recipientName: composeTo.name, onClose: () => setComposeTo(null), show: show })));
+}
+// -- Local Shows Panel ------------------------------------------------
+const ZIP_REGEX = /^\d{5}$/;
+function LocalShowsPanel({ show }) {
+    const [zip, setZip] = useState("");
+    const [radius, setRadius] = useState("25");
+    const [results, setResults] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [saved, setSaved] = useState({});
+    const ACCENTS = ["#c9a84c", "#4cb8c4", "#e8a87c", "#a084e8", "#e8507c", "#50c8a8"];
+    const searchShows = async () => {
+        const trimmed = zip.trim();
+        if (!ZIP_REGEX.test(trimmed)) {
+            setError("Please enter a valid 5-digit ZIP code.");
+            return;
+        }
+        setError("");
+        setLoading(true);
+        setResults(null);
+        // Look up city/region from ZIP prefix for realistic local data
+        const getRegion = (z) => {
+            const pre = parseInt(z.slice(0, 3));
+            if (pre >= 900 && pre <= 908)
+                return { city: "Los Angeles", state: "CA", region: "Southern California" };
+            if (pre >= 910 && pre <= 919)
+                return { city: "San Diego", state: "CA", region: "San Diego" };
+            if (pre >= 920 && pre <= 928)
+                return { city: "San Diego", state: "CA", region: "San Diego" };
+            if (pre >= 940 && pre <= 944)
+                return { city: "San Francisco", state: "CA", region: "Bay Area" };
+            if (pre >= 100 && pre <= 104)
+                return { city: "New York", state: "NY", region: "New York City" };
+            if (pre >= 110 && pre <= 119)
+                return { city: "Brooklyn", state: "NY", region: "New York City" };
+            if (pre >= 606 && pre <= 608)
+                return { city: "Chicago", state: "IL", region: "Chicago" };
+            if (pre >= 770 && pre <= 772)
+                return { city: "Houston", state: "TX", region: "Houston" };
+            if (pre >= 750 && pre <= 754)
+                return { city: "Dallas", state: "TX", region: "Dallas" };
+            if (pre >= 330 && pre <= 339)
+                return { city: "Miami", state: "FL", region: "South Florida" };
+            if (pre >= 800 && pre <= 804)
+                return { city: "Denver", state: "CO", region: "Denver" };
+            if (pre >= 980 && pre <= 981)
+                return { city: "Seattle", state: "WA", region: "Seattle" };
+            if (pre >= 300 && pre <= 303)
+                return { city: "Atlanta", state: "GA", region: "Atlanta" };
+            if (pre >= 850 && pre <= 853)
+                return { city: "Phoenix", state: "AZ", region: "Phoenix" };
+            if (pre >= 970 && pre <= 972)
+                return { city: "Portland", state: "OR", region: "Portland" };
+            if (pre >= 191 && pre <= 194)
+                return { city: "Philadelphia", state: "PA", region: "Philadelphia" };
+            if (pre >= 17 && pre <= 18)
+                return { city: "Boston", state: "MA", region: "Boston" };
+            if (pre >= 430 && pre <= 432)
+                return { city: "Columbus", state: "OH", region: "Columbus" };
+            if (pre >= 481 && pre <= 482)
+                return { city: "Detroit", state: "MI", region: "Detroit" };
+            return { city: "your area", state: "", region: "your region" };
+        };
+        const region = getRegion(trimmed);
+        const city = region.city;
+        const state = region.state;
+        // Realistic show database keyed by region
+        const SHOW_DB = {
+            "San Diego": [
+                { title: "Into the Woods", company: "The Old Globe", type: "Musical", address: "The Old Globe, Balboa Park, San Diego, CA", dates: "Apr 5 - May 11, 2026", nextShow: "Sun Apr 20 at 2:0 PM", tickets: "$30-$98", description: "Sondheim's fairy tale mashup at the Tony Award-winning Old Globe.", url: "https://www.theoldglobe.org", pro: true, soldOut: false },
+                { title: "Hamilton", company: "Balboa Theatre", type: "Touring", address: "Balboa Theatre, San Diego, CA", dates: "Apr 22 - May 11, 2026", nextShow: "Wed Apr 23 at 7:30 PM", tickets: "$89-$250", description: "Lin-Manuel Miranda's hip-hop musical about America's founding father.", url: "https://www.ticketmaster.com", pro: true, soldOut: true },
+                { title: "A Midsummer Night's Dream", company: "La Jolla Playhouse", type: "Play", address: "La Jolla Playhouse, La Jolla, CA", dates: "Mar 29 - Apr 27, 2026", nextShow: "Fri Apr 18 at 8:0 PM", tickets: "$25-$85", description: "Shakespeare's romantic comedy reimagined at La Jolla Playhouse.", url: "https://lajollaplayhouse.org", pro: true, soldOut: false },
+                { title: "Mamma Mia!", company: "Cygnet Theatre", type: "Musical", address: "Cygnet Theatre, Old Town, San Diego, CA", dates: "Apr 12 - May 18, 2026", nextShow: "Thu Apr 17 at 7:0 PM", tickets: "$20-$55", description: "ABBA's greatest hits power this feel-good musical about love.", url: "https://cygnettheatre.com", pro: true, soldOut: false },
+                { title: "Sweeney Todd", company: "Moonlight Amphitheatre", type: "Musical", address: "Moonlight Amphitheatre, Vista, CA", dates: "May 2 - May 17, 2026", nextShow: "Sat May 3 at 8:0 PM", tickets: "$18-$45", description: "Sondheim's dark thriller under the stars at the outdoor amphitheatre.", url: "https://moonlightamphitheatre.com", pro: false, soldOut: false },
+                { title: "The Phantom of the Opera", company: "San Diego Civic Theatre", type: "Touring", address: "San Diego Civic Theatre, San Diego, CA", dates: "Apr 15 - May 4, 2026", nextShow: "Sat Apr 19 at 7:30 PM", tickets: "$45-$145", description: "Andrew Lloyd Webber's beloved classic on its national tour.", url: "https://www.ticketmaster.com", pro: true, soldOut: false },
+            ],
+            "Southern California": [
+                { title: "Hamilton", company: "Hollywood Pantages Theatre", type: "Touring", address: "Pantages Theatre, Hollywood, CA", dates: "Apr 8 - May 25, 2026", nextShow: "Sat Apr 19 at 8:0 PM", tickets: "$79-$299", description: "The smash-hit Broadway musical about Alexander Hamilton.", url: "https://www.ticketmaster.com", pro: true, soldOut: false },
+                { title: "Next to Normal", company: "Center Theatre Group", type: "Musical", address: "Mark Taper Forum, Los Angeles, CA", dates: "Apr 3 - May 4, 2026", nextShow: "Fri Apr 18 at 8:0 PM", tickets: "$35-$110", description: "Pulitzer Prize-winning rock musical about a family and mental illness.", url: "https://www.centertheatregroup.org", pro: true, soldOut: false },
+                { title: "Moulin Rouge!", company: "Hollywood Pantages", type: "Touring", address: "Pantages Theatre, Hollywood, CA", dates: "May 6 - Jun 7, 2026", nextShow: "Wed May 7 at 7:30 PM", tickets: "$75-$275", description: "The Broadway sensation set in the dazzling underworld of Paris.", url: "https://www.ticketmaster.com", pro: true, soldOut: false },
+                { title: "Little Women", company: "Pasadena Playhouse", type: "Musical", address: "Pasadena Playhouse, Pasadena, CA", dates: "Apr 16 - May 11, 2026", nextShow: "Thu Apr 17 at 7:30 PM", tickets: "$30-$95", description: "Louisa May Alcott's classic story reimagined as an intimate musical.", url: "https://www.pasadenaplayhouse.org", pro: true, soldOut: false },
+                { title: "Spring Awakening", company: "A Noise Within", type: "Musical", address: "A Noise Within, Pasadena, CA", dates: "Apr 5 - May 3, 2026", nextShow: "Sat Apr 19 at 7:0 PM", tickets: "$25-$65", description: "Rock musical about the turbulent journey from adolescence to adulthood.", url: "https://www.anoisewithin.org", pro: true, soldOut: false },
+                { title: "The Book of Mormon", company: "Ahmanson Theatre", type: "Touring", address: "Ahmanson Theatre, Los Angeles, CA", dates: "Mar 25 - Apr 27, 2026", nextShow: "Sun Apr 20 at 1:0 PM", tickets: "$55-$175", description: "Outrageously funny musical from the creators of South Park.", url: "https://www.centertheatregroup.org", pro: true, soldOut: false },
+            ],
+            "New York City": [
+                { title: "The Notebook", company: "Schoenfeld Theatre", type: "Musical", address: "Schoenfeld Theatre, Broadway, New York, NY", dates: "Now Playing", nextShow: "Sat Apr 19 at 8:0 PM", tickets: "$79-$350", description: "Sweeping musical adaptation of Nicholas Sparks' beloved love story.", url: "https://www.ticketmaster.com", pro: true, soldOut: false },
+                { title: "Suffs", company: "Public Theater", type: "Musical", address: "The Public Theater, New York, NY", dates: "Now Playing", nextShow: "Fri Apr 18 at 7:30 PM", tickets: "$35-$125", description: "The story of the women suffragists who fought for the right to vote.", url: "https://publictheater.org", pro: true, soldOut: false },
+                { title: "Merrily We Roll Along", company: "Hudson Theatre", type: "Musical", address: "Hudson Theatre, Broadway, NY", dates: "Now Playing", nextShow: "Wed Apr 16 at 7:0 PM", tickets: "$89-$299", description: "Sondheim's moving musical about friendship told in reverse.", url: "https://www.ticketmaster.com", pro: true, soldOut: true },
+                { title: "Sweeney Todd", company: "Barrow Street Theatre", type: "Musical", address: "Barrow Street Theatre, New York, NY", dates: "Apr 1 - Jun 1, 2026", nextShow: "Sun Apr 20 at 3:0 PM", tickets: "$45-$110", description: "Intimate immersive production of Sondheim's masterpiece.", url: "https://barrowstreettheatre.com", pro: true, soldOut: false },
+                { title: "Othello", company: "Classic Stage Company", type: "Play", address: "Classic Stage Company, New York, NY", dates: "Apr 10 - May 18, 2026", nextShow: "Thu Apr 17 at 7:0 PM", tickets: "$35-$95", description: "Shakespeare's tragedy of jealousy with a contemporary cast.", url: "https://classicstage.org", pro: true, soldOut: false },
+                { title: "The Inheritance", company: "Second Stage Theater", type: "Play", address: "Second Stage Theater, New York, NY", dates: "Apr 8 - May 25, 2026", nextShow: "Sat Apr 19 at 2:0 PM", tickets: "$40-$99", description: "Epic two-part play about the lives of gay men in New York City.", url: "https://secondstagetheatre.com", pro: true, soldOut: false },
+            ],
+            "Chicago": [
+                { title: "Chicago", company: "Cadillac Palace Theatre", type: "Touring", address: "Cadillac Palace Theatre, Chicago, IL", dates: "Apr 8 - May 4, 2026", nextShow: "Sat Apr 19 at 7:30 PM", tickets: "$45-$180", description: "The longest-running American musical on Broadway comes home to Chicago.", url: "https://www.ticketmaster.com", pro: true, soldOut: false },
+                { title: "Wicked", company: "CIBC Theatre", type: "Touring", address: "CIBC Theatre, Chicago, IL", dates: "Apr 15 - Jun 14, 2026", nextShow: "Sun Apr 20 at 2:0 PM", tickets: "$55-$225", description: "The untold story of the witches of Oz returns to its home city.", url: "https://www.ticketmaster.com", pro: true, soldOut: false },
+                { title: "Fun Home", company: "Goodman Theatre", type: "Musical", address: "Goodman Theatre, Chicago, IL", dates: "Apr 5 - May 11, 2026", nextShow: "Wed Apr 16 at 7:30 PM", tickets: "$30-$95", description: "Tony-winning musical about memory and identity.", url: "https://www.goodmantheatre.org", pro: true, soldOut: false },
+                { title: "Proof", company: "Steppenwolf Theatre", type: "Play", address: "Steppenwolf Theatre, Chicago, IL", dates: "Mar 27 - May 4, 2026", nextShow: "Thu Apr 17 at 7:30 PM", tickets: "$25-$89", description: "Pulitzer Prize-winning play about mathematics, madness, and family.", url: "https://www.steppenwolf.org", pro: true, soldOut: false },
+                { title: "A Raisin in the Sun", company: "Court Theatre", type: "Play", address: "Court Theatre, Hyde Park, Chicago, IL", dates: "Apr 3 - Apr 27, 2026", nextShow: "Sat Apr 19 at 2:0 PM", tickets: "$20-$65", description: "Lorraine Hansberry's landmark drama about a Black family's dreams.", url: "https://www.courttheatre.org", pro: true, soldOut: false },
+                { title: "The Light in the Piazza", company: "Lyric Opera of Chicago", type: "Musical", address: "Lyric Opera House, Chicago, IL", dates: "Apr 12 - May 3, 2026", nextShow: "Fri Apr 18 at 7:30 PM", tickets: "$35-$150", description: "Adam Guettel's gorgeous operatic musical set in 1950s Florence.", url: "https://www.lyricopera.org", pro: true, soldOut: false },
+            ],
+            "Bay Area": [
+                { title: "Rent", company: "Berkeley Repertory Theatre", type: "Musical", address: "Berkeley Rep, Berkeley, CA", dates: "Apr 10 - May 17, 2026", nextShow: "Fri Apr 18 at 8:0 PM", tickets: "$35-$115", description: "Jonathan Larson's rock musical about Bohemian life in New York City.", url: "https://www.berkeleyrep.org", pro: true, soldOut: false },
+                { title: "Cabaret", company: "SF Playhouse", type: "Musical", address: "SF Playhouse, San Francisco, CA", dates: "Apr 8 - May 16, 2026", nextShow: "Thu Apr 17 at 7:0 PM", tickets: "$20-$75", description: "Immersive staging of Kander & Ebb's masterpiece at the Kit Kat Klub.", url: "https://www.sfplayhouse.org", pro: true, soldOut: false },
+                { title: "Hamilton", company: "SHN Golden Gate Theatre", type: "Touring", address: "Golden Gate Theatre, San Francisco, CA", dates: "Apr 1 - May 18, 2026", nextShow: "Sat Apr 19 at 8:0 PM", tickets: "$79-$350", description: "The phenomenon returns to the Bay Area for a limited engagement.", url: "https://www.shnsf.com", pro: true, soldOut: true },
+                { title: "War Horse", company: "American Conservatory Theater", type: "Play", address: "Geary Theatre, San Francisco, CA", dates: "Mar 28 - Apr 27, 2026", nextShow: "Sun Apr 20 at 2:0 PM", tickets: "$30-$105", description: "The spectacular story of Joey the horse and the soldier who loved him.", url: "https://www.act-sf.org", pro: true, soldOut: false },
+                { title: "Sunday in the Park with George", company: "42nd Street Moon", type: "Musical", address: "Gateway Theatre, San Francisco, CA", dates: "Apr 4 - Apr 26, 2026", nextShow: "Fri Apr 18 at 7:30 PM", tickets: "$20-$60", description: "Sondheim's meditation on art and obsession, set to a Seurat painting.", url: "https://www.42ndstmoon.org", pro: true, soldOut: false },
+                { title: "The Curious Incident", company: "TheatreWorks Silicon Valley", type: "Play", address: "Mountain View Center for the Arts, Mountain View, CA", dates: "Apr 16 - May 11, 2026", nextShow: "Sat Apr 19 at 7:30 PM", tickets: "$25-$80", description: "Mark Haddon's bestselling novel in an award-winning stage adaptation.", url: "https://theatreworks.org", pro: true, soldOut: false },
+            ],
+        };
+        const DEFAULT_SHOWS = [
+            { title: "The Sound of Music", company: "Regional Repertory Theatre", type: "Musical", address: "Performing Arts Center, " + city + ", " + state, dates: "Apr 12 - May 4, 2026", nextShow: "Sat Apr 19 at 7:30 PM", tickets: "$20-$55", description: "Rodgers & Hammerstein's classic musical about the von Trapp family.", url: "", pro: false, soldOut: false },
+            { title: "Death of a Salesman", company: "Civic Theatre Company", type: "Play", address: "Civic Theatre, " + city + ", " + state, dates: "Apr 5 - Apr 27, 2026", nextShow: "Fri Apr 18 at 8:0 PM", tickets: "$18-$45", description: "Arthur Miller's timeless American tragedy about Willy Loman.", url: "", pro: false, soldOut: false },
+            { title: "Legally Blonde", company: "Community Musical Theatre", type: "Musical", address: "Arts Center, " + city + ", " + state, dates: "Apr 18 - May 3, 2026", nextShow: "Sat Apr 19 at 7:0 PM", tickets: "$15-$35", description: "Elle Woods proves everyone wrong in this fun, feel-good musical comedy.", url: "", pro: false, soldOut: false },
+            { title: "A Streetcar Named Desire", company: "Studio Theatre", type: "Play", address: "Studio Theatre, " + city + ", " + state, dates: "Apr 3 - Apr 26, 2026", nextShow: "Thu Apr 17 at 7:30 PM", tickets: "$20-$50", description: "Tennessee Williams' iconic drama of desire, illusion, and the brutal nature of reality.", url: "", pro: false, soldOut: false },
+            { title: "Avenue Q", company: "Musical Theatre Workshop", type: "Musical", address: "Black Box Theatre, " + city + ", " + state, dates: "Apr 25 - May 17, 2026", nextShow: "Fri Apr 25 at 8:0 PM", tickets: "$15-$40", description: "The Tony-winning puppet musical about finding your purpose in life.", url: "", pro: false, soldOut: false },
+            { title: "Shakespeare in the Park", company: "Local Shakespeare Company", type: "Play", address: "City Park Amphitheatre, " + city + ", " + state, dates: "May 1 - May 25, 2026", nextShow: "Sat May 3 at 7:0 PM", tickets: "Free", description: "Free outdoor Shakespeare performed under the stars in the park.", url: "", pro: false, soldOut: false },
+        ];
+        const regionalShows = SHOW_DB[region.region] || DEFAULT_SHOWS;
+        const shows = regionalShows.map((item, idx) => (Object.assign(Object.assign({}, item), { accent: ACCENTS[idx % ACCENTS.length], image: null })));
+        setResults(shows);
+        setLoading(false);
+    };
+    const toggleSave = (i) => {
+        setSaved(p => (Object.assign(Object.assign({}, p), { [i]: !p[i] })));
+        show(saved[i] ? "Removed from saved" : "Show saved! \uD83C\uDFAD");
+    };
+    return (React.createElement("div", { style: { paddingBottom: 20 } },
+        React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#2d1040)", borderRadius: 18, padding: "20px 18px", marginBottom: 18, position: "relative", overflow: "hidden" } },
+            React.createElement("div", { style: { position: "absolute", top: "-40%", left: "50%", width: "140%", height: "120%", background: "radial-gradient(circle,rgba(201,168,76,0.12) 0%,transparent 65%)", pointerEvents: "none" } }),
+            React.createElement("div", { style: { position: "relative", zIndex: 1 } },
+                React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 4 } }, "Local Shows Near You"),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 16 } }, "Discover community theatre, regional productions & touring shows in your area"),
+                React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 10 } },
+                    React.createElement("div", { style: { position: "relative", flex: 1 } },
+                        React.createElement("span", { style: { position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14 } }, "\uD83D\uDCCD"),
+                        React.createElement("input", { value: zip, onChange: e => setZip(e.target.value.replace(/\D/g, "").slice(0, 5)), onKeyDown: e => { if (e.key === "Enter")
+                                searchShows(); }, placeholder: "Enter ZIP code", maxLength: 5, style: Object.assign(Object.assign({}, inputSt), { paddingLeft: 36, marginBottom: 0, fontSize: 16, letterSpacing: "0.08em", fontWeight: 700 }) })),
+                    React.createElement("button", { onClick: searchShows, disabled: loading, style: { padding: "0 20px", background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: loading ? "rgba(255,255,255,0.4)" : "#1a0a2e", fontWeight: 700, fontSize: 13, cursor: loading ? "not-allowed" : "pointer", flexShrink: 0 } }, loading ? "\u2026" : "Search")),
+                React.createElement("div", { style: { display: "flex", gap: 6 } },
+                    React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", alignSelf: "center", marginRight: 4 } }, "Within:"),
+                    ["10", "25", "50"].map(r => (React.createElement("button", { key: r, onClick: () => setRadius(r), style: { padding: "5px 12px", background: radius === r ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.06)", border: `1px solid ${radius === r ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 20, color: radius === r ? "#c9a84c" : "rgba(255,255,255,0.45)", fontWeight: radius === r ? 700 : 400, fontSize: 11, cursor: "pointer" } },
+                        r,
+                        " mi")))))),
+        error && (React.createElement("div", { style: { background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, padding: "12px 14px", marginBottom: 14, fontSize: 13, color: "#f87171" } },
+            "\u26A0\uFE0F ",
+            error)),
+        loading && (React.createElement("div", { style: { textAlign: "center", padding: "48px 0" } },
+            React.createElement("div", { style: { display: "flex", gap: 6, justifyContent: "center", marginBottom: 14 } }, [0, 1, 2].map(i => (React.createElement("div", { key: i, style: { width: 10, height: 10, borderRadius: "50%", background: "#c9a84c", animation: `tdot 1.4s ${i * 0.2}s infinite both` } })))),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.4)" } },
+                "Finding shows near ",
+                zip,
+                "\u2026"))),
+        !results && !loading && !error && (React.createElement("div", { style: { color: "rgba(255,255,255,0.3)" } },
+            React.createElement("div", { style: { textAlign: "center", padding: "32px 20px 20px" } },
+                React.createElement("div", { style: { fontSize: 48, marginBottom: 14 } }, "\uD83C\uDFAD"),
+                React.createElement("div", { style: { fontSize: 16, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "Enter your ZIP code above"),
+                React.createElement("div", { style: { fontSize: 13 } }, "Powered by live web search \u2014 musicals, plays, opera, touring shows and more")))),
+        results && !loading && (React.createElement(React.Fragment, null, results.length === 0 ? (React.createElement("div", { style: { textAlign: "center", padding: "48px 20px", color: "rgba(255,255,255,0.3)" } },
+            React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\uD83D\uDD0D"),
+            React.createElement("div", { style: { fontSize: 16, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } },
+                "No shows found near ",
+                zip),
+            React.createElement("div", { style: { fontSize: 13 } }, "Try a larger radius or a nearby ZIP code"))) : (React.createElement(React.Fragment, null,
+            React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 12 } },
+                results.length,
+                " SHOWS NEAR ",
+                zip,
+                " \u00B7 WITHIN ",
+                radius,
+                " MILES"),
+            results.map((s, i) => (React.createElement("div", { key: i, style: { background: "rgba(255,255,255,0.04)", border: `1px solid ${s.accent}33`, borderRadius: 18, overflow: "hidden", marginBottom: 14 } },
+                s.image && (React.createElement("div", { style: { height: 120, overflow: "hidden", position: "relative" } },
+                    React.createElement("img", { loading: "lazy", decoding: "async", src: s.image, alt: s.title, style: { width: "100%", height: "100%", objectFit: "cover", display: "block" } }),
+                    React.createElement("div", { style: { position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(0,0,0,0.65) 0%,transparent 60%)" } }))),
+                React.createElement("div", { style: { background: s.image ? `rgba(0,0,0,0.2)` : `linear-gradient(135deg,${s.accent}18,${s.accent}08)`, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 } },
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" } },
+                            React.createElement("span", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, s.title),
+                            s.soldOut && React.createElement("span", { style: { background: "rgba(239,68,68,0.2)", color: "#f87171", borderRadius: 20, padding: "2px 8px", fontSize: 9, fontWeight: 700, flexShrink: 0 } }, "SOLD OUT")),
+                        React.createElement("div", { style: { fontSize: 12, color: s.accent, fontWeight: 600 } }, s.company)),
+                    React.createElement("button", { onClick: () => toggleSave(i), style: { background: "none", border: "none", fontSize: 18, cursor: "pointer", flexShrink: 0, opacity: saved[i] ? 1 : 0.4 } }, "\uD83D\uDD16")),
+                React.createElement("div", { style: { padding: "14px 16px" } },
+                    React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 } },
+                        React.createElement("span", { style: { background: s.accent + "22", color: s.accent, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 700 } }, s.type),
+                        s.pro && React.createElement("span", { style: { background: "rgba(201,168,76,0.15)", color: "#c9a84c", borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 700 } }, "\u2B50 Professional"),
+                        React.createElement("span", { style: { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: 20, padding: "3px 10px", fontSize: 10 } }, s.tickets)),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.55, marginBottom: 10 } }, s.description),
+                    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 } },
+                        React.createElement("div", { style: { display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12 } },
+                            React.createElement("span", { style: { color: s.accent, flexShrink: 0 } }, "\uD83D\uDCCD"),
+                            React.createElement("span", { style: { color: "rgba(255,255,255,0.55)" } }, s.address)),
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 12 } },
+                            React.createElement("span", { style: { color: s.accent, flexShrink: 0 } }, "\uD83D\uDCC5"),
+                            React.createElement("span", { style: { color: "rgba(255,255,255,0.55)" } }, s.dates)),
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 12 } },
+                            React.createElement("span", { style: { color: s.accent, flexShrink: 0 } }, "\uD83D\uDD50"),
+                            React.createElement("span", { style: { color: "rgba(255,255,255,0.7)", fontWeight: 600 } },
+                                "Next: ",
+                                s.nextShow))),
+                    React.createElement("div", { style: { display: "flex", gap: 8 } },
+                        React.createElement("button", { disabled: s.soldOut, onClick: () => {
+                                if (s.soldOut) {
+                                    show("This show is sold out \uD83D\uDE14");
+                                    return;
+                                }
+                                if (s.url) {
+                                    window.open(s.url, "_blank");
+                                }
+                                else {
+                                    show(`Opening tickets for ${s.title}\u2026`);
+                                }
+                            }, style: { flex: 2, padding: "11px", background: s.soldOut ? "rgba(255,255,255,0.6)" : `linear-gradient(135deg,${s.accent},${s.accent}cc)`, border: "none", borderRadius: 10, color: s.soldOut ? "rgba(255,255,255,0.3)" : "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: s.soldOut ? "not-allowed" : "pointer" } }, s.soldOut ? "Sold Out" : "\uD83C\uDF9F Get Tickets"),
+                        React.createElement("button", { onClick: () => show(`Added ${s.title} to your calendar! \uD83D\uDCC5`), style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.6)", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "\uD83D\uDCC5 Save Date")))))),
+            React.createElement("button", { onClick: () => { setResults(null); setZip(""); }, style: { width: "100%", padding: "12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontWeight: 600, fontSize: 13, cursor: "pointer", marginTop: 4 } }, "\uD83D\uDD0D Search a different ZIP")))))));
+}
+const EmptyState = ({ query, type }) => (React.createElement("div", { style: { textAlign: "center", padding: "56px 20px", color: "rgba(255,255,255,0.3)" } },
+    React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\uD83D\uDD0D"),
+    React.createElement("div", { style: { fontSize: 16, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, query ? `No ${type} matching "${query}"` : `No ${type} found`),
+    React.createElement("div", { style: { fontSize: 13 } }, "Try a different search term")));
+// ---------------------------- AI ------------------------------------
+function ProductionsScreen({ show, onViewUser }) {
+    const [productions, setProductions] = useState([]);
+    const [activeProduction, setActiveProduction] = useState(null);
+    const [showCreate, setShowCreate] = useState(false);
+    const [me, setMe] = useState(null);
+    const [isVerified, setIsVerified] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const reload = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            setMe(user);
+            if (!user) { setLoading(false); return; }
+            // Verified director check (optional)
+            try {
+                const { data: prof } = await supabase.from("profiles").select("verified_director").eq("id", user.id).single();
+                setIsVerified((prof === null || prof === void 0 ? void 0 : prof.verified_director) === true);
+            } catch (e) { /* ignore */ }
+            // Load shows I direct
+            const { data: directed } = await supabase.from("productions").select("*").eq("director_id", user.id).order("created_at", { ascending: false });
+            // Load shows I'm a member of
+            const { data: memberRows } = await supabase.from("production_members").select("production_id").eq("user_id", user.id);
+            const memberIds = (memberRows || []).map(r => r.production_id).filter(id => id);
+            let memberShows = [];
+            if (memberIds.length) {
+                const { data } = await supabase.from("productions").select("*").in("id", memberIds);
+                memberShows = data || [];
+            }
+            const directedActive = (directed || []).filter(p => !p.status || p.status === "active");
+            const memberActive = memberShows.filter(p => !p.status || p.status === "active");
+            const merged = [...directedActive];
+            memberActive.forEach(s => { if (!merged.find(x => x.id === s.id)) merged.push(s); });
+            setProductions(merged);
+        } catch (e) {
+            console.error("Production load error:", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+    useEffect(() => { reload(); }, []);
+    if (activeProduction) {
+        return React.createElement(ProductionDetail, {
+            production: activeProduction,
+            isDirector: activeProduction.director_id === (me === null || me === void 0 ? void 0 : me.id),
+            me, show, onViewUser,
+            onBack: () => { setActiveProduction(null); reload(); },
+            onUpdate: (updates) => setActiveProduction(p => Object.assign(Object.assign({}, p), updates)),
+        });
+    }
+    return React.createElement("div", { style: { padding: "20px 16px 80px", overflowY: "auto", WebkitOverflowScrolling: "touch", height: "100%" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 } },
+            React.createElement("div", null,
+                React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Productions"),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 } }, "Direct, manage, and track your shows")
+            ),
+            React.createElement("button", { onClick: () => { if (!me) { alert("Sign in to create a production"); return; } setShowCreate(true); }, style: { padding: "10px 16px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 10, color: "#1a0a2e", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ New Show")
+        ),
+        
+        loading
+            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+            : productions.length === 0
+                ? React.createElement("div", { style: { textAlign: "center", padding: 60, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 16 } },
+                    React.createElement("div", { style: { fontSize: 48, marginBottom: 12, opacity: 0.4 } }, "\uD83C\uDFAC"),
+                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700, marginBottom: 6 } }, "No productions yet"),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto" } }, "Create your first show to start managing cast, schedule, and check-ins.")
+                )
+                : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+                    productions.map(p => {
+                        const isMyShow = p.director_id === (me === null || me === void 0 ? void 0 : me.id);
+                        const onDelete = async (e) => {
+                            e.stopPropagation();
+                            if (!confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
+                            const { error } = await supabase.from("productions").delete().eq("id", p.id);
+                            if (error) { alert("Could not delete: " + error.message); return; }
+                            show("Deleted");
+                            reload();
+                        };
+                        return React.createElement("div", { key: p.id, onClick: () => setActiveProduction(p), style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, cursor: "pointer", display: "flex", gap: 12, alignItems: "center" } },
+                            React.createElement("div", { style: { width: 56, height: 56, borderRadius: 10, background: p.poster_url ? "transparent" : "linear-gradient(135deg,#4a006e,#1a0a2e)", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 } },
+                                p.poster_url
+                                    ? React.createElement("img", { src: p.poster_url, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                    : "\uD83C\uDFAD"
+                            ),
+                            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.title),
+                                p.current_phase && React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginBottom: 3, fontWeight: 600 } }, p.current_phase),
+                                p.venue && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, "\uD83D\uDCCD " + p.venue)
+                            ),
+                            isMyShow && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 } },
+                                React.createElement("div", { style: { fontSize: 9, padding: "3px 7px", background: "rgba(201,168,76,0.2)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 12, color: "#c9a84c", letterSpacing: "0.05em" } }, "DIRECTING"),
+                                React.createElement("button", { onClick: onDelete, style: { background: "none", border: "none", color: "rgba(239,68,68,0.7)", fontSize: 18, cursor: "pointer", padding: 4 } }, "\uD83D\uDDD1")
+                            )
+                        );
+                    })
+                ),
+        showCreate && React.createElement(NewProductionModal, { onCreate: async (data) => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) { alert("You need to sign in first to create a production."); return; }
+                const defaultPhases = [
+                    { id: "p1", name: "Auditions", order: 0 },
+                    { id: "p2", name: "Callbacks", order: 1 },
+                    { id: "p3", name: "Read-through", order: 2 },
+                    { id: "p4", name: "Blocking", order: 3 },
+                    { id: "p5", name: "Off-book", order: 4 },
+                    { id: "p6", name: "Tech", order: 5 },
+                    { id: "p7", name: "Performances", order: 6 },
+                ];
+                const payload = Object.assign(Object.assign({}, data), { director_id: user.id, phases: defaultPhases, current_phase: "Auditions" });
+                const { data: row, error } = await supabase.from("productions").insert(payload);
+                if (error) {
+                    console.error("Production create error:", error);
+                    alert("Could not create show:\n\n" + (error.message || JSON.stringify(error)) + "\n\nMake sure you ran productions_setup.sql in Supabase.");
+                    return;
+                }
+                // Auto-add yourself as director member so you appear in cast
+                try {
+                    const newProdId = (row && row[0] && row[0].id) || null;
+                    if (newProdId) {
+                        await supabase.from("production_members").insert({
+                            production_id: newProdId, user_id: user.id, role_type: "director", invite_status: "accepted",
+                        });
+                    }
+                } catch (e) { console.warn("Could not auto-add director member", e); }
+                show("\uD83C\uDFAC Show created!");
+                setShowCreate(false);
+                reload();
+            }, onClose: () => setShowCreate(false) })
+    );
+}
+function NewProductionModal({ onCreate, onClose }) {
+    const [title, setTitle] = useState("");
+    const [synopsis, setSynopsis] = useState("");
+    const [venue, setVenue] = useState("");
+    const [openDate, setOpenDate] = useState("");
+    const [closeDate, setCloseDate] = useState("");
+    const submit = () => {
+        if (!title.trim()) return;
+        onCreate({
+            title: title.trim(),
+            synopsis: synopsis.trim() || null,
+            venue: venue.trim() || null,
+            open_date: openDate || null,
+            close_date: closeDate || null,
+        });
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 12 };
+    const labelSt = { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "90dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "New Production"),
+            React.createElement("div", { style: labelSt }, "SHOW TITLE"),
+            React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), placeholder: "e.g. Hamilton, Wicked, Original Musical", style: inputSt }),
+            React.createElement("div", { style: labelSt }, "SYNOPSIS"),
+            React.createElement("textarea", { value: synopsis, onChange: e => setSynopsis(e.target.value), rows: 3, placeholder: "What's the show about?", style: Object.assign(Object.assign({}, inputSt), { resize: "none", fontFamily: "inherit" }) }),
+            React.createElement("div", { style: labelSt }, "VENUE"),
+            React.createElement("input", { value: venue, onChange: e => setVenue(e.target.value), placeholder: "e.g. La Jolla Playhouse", style: inputSt }),
+            React.createElement("div", { style: { display: "flex", gap: 12 } },
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("div", { style: labelSt }, "OPENING"),
+                    React.createElement("input", { type: "date", value: openDate, onChange: e => setOpenDate(e.target.value), style: inputSt })
+                ),
+                React.createElement("div", { style: { flex: 1 } },
+                    React.createElement("div", { style: labelSt }, "CLOSING"),
+                    React.createElement("input", { type: "date", value: closeDate, onChange: e => setCloseDate(e.target.value), style: inputSt })
+                )
+            ),
+            React.createElement("button", { onClick: submit, disabled: !title.trim(), style: { width: "100%", padding: "14px", marginTop: 8, background: title.trim() ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: title.trim() ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: title.trim() ? "pointer" : "not-allowed" } }, "Create Show"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function ProductionDetail({ production, isDirector, me, show, onViewUser, onBack, onUpdate }) {
+    const [tab, setTab] = useState("overview");
+    const [members, setMembers] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const reload = async () => {
+        setLoading(true);
+        const { data: memberRows } = await supabase.from("production_members")
+            .select("*, profile:user_id(name,handle,avatar_url)")
+            .eq("production_id", production.id);
+        setMembers(memberRows || []);
+        const { data: eventRows } = await supabase.from("production_events")
+            .select("*")
+            .eq("production_id", production.id)
+            .order("starts_at", { ascending: true });
+        setEvents(eventRows || []);
+        setLoading(false);
+    };
+    useEffect(() => { reload(); }, [production.id]);
+    return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+        React.createElement("div", { style: { padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 12 } },
+            React.createElement("button", { onClick: onBack, style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", padding: 0, width: 36, height: 36, borderRadius: "50%", fontSize: 16, cursor: "pointer", flexShrink: 0 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, production.title),
+                production.current_phase && React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginTop: 1 } }, production.current_phase)
+            ),
+            isDirector && React.createElement("button", { onClick: async () => {
+                if (!confirm(`Delete "${production.title}"? This will remove all cast, events, and check-ins. Cannot be undone.`)) return;
+                const { error } = await supabase.from("productions").delete().eq("id", production.id);
+                if (error) { alert("Could not delete: " + error.message); return; }
+                show("Production deleted");
+                onBack();
+            }, style: { background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", color: "#fca5a5", padding: "6px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0 } }, "\uD83D\uDDD1 Delete")
+        ),
+        React.createElement("div", { style: { display: "flex", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            [["overview", "Overview"], ["cast", "Cast"], ["schedule", "Schedule"], ["checkin", "Check-in"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setTab(k), style: { flex: 1, padding: "11px 0", background: "none", border: "none", borderBottom: tab === k ? "2px solid #c9a84c" : "2px solid transparent", color: tab === k ? "#c9a84c" : "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: tab === k ? 700 : 500, cursor: "pointer", letterSpacing: "0.04em" } }, l.toUpperCase())
+            )
+        ),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px" } },
+            loading
+                ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                : tab === "overview"
+                    ? React.createElement(OverviewTab, { production, members, events, isDirector, onUpdate, show })
+                    : tab === "cast"
+                        ? React.createElement(CastTab, { production, members, isDirector, onViewUser, show, reload })
+                        : tab === "schedule"
+                            ? React.createElement(ScheduleTab, { production, events, isDirector, show, reload })
+                            : React.createElement(CheckinTab, { production, events, members, me, isDirector, show, reload })
+        )
+    );
+}
+function OverviewTab({ production, members, events, isDirector, onUpdate, show }) {
+    const [editingPhase, setEditingPhase] = useState(false);
+    const phases = production.phases || [];
+    const currentIdx = phases.findIndex(p => p.name === production.current_phase);
+    const advancePhase = async (phaseName) => {
+        const { error } = await supabase.from("productions").update({ current_phase: phaseName }).eq("id", production.id);
+        if (error) { show("Failed to update phase"); return; }
+        onUpdate({ current_phase: phaseName });
+        show("\u2713 Phase updated");
+        setEditingPhase(false);
+    };
+    const upcoming = events.filter(e => new Date(e.starts_at) > new Date()).slice(0, 3);
+    return React.createElement("div", null,
+        production.synopsis && React.createElement("div", { style: { fontSize: 14, color: "rgba(255,255,255,0.8)", lineHeight: 1.6, marginBottom: 18, whiteSpace: "pre-wrap" } }, production.synopsis),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 } },
+            production.venue && React.createElement(InfoChip, { icon: "\uD83D\uDCCD", label: "Venue", value: production.venue }),
+            production.open_date && React.createElement(InfoChip, { icon: "\uD83C\uDFAD", label: "Opening", value: production.open_date }),
+            React.createElement(InfoChip, { icon: "\uD83D\uDC65", label: "Members", value: members.length + "" }),
+            React.createElement(InfoChip, { icon: "\uD83D\uDCC5", label: "Events", value: events.length + "" })
+        ),
+        // Phase tracker
+        phases.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } },
+                React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700 } }, "PRODUCTION STATUS"),
+                isDirector && React.createElement("button", { onClick: () => setEditingPhase(!editingPhase), style: { background: "none", border: "none", color: "#c9a84c", fontSize: 11, cursor: "pointer" } }, editingPhase ? "Cancel" : "Update")
+            ),
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                phases.map((p, i) => {
+                    const isCurrent = p.name === production.current_phase;
+                    const isPast = i < currentIdx;
+                    return React.createElement("div", { key: p.id || i, onClick: () => editingPhase && advancePhase(p.name), style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: isCurrent ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.04)", border: "1px solid " + (isCurrent ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.05)"), borderRadius: 8, cursor: editingPhase ? "pointer" : "default" } },
+                        React.createElement("div", { style: { width: 22, height: 22, borderRadius: "50%", background: isPast ? "#c9a84c" : isCurrent ? "rgba(201,168,76,0.3)" : "rgba(255,255,255,0.06)", border: isCurrent ? "2px solid #c9a84c" : "1px solid rgba(255,255,255,0.1)", color: isPast ? "#1a0a2e" : isCurrent ? "#c9a84c" : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, isPast ? "\u2713" : i + 1),
+                        React.createElement("div", { style: { flex: 1, fontSize: 13, fontWeight: isCurrent ? 700 : 500, color: isPast ? "rgba(255,255,255,0.5)" : "#fff" } }, p.name)
+                    );
+                })
+            )
+        ),
+        // Upcoming events
+        upcoming.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "UPCOMING"),
+            upcoming.map(e => React.createElement(EventRow, { key: e.id, event: e }))
+        )
+    );
+}
+function InfoChip({ icon, label, value }) {
+    return React.createElement("div", { style: { padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 } },
+        React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: "0.08em", marginBottom: 3 } }, icon + " " + label.toUpperCase()),
+        React.createElement("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, value)
+    );
+}
+function EventRow({ event, onClick, isDirector, onDelete }) {
+    const dt = new Date(event.starts_at);
+    const typeIcon = { audition: "\uD83C\uDFA4", callback: "\uD83D\uDCDE", rehearsal: "\uD83C\uDFAD", tech: "\uD83D\uDD27", performance: "\u2728", meeting: "\uD83D\uDCC5", other: "\uD83D\uDCCC" }[event.type] || "\uD83D\uDCCC";
+    return React.createElement("div", { onClick: onClick, style: { display: "flex", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6, cursor: onClick ? "pointer" : "default", alignItems: "center" } },
+        React.createElement("div", { style: { textAlign: "center", flexShrink: 0, paddingRight: 10, borderRight: "1px solid rgba(255,255,255,0.08)" } },
+            React.createElement("div", { style: { fontSize: 9, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.08em" } }, dt.toLocaleString("default", { month: "short" }).toUpperCase()),
+            React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, dt.getDate())
+        ),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 700, marginBottom: 2, letterSpacing: "0.04em" } }, typeIcon + " " + (event.type || "").toUpperCase()),
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, event.title),
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (event.location ? " \u00B7 " + event.location : "")),
+            event.prep_notes && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4, fontStyle: "italic" } }, "\u270D\uFE0F " + event.prep_notes)
+        ),
+        isDirector && onDelete && React.createElement("button", { onClick: (e) => { e.stopPropagation(); onDelete(); }, style: { background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 18, padding: 6, cursor: "pointer", flexShrink: 0 } }, "\u00D7")
+    );
+}
+function CastTab({ production, members, isDirector, onViewUser, show, reload }) {
+    const [showAdd, setShowAdd] = useState(false);
+    const cast = members.filter(m => m.role_type === "cast" || m.role_type === "ensemble" || m.role_type === "swing");
+    const team = members.filter(m => !["cast", "ensemble", "swing"].includes(m.role_type));
+    const removeMember = async (id) => {
+        if (!confirm("Remove this person from the production?")) return;
+        await supabase.from("production_members").delete().eq("id", id);
+        show("Removed");
+        reload();
+    };
+    return React.createElement("div", null,
+        isDirector && React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "11px", marginBottom: 14, background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ Add Cast or Crew"),
+        team.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "PRODUCTION TEAM"),
+            team.map(m => React.createElement(MemberRow, { key: m.id, member: m, isDirector, onView: onViewUser, onRemove: removeMember }))
+        ),
+        cast.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "CAST"),
+            cast.map(m => React.createElement(MemberRow, { key: m.id, member: m, isDirector, onView: onViewUser, onRemove: removeMember }))
+        ),
+        members.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, isDirector ? "Add cast and crew to start building your team." : "Cast list coming soon."),
+        showAdd && React.createElement(AddMemberModal, { productionId: production.id, onClose: () => setShowAdd(false), onAdded: () => { reload(); setShowAdd(false); show("\u2713 Added"); } })
+    );
+}
+function MemberRow({ member, isDirector, onView, onRemove }) {
+    var _a, _b, _c;
+    const name = ((_a = member.profile) === null || _a === void 0 ? void 0 : _a.name) || member.display_name || member.invite_handle || "Pending";
+    const avatar = ((_b = member.profile) === null || _b === void 0 ? void 0 : _b.avatar_url);
+    const initials = (name || "U").slice(0, 2).toUpperCase();
+    const roleLabel = (member.role_type || "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6 } },
+        React.createElement("div", { onClick: () => member.user_id && onView && onView(member.user_id), style: { width: 38, height: 38, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#1a0a2e", flexShrink: 0, cursor: member.user_id ? "pointer" : "default" } },
+            avatar ? React.createElement("img", { src: avatar, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : initials
+        ),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, member.character_name ? member.character_name + " — " + name : name),
+            React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginTop: 1 } }, roleLabel + (member.invite_status === "pending" ? " · pending" : ""))
+        ),
+        isDirector && React.createElement("button", { onClick: () => onRemove(member.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 18, cursor: "pointer", padding: 4 } }, "\u00D7")
+    );
+}
+function AddMemberModal({ productionId, onClose, onAdded }) {
+    const [handle, setHandle] = useState("");
+    const [roleType, setRoleType] = useState("cast");
+    const [character, setCharacter] = useState("");
+    const submit = async () => {
+        if (!handle.trim()) return;
+        const cleanHandle = handle.trim().replace(/^@/, "");
+        const { data: prof } = await supabase.from("profiles").select("id,name").ilike("handle", "%" + cleanHandle + "%").limit(1).single();
+        const payload = {
+            production_id: productionId,
+            role_type: roleType,
+            character_name: character.trim() || null,
+            invite_handle: "@" + cleanHandle,
+            invite_status: prof ? "accepted" : "pending",
+            display_name: prof ? null : "@" + cleanHandle,
+        };
+        if (prof) payload.user_id = prof.id;
+        const { error } = await supabase.from("production_members").insert(payload);
+        if (error) { console.warn(error); alert("Could not add member: " + error.message); return; }
+        onAdded();
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 12 };
+    const roles = [
+        { k: "cast", l: "Cast" }, { k: "ensemble", l: "Ensemble" }, { k: "swing", l: "Swing" },
+        { k: "music_director", l: "Music Director" }, { k: "choreographer", l: "Choreographer" },
+        { k: "stage_manager", l: "Stage Manager" }, { k: "assistant", l: "Assistant" },
+        { k: "designer", l: "Designer" }, { k: "crew", l: "Crew" }, { k: "other", l: "Other" },
+    ];
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "85dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "Add Member"),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "USER HANDLE"),
+            React.createElement("input", { value: handle, onChange: e => setHandle(e.target.value), placeholder: "@username", style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "ROLE"),
+            React.createElement("select", { value: roleType, onChange: e => setRoleType(e.target.value), style: inputSt },
+                roles.map(r => React.createElement("option", { key: r.k, value: r.k }, r.l))
+            ),
+            (roleType === "cast" || roleType === "ensemble" || roleType === "swing") && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "CHARACTER (OPTIONAL)"),
+                React.createElement("input", { value: character, onChange: e => setCharacter(e.target.value), placeholder: "e.g. Hamilton, Elphaba", style: inputSt })
+            ),
+            React.createElement("button", { onClick: submit, disabled: !handle.trim(), style: { width: "100%", padding: "13px", marginTop: 6, background: handle.trim() ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: handle.trim() ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: handle.trim() ? "pointer" : "not-allowed" } }, "Add to Production"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function ScheduleTab({ production, events, isDirector, show, reload }) {
+    const [showAdd, setShowAdd] = useState(false);
+    const [filter, setFilter] = useState("upcoming"); // upcoming | past | all
+    const now = new Date();
+    const filtered = events.filter(e => {
+        const dt = new Date(e.starts_at);
+        if (filter === "upcoming") return dt >= new Date(now.toDateString());
+        if (filter === "past") return dt < new Date(now.toDateString());
+        return true;
+    });
+    const grouped = filtered.reduce((acc, e) => {
+        const d = new Date(e.starts_at).toDateString();
+        if (!acc[d]) acc[d] = [];
+        acc[d].push(e);
+        return acc;
+    }, {});
+    const removeEvent = async (id) => {
+        if (!confirm("Delete this event?")) return;
+        await supabase.from("production_events").delete().eq("id", id);
+        show("Event removed");
+        reload();
+    };
+    return React.createElement("div", null,
+        isDirector && React.createElement("button", { onClick: () => setShowAdd(true), style: { width: "100%", padding: "11px", marginBottom: 14, background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, "+ Add Event"),
+        React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } },
+            [["upcoming", "Upcoming"], ["past", "Past"], ["all", "All"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setFilter(k), style: { flex: 1, padding: "8px", background: filter === k ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.04)", border: "1px solid " + (filter === k ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.06)"), borderRadius: 8, color: filter === k ? "#c9a84c" : "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 600, cursor: "pointer" } }, l)
+            )
+        ),
+        filtered.length === 0
+            ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, isDirector ? "No " + filter + " events. " + (filter === "upcoming" ? "Tap + Add Event to schedule one." : "") : "No events.")
+            : Object.keys(grouped).map(date => {
+                const isToday = new Date(date).toDateString() === now.toDateString();
+                return React.createElement("div", { key: date, style: { marginBottom: 16 } },
+                    React.createElement("div", { style: { fontSize: 11, color: isToday ? "#c9a84c" : "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 8 } }, (isToday ? "TODAY \u00B7 " : "") + new Date(date).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }).toUpperCase()),
+                    grouped[date].map(e => React.createElement(EventRow, { key: e.id, event: e, isDirector, onDelete: () => removeEvent(e.id) }))
+                );
+            }),
+        showAdd && React.createElement(AddEventModal, { productionId: production.id, onClose: () => setShowAdd(false), onAdded: () => { reload(); setShowAdd(false); show("\u2713 Event added"); } })
+    );
+}
+function AddEventModal({ productionId, onClose, onAdded }) {
+    const [title, setTitle] = useState("");
+    const [type, setType] = useState("rehearsal");
+    const [startsAt, setStartsAt] = useState("");
+    const [location, setLocation] = useState("");
+    const [prep, setPrep] = useState("");
+    const submit = async () => {
+        if (!title.trim() || !startsAt) return;
+        const { error } = await supabase.from("production_events").insert({
+            production_id: productionId,
+            type, title: title.trim(),
+            starts_at: new Date(startsAt).toISOString(),
+            location: location.trim() || null,
+            prep_notes: prep.trim() || null,
+        });
+        if (error) { alert("Failed: " + error.message); return; }
+        onAdded();
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 12 };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "90dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 18, fontFamily: "'Cormorant Garamond',serif" } }, "New Event"),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "TYPE"),
+            React.createElement("select", { value: type, onChange: e => setType(e.target.value), style: inputSt },
+                ["audition", "callback", "rehearsal", "tech", "performance", "meeting", "other"].map(t =>
+                    React.createElement("option", { key: t, value: t }, t.charAt(0).toUpperCase() + t.slice(1))
+                )
+            ),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "TITLE"),
+            React.createElement("input", { value: title, onChange: e => setTitle(e.target.value), placeholder: "e.g. Act 1 read-through", style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "DATE & TIME"),
+            React.createElement("input", { type: "datetime-local", value: startsAt, onChange: e => setStartsAt(e.target.value), style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "LOCATION"),
+            React.createElement("input", { value: location, onChange: e => setLocation(e.target.value), placeholder: "e.g. Studio B, La Jolla Playhouse", style: inputSt }),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "PREP NOTES"),
+            React.createElement("textarea", { value: prep, onChange: e => setPrep(e.target.value), rows: 3, placeholder: "What to prep, wear, bring", style: Object.assign(Object.assign({}, inputSt), { resize: "none", fontFamily: "inherit" }) }),
+            React.createElement("button", { onClick: submit, disabled: !title.trim() || !startsAt, style: { width: "100%", padding: "13px", background: (title.trim() && startsAt) ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, color: (title.trim() && startsAt) ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 14, fontWeight: 700, cursor: (title.trim() && startsAt) ? "pointer" : "not-allowed" } }, "Create Event"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel")
+        )
+    );
+}
+function CheckinTab({ production, events, members, me, isDirector, show, reload }) {
+    const [checkins, setCheckins] = useState({}); // event_id → {user_id: status}
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    useEffect(() => {
+        (async () => {
+            if (!events.length) return;
+            const eventIds = events.map(e => e.id);
+            const { data } = await supabase.from("event_checkins").select("*").in("event_id", eventIds);
+            const map = {};
+            (data || []).forEach(c => {
+                if (!map[c.event_id]) map[c.event_id] = {};
+                map[c.event_id][c.user_id] = c.status;
+            });
+            setCheckins(map);
+        })();
+    }, [events]);
+    const now = new Date();
+    const today = events.filter(e => {
+        const d = new Date(e.starts_at);
+        return d.toDateString() === now.toDateString();
+    });
+    const upcoming = events.filter(e => new Date(e.starts_at) > now && new Date(e.starts_at).toDateString() !== now.toDateString()).slice(0, 10);
+    const past = events.filter(e => {
+        const d = new Date(e.starts_at);
+        return d < now && d.toDateString() !== now.toDateString();
+    }).slice(0, 5);
+    const checkInMe = async (eventId) => {
+        if (!me) { show("Sign in to check in"); return; }
+        const { error } = await supabase.from("event_checkins").upsert({ event_id: eventId, user_id: me.id, status: "present" });
+        if (error) { show("Check-in failed"); return; }
+        show("\u2713 Checked in!");
+        setCheckins(p => Object.assign(Object.assign({}, p), { [eventId]: Object.assign(Object.assign({}, p[eventId]), { [me.id]: "present" }) }));
+    };
+    const toggleCheckinOpen = async (event) => {
+        const newVal = !event.checkin_open;
+        await supabase.from("production_events").update({ checkin_open: newVal }).eq("id", event.id);
+        show(newVal ? "Check-in opened" : "Check-in closed");
+        // When opening check-in, notify all cast/crew with an account
+        if (newVal && members && members.length) {
+            const when = new Date(event.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            members.filter(m => m.user_id).forEach(m => {
+                notify({
+                    userId: m.user_id,
+                    type: "checkin",
+                    title: "Check-in is open",
+                    body: (event.title || "Rehearsal") + " \u00B7 " + when + (event.location ? " \u00B7 " + event.location : ""),
+                    link: "production:" + (production && production.id),
+                });
+            });
+        }
+        reload();
+    };
+    if (selectedEvent && isDirector) {
+        return React.createElement(AttendanceRoster, {
+            event: selectedEvent, members, checkins: checkins[selectedEvent.id] || {},
+            onBack: () => setSelectedEvent(null), show, reload,
+        });
+    }
+    return React.createElement("div", null,
+        today.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "TODAY"),
+            today.map(e => {
+                const myStatus = me && checkins[e.id] && checkins[e.id][me.id];
+                const isOpen = e.checkin_open;
+                return React.createElement("div", { key: e.id, style: { background: "linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05))", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 12, padding: 14, marginBottom: 8 } },
+                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 4 } }, e.title),
+                    React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 12 } }, new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + (e.location ? " · " + e.location : "")),
+                    isDirector && React.createElement(React.Fragment, null,
+                        React.createElement("button", { onClick: () => toggleCheckinOpen(e), style: { width: "100%", padding: "11px", marginBottom: 6, background: isOpen ? "rgba(76,222,128,0.15)" : "rgba(255,255,255,0.06)", border: "1px solid " + (isOpen ? "rgba(76,222,128,0.4)" : "rgba(255,255,255,0.1)"), borderRadius: 8, color: isOpen ? "#4ade80" : "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" } }, isOpen ? "\u2713 Check-in open" : "Open check-in"),
+                        React.createElement("button", { onClick: () => setSelectedEvent(e), style: { width: "100%", padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" } }, "View Roster (" + Object.keys(checkins[e.id] || {}).length + ")")
+                    ),
+                    !isDirector && me && (myStatus
+                        ? React.createElement("div", { style: { padding: "11px", background: "rgba(76,222,128,0.15)", border: "1px solid rgba(76,222,128,0.4)", borderRadius: 8, color: "#4ade80", fontSize: 13, fontWeight: 700, textAlign: "center" } }, "\u2713 Checked in")
+                        : isOpen
+                            ? React.createElement("button", { onClick: () => checkInMe(e.id), style: { width: "100%", padding: "13px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 10, color: "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Check In")
+                            : React.createElement("div", { style: { padding: "11px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, color: "rgba(255,255,255,0.5)", fontSize: 12, textAlign: "center" } }, "Check-in not yet open"))
+                );
+            })
+        ),
+        today.length === 0 && upcoming.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No events to check in for."),
+        upcoming.length > 0 && React.createElement("div", { style: { marginBottom: 18 } },
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "UPCOMING"),
+            upcoming.slice(0, 5).map(e => React.createElement(EventRow, { key: e.id, event: e, onClick: isDirector ? () => setSelectedEvent(e) : undefined }))
+        ),
+        past.length > 0 && React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10 } }, "RECENT"),
+            past.map(e => {
+                const myStatus = me && checkins[e.id] && checkins[e.id][me.id];
+                return React.createElement("div", { key: e.id, onClick: isDirector ? () => setSelectedEvent(e) : undefined, style: { padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 10, marginBottom: 6, cursor: isDirector ? "pointer" : "default", display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600, marginBottom: 3 } }, e.title),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)" } }, new Date(e.starts_at).toLocaleDateString([], { month: "short", day: "numeric" }) + " \u00B7 " + new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+                    ),
+                    myStatus && React.createElement("div", { style: { fontSize: 10, padding: "3px 8px", borderRadius: 12, background: myStatus === "present" ? "rgba(76,222,128,0.15)" : myStatus === "late" ? "rgba(251,191,36,0.15)" : "rgba(239,68,68,0.15)", color: myStatus === "present" ? "#4ade80" : myStatus === "late" ? "#fbbf24" : "#ef4444", fontWeight: 700, letterSpacing: "0.05em" } }, myStatus.toUpperCase())
+                );
+            })
+        )
+    );
+}
+function AttendanceRoster({ event, members, checkins, onBack, show, reload }) {
+    const calledMembers = members; // simplified — show everyone
+    const setStatus = async (userId, status) => {
+        await supabase.from("event_checkins").upsert({ event_id: event.id, user_id: userId, status });
+        show("\u2713 " + status);
+        reload();
+    };
+    return React.createElement("div", null,
+        React.createElement("button", { onClick: onBack, style: { background: "none", border: "none", color: "#c9a84c", fontSize: 13, marginBottom: 14, cursor: "pointer", padding: 0 } }, "\u2190 Back"),
+        React.createElement("div", { style: { fontSize: 16, fontWeight: 700, marginBottom: 4 } }, event.title),
+        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 18 } }, new Date(event.starts_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })),
+        calledMembers.length === 0
+            ? React.createElement("div", { style: { padding: 40, textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No members yet")
+            : calledMembers.map(m => {
+                var _a, _b;
+                const name = ((_a = m.profile) === null || _a === void 0 ? void 0 : _a.name) || m.display_name || "Pending";
+                const avatar = (_b = m.profile) === null || _b === void 0 ? void 0 : _b.avatar_url;
+                const status = m.user_id ? checkins[m.user_id] : null;
+                const statusColor = status === "present" ? "#4ade80" : status === "late" ? "#fbbf24" : status === "absent" ? "#ef4444" : "rgba(255,255,255,0.3)";
+                return React.createElement("div", { key: m.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 10, marginBottom: 6 } },
+                    React.createElement("div", { style: { width: 36, height: 36, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, color: "#1a0a2e", flexShrink: 0 } },
+                        avatar ? React.createElement("img", { src: avatar, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : (name || "U").slice(0, 2).toUpperCase()
+                    ),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, name),
+                        React.createElement("div", { style: { fontSize: 10, color: statusColor, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" } }, status || "not checked in")
+                    ),
+                    m.user_id && React.createElement("div", { style: { display: "flex", gap: 4 } },
+                        ["present", "late", "absent"].map(s =>
+                            React.createElement("button", { key: s, onClick: () => setStatus(m.user_id, s), title: s, style: { width: 28, height: 28, borderRadius: "50%", background: status === s ? (s === "present" ? "rgba(76,222,128,0.25)" : s === "late" ? "rgba(251,191,36,0.25)" : "rgba(239,68,68,0.25)") : "rgba(255,255,255,0.04)", border: "1px solid " + (status === s ? (s === "present" ? "rgba(76,222,128,0.5)" : s === "late" ? "rgba(251,191,36,0.5)" : "rgba(239,68,68,0.5)") : "rgba(255,255,255,0.08)"), color: s === "present" ? "#4ade80" : s === "late" ? "#fbbf24" : "#ef4444", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 } }, s === "present" ? "\u2713" : s === "late" ? "\u23F0" : "\u2717")
+                        )
+                    )
+                );
+            })
+    );
+}
+function StudioScreen({ show, onJoin, onViewUser }) {
+    const [sub, setSub] = useState("scenes");
+    const STUDIO_SUBS = [
+        { key: "scenes", label: "\uD83C\uDFAD Scene Builder" },
+        { key: "productions", label: "\uD83C\uDFAC Productions" },
+        { key: "live", label: "\uD83D\uDD34 Live", live: true },
+    ];
+    return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
+        React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.5)", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 } }, STUDIO_SUBS.map(s => (React.createElement("button", { key: s.key, onClick: () => setSub(s.key), style: { flex: 1, padding: "12px 0", background: "none", border: "none",
+                fontWeight: sub === s.key ? 700 : 400, fontSize: 13, cursor: "pointer",
+                borderBottom: sub === s.key ? "2px solid #c9a84c" : "2px solid transparent",
+                letterSpacing: "0.02em",
+                animation: s.live && sub !== s.key ? "liveDot 1.5s infinite" : "none",
+                color: s.live && sub !== s.key ? "#ef4444" : (sub === s.key ? "#c9a84c" : "rgba(255,255,255,0.42)"),
+            } },
+            s.label,
+            s.live && sub !== s.key && React.createElement("span", { style: { display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#ef4444", marginLeft: 5, verticalAlign: "middle", animation: "liveDot 1.5s infinite" } }))))),
+        React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
+            sub === "scenes" && React.createElement(SceneBuilderScreen, { show: show }),
+            sub === "productions" && React.createElement(ProductionsScreen, { show: show, onViewUser: onViewUser }),
+            sub === "live" && React.createElement(LiveScreen, { show: show, onJoin: onJoin }))));
+}
+// --------------------------- PROFILE --------------------------------
+const INIT_PROFILE_MEDIA = [
+    { id: 1, type: "photo", url: "https://picsum.photos/id/1028/400/400", caption: "Act II rehearsal" },
+    { id: 2, type: "photo", url: "https://picsum.photos/id/1060/400/400", caption: "Sitzprobe night" },
+    { id: 3, type: "photo", url: "https://picsum.photos/id/1043/400/400", caption: "Behind the scenes" },
+    { id: 4, type: "video", url: "", caption: "Opening number run-through", duration: "2:14" },
+    { id: 5, type: "photo", url: "https://picsum.photos/id/1051/400/400", caption: "Cast party \uD83C\uDF89" },
+    { id: 6, type: "video", url: "", caption: "Final dress rehearsal", duration: "3:48" },
+];
+const INIT_PROFILE_TAPES = [
+    { id: 1, title: "Into the Woods - The Witch", date: "Apr 2026", status: "submitted", duration: "3:22" },
+    { id: 2, title: "Hamilton - Eliza Hamilton", date: "Mar 2026", status: "pending", duration: "4:5" },
+    { id: 3, title: "Sweeney Todd - Mrs. Lovett", date: "Feb 2026", status: "submitted", duration: "2:58" },
+];
+function ReportModal({ targetType, targetId, onClose, show }) {
+    const [reason, setReason] = useState("");
+    const [details, setDetails] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const REASONS = [
+        "Spam or scam",
+        "Harassment or bullying",
+        "Hate speech",
+        "Nudity or sexual content",
+        "Impersonation",
+        "Inappropriate content involving a minor",
+        "Other",
+    ];
+    const submit = async () => {
+        if (!reason) { show("Pick a reason"); return; }
+        setSubmitting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { show("Sign in to report"); setSubmitting(false); return; }
+        const { error } = await supabase.from("reports").insert({
+            reporter_id: user.id,
+            target_type: targetType,
+            target_id: String(targetId),
+            reason,
+            details: details.trim() || null,
+        });
+        setSubmitting(false);
+        if (error) { console.error(error); show("Could not submit report"); return; }
+        show("\u2713 Report submitted. Thank you.");
+        onClose();
+    };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 560, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: e => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "85dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "22px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 6 } }, "Report"),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 20, lineHeight: 1.5 } }, "Your report is anonymous. Our team will review it. If someone is in immediate danger, contact local authorities."),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 8 } }, "WHAT'S WRONG?"),
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 } },
+                REASONS.map(r =>
+                    React.createElement("button", { key: r, onClick: () => setReason(r), style: { width: "100%", padding: "13px 14px", textAlign: "left", background: reason === r ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.04)", border: "1px solid " + (reason === r ? "rgba(201,168,76,0.5)" : "rgba(255,255,255,0.08)"), borderRadius: 10, color: reason === r ? "#c9a84c" : "rgba(255,255,255,0.85)", fontSize: 14, fontWeight: reason === r ? 700 : 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+                        r, reason === r && React.createElement("span", null, "\u2713")))),
+            React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 8 } }, "ADDITIONAL DETAILS (OPTIONAL)"),
+            React.createElement("textarea", { value: details, onChange: e => setDetails(e.target.value), rows: 3, placeholder: "Anything else we should know\u2026", style: { width: "100%", padding: 12, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 18, resize: "none", fontFamily: "inherit" } }),
+            React.createElement("button", { onClick: submit, disabled: !reason || submitting, style: { width: "100%", padding: "14px", background: (reason && !submitting) ? "linear-gradient(135deg,#ef4444,#f87171)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 12, color: (reason && !submitting) ? "#fff" : "rgba(255,255,255,0.4)", fontSize: 15, fontWeight: 700, cursor: (reason && !submitting) ? "pointer" : "not-allowed" } }, submitting ? "Submitting\u2026" : "Submit Report"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
+    );
+}
+function ComposeMessageModal({ recipientId, recipientName, onClose, show, onSent }) {
+    const [text, setText] = useState("");
+    const [sending, setSending] = useState(false);
+    const send = async () => {
+        const msg = text.trim();
+        if (!msg) return;
+        setSending(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { show("Sign in to message"); setSending(false); return; }
+        const { error } = await supabase.from("messages").insert({ sender_id: user.id, receiver_id: recipientId, text: msg });
+        if (error) { console.error(error); show("\u26a0\ufe0f Could not send"); setSending(false); return; }
+        // Notify the recipient
+        notify({ userId: recipientId, type: "message", title: "New message", body: msg.slice(0, 80), link: "inbox" });
+        setSending(false);
+        show("\uD83D\uDCAC Message sent!");
+        if (onSent) onSent();
+        onClose();
+    };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 600, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: e => e.stopPropagation(), style: { width: "100%", maxWidth: 500, background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "22px 20px", paddingBottom: "calc(22px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 4 } }, "Message to"),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 16 } }, recipientName || "User"),
+            React.createElement("textarea", { value: text, onChange: e => setText(e.target.value), rows: 4, autoFocus: true, placeholder: "Write your message\u2026", style: { width: "100%", padding: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 15, lineHeight: 1.5, resize: "none", fontFamily: "inherit", marginBottom: 16, outline: "none" } }),
+            React.createElement("button", { onClick: send, disabled: !text.trim() || sending, style: { width: "100%", padding: "15px", background: (text.trim() && !sending) ? "linear-gradient(135deg,#c9a84c,#e8a87c)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 14, color: (text.trim() && !sending) ? "#1a0a2e" : "rgba(255,255,255,0.4)", fontSize: 15, fontWeight: 700, cursor: (text.trim() && !sending) ? "pointer" : "not-allowed" } }, sending ? "Sending\u2026" : "Send Message"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
+    );
+}
+function UserProfileView({ userId, onBack, show, onViewUser }) {
+    const [profile, setProfile] = useState(null);
+    const [posts, setPosts] = useState([]);
+    const [mediaRows, setMediaRows] = useState([]);
+    const cachedStats = (() => { try { return JSON.parse(localStorage.getItem("sl_stats_cache") || "null"); } catch { return null; } })();
+    const [stats, setStats] = useState(cachedStats || { posts: 0, followers: 0, following: 0, likes: 0 });
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [lightbox, setLightbox] = useState(null);
+    const [myId, setMyId] = useState(null);
+    const [showMenu, setShowMenu] = useState(false);
+    const [showReport, setShowReport] = useState(false);
+    const [showCompose, setShowCompose] = useState(false);
+    const [blocked, setBlocked] = useState(false);
+    useEffect(() => {
+        (async () => {
+            setLoading(true);
+            const { data: auth } = await supabase.auth.getUser();
+            const me = auth?.user?.id || null;
+            setMyId(me);
+            const { data: prof } = await supabase.from("profiles").select("*").eq("id", userId).single();
+            if (prof) setProfile(prof);
+            const { data: postRows } = await supabase.from("posts").select("*").eq("user_id", userId).eq("visibility", "public").order("created_at", { ascending: false });
+            setPosts(postRows || []);
+            const { data: mRows } = await supabase.from("media").select("*").eq("user_id", userId).order("created_at", { ascending: false });
+            setMediaRows(mRows || []);
+            const { data: followerRows } = await supabase.from("follows").select("follower_id").eq("following_id", userId);
+            const { data: followingRows } = await supabase.from("follows").select("following_id").eq("follower_id", userId);
+            setStats({
+                posts: (postRows || []).length,
+                followers: (followerRows || []).length,
+                following: (followingRows || []).length,
+                likes: (postRows || []).reduce((a, p) => a + (p.likes || 0), 0),
+            });
+            if (me) {
+                const { data: followCheck } = await supabase.from("follows").select("*").eq("follower_id", me).eq("following_id", userId);
+                setIsFollowing((followCheck || []).length > 0);
+            }
+            setLoading(false);
+        })();
+    }, [userId]);
+    const toggleFollow = async () => {
+        if (!myId) { show("Sign in to follow"); return; }
+        if (myId === userId) return;
+        if (isFollowing) {
+            setIsFollowing(false);
+            setStats(s => ({ ...s, followers: s.followers - 1 }));
+            await supabase.from("follows").delete().eq("follower_id", myId).eq("following_id", userId);
+            show("Unfollowed");
+        } else {
+            setIsFollowing(true);
+            setStats(s => ({ ...s, followers: s.followers + 1 }));
+            await supabase.from("follows").insert({ follower_id: myId, following_id: userId });
+            show("Following \u2713");
+        }
+    };
+    const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(1) + "M" : n >= 1e3 ? (n/1e3).toFixed(1) + "K" : String(n);
+    const merged = [
+        ...posts.map(p => ({ id: "post-" + p.id, type: p.type || "video", url: p.media_url || p.thumbnail_url, caption: p.title || "" })),
+        ...mediaRows.map(m => ({ id: "media-" + m.id, type: m.type, url: m.url, caption: m.caption || "" })),
+    ];
+    if (loading) return React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.5)" } }, "Loading\u2026");
+    if (!profile) return React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 200, padding: 20, color: "#fff" } },
+        React.createElement("button", { onClick: onBack, style: { background: "none", border: "none", color: "#fff", fontSize: 16, marginBottom: 20, cursor: "pointer" } }, "\u2190 Back"),
+        React.createElement("div", { style: { textAlign: "center", marginTop: 60, color: "rgba(255,255,255,0.5)" } }, "Profile not found")
+    );
+    return React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 300, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        // Back button floating on cover
+        React.createElement("button", { onClick: onBack, style: { position: "absolute", top: "calc(16px + env(safe-area-inset-top))", left: 16, zIndex: 10, width: 40, height: 40, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "50%", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2190"),
+        // Cover
+        React.createElement("div", { style: { background: profile.banner_url ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 140, overflow: "hidden" } },
+            profile.banner_url && React.createElement("img", { loading: "lazy", decoding: "async", src: profile.banner_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+        ),
+        // Avatar + stats
+        React.createElement("div", { style: { padding: "0 20px", marginTop: -44 } },
+            React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 18, marginBottom: 14 } },
+                React.createElement("div", { style: { width: 90, height: 90, borderRadius: "50%", border: "3px solid #08080f", background: profile.avatar_url ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 32, color: "#1a0a2e", flexShrink: 0 } },
+                    profile.avatar_url
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: profile.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : (profile.name || "U").slice(0, 2).toUpperCase()
+                ),
+                React.createElement("div", { style: { display: "flex", flex: 1, justifyContent: "space-around", paddingBottom: 4 } },
+                    [["posts", "Posts"], ["followers", "Followers"], ["following", "Following"]].map(([k, l]) =>
+                        React.createElement("div", { key: k, style: { textAlign: "center" } },
+                            React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, fmt(stats[k])),
+                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 } }, l)
+                        )
+                    )
+                )
+            ),
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 2 } }, profile.name || "User"),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 2 } }, profile.handle || "@user"),
+            profile.role && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8, fontWeight: 600 } }, profile.role),
+            profile.bio && React.createElement("div", { style: { fontSize: 13.5, color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginBottom: 8, whiteSpace: "pre-wrap" } }, profile.bio),
+            (profile.location || profile.website) && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 } },
+                profile.location && React.createElement("span", null, "\uD83D\uDCCD " + profile.location),
+                profile.website && React.createElement("a", { href: profile.website.startsWith("http") ? profile.website : "https://" + profile.website, target: "_blank", rel: "noopener", style: { color: "#c9a84c", textDecoration: "none" } }, "\uD83D\uDD17 " + profile.website)
+            ),
+            stats.likes > 0 && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 14 } }, "\u2764\uFE0F " + fmt(stats.likes) + " likes"),
+            // Follow + Message buttons (only if not viewing self)
+            myId !== userId && React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } },
+                React.createElement("button", { onClick: toggleFollow, style: { flex: 1, padding: "11px", background: isFollowing ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: isFollowing ? "1px solid rgba(255,255,255,0.15)" : "none", borderRadius: 8, color: isFollowing ? "#fff" : "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, isFollowing ? "Following" : "Follow"),
+                React.createElement("button", { onClick: () => { if (!myId) { show("Sign in to message"); return; } setShowCompose(true); }, style: { flex: 1, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Message"),
+                React.createElement("button", { onClick: () => setShowMenu(true), style: { width: 44, padding: "11px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "#fff", fontSize: 18, fontWeight: 700, cursor: "pointer" } }, "\u22EF")
+            )
+        ),
+        // Report/Block action menu
+        showMenu && React.createElement("div", { onClick: () => setShowMenu(false), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 550, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+            React.createElement("div", { onClick: e => e.stopPropagation(), style: { width: "100%", maxWidth: 500, background: "#1a0a2e", borderRadius: "20px 20px 0 0", padding: "12px 16px", paddingBottom: "calc(20px + env(safe-area-inset-bottom))" } },
+                React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "6px auto 16px" } }),
+                React.createElement("button", { onClick: () => { setShowMenu(false); setShowReport(true); }, style: { width: "100%", padding: "15px", background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.06)", color: "#fff", fontSize: 15, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } }, "\uD83D\uDEA9 Report this user"),
+                React.createElement("button", { onClick: async () => {
+                    setShowMenu(false);
+                    if (!myId) { show("Sign in first"); return; }
+                    if (!confirm("Block this user? You won't see their posts or messages, and they can't contact you.")) return;
+                    const { error } = await supabase.from("blocks").insert({ blocker_id: myId, blocked_id: userId });
+                    if (error && !(error.code === "23505")) { show("Could not block"); return; }
+                    setBlocked(true);
+                    show("\uD83D\uDEAB User blocked");
+                    setTimeout(onBack, 800);
+                }, style: { width: "100%", padding: "15px", background: "none", border: "none", color: "#f87171", fontSize: 15, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 } }, "\uD83D\uDEAB Block this user"),
+                React.createElement("button", { onClick: () => setShowMenu(false), style: { width: "100%", padding: "15px", marginTop: 6, background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Cancel")
+            )
+        ),
+        showReport && React.createElement(ReportModal, { targetType: "user", targetId: userId, onClose: () => setShowReport(false), show: show }),
+        showCompose && React.createElement(ComposeMessageModal, { recipientId: userId, recipientName: profile.name, onClose: () => setShowCompose(false), show: show }),
+        // Tab header
+        React.createElement("div", { style: { borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "13px 20px", fontSize: 12, fontWeight: 700, color: "#c9a84c", letterSpacing: "0.05em" } }, "\uD83C\uDFAC POSTS"),
+        // Grid
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, padding: "0 0 80px" } },
+            merged.length === 0
+                ? React.createElement("div", { style: { gridColumn: "1 / -1", padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } }, "No posts yet")
+                : merged.map(m =>
+                    React.createElement("div", { key: m.id, onClick: () => setLightbox(m), style: { aspectRatio: "9/16", background: "#1a0a2e", position: "relative", overflow: "hidden", cursor: "pointer" } },
+                        m.type === "video" || (m.url || "").match(/\.(mp4|webm|mov)$/i)
+                            ? React.createElement("video", { src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" }, playsInline: true, muted: true, preload: "metadata" })
+                            : m.url
+                                ? React.createElement("img", { loading: "lazy", decoding: "async", src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, opacity: 0.5 } }, m.type === "video" ? "\uD83C\uDFAC" : "\uD83C\uDFAD"),
+                        m.type === "video" && React.createElement("div", { style: { position: "absolute", bottom: 4, left: 4, background: "rgba(0,0,0,0.7)", padding: "2px 5px", borderRadius: 3, fontSize: 9, color: "#fff" } }, "\u25B6")
+                    )
+                )
+        ),
+        // Lightbox
+        lightbox && React.createElement("div", { onClick: () => setLightbox(null), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
+            lightbox.type === "video"
+                ? React.createElement("video", { src: lightbox.url, controls: true, autoPlay: true, playsInline: true, style: { maxWidth: "100%", maxHeight: "90vh" } })
+                : React.createElement("img", { src: lightbox.url, style: { maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" } })
+        )
+    );
+}
+
+function ProfileResume({ credits, training, skills, profile }) {
+    const hasContent = (credits && credits.length) || (training && training.length) || (skills && skills.trim());
+    if (!hasContent) {
+        return React.createElement("div", { style: { textAlign: "center", padding: "50px 20px", color: "rgba(255,255,255,0.4)" } },
+            React.createElement("div", { style: { fontSize: 40, marginBottom: 12, opacity: 0.5 } }, "\uD83D\uDCC4"),
+            React.createElement("div", { style: { fontSize: 14, fontWeight: 600, marginBottom: 6, color: "rgba(255,255,255,0.6)" } }, "No r\u00e9sum\u00e9 yet"),
+            React.createElement("div", { style: { fontSize: 12, lineHeight: 1.5, maxWidth: 240, margin: "0 auto" } }, "Build your r\u00e9sum\u00e9 in the Auditions tab and it'll show up here automatically.")
+        );
+    }
+    const Section = ({ title, children }) => React.createElement("div", { style: { marginBottom: 22 } },
+        React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 12, textTransform: "uppercase" } }, title),
+        children
+    );
+    return React.createElement("div", { style: { padding: "20px 16px 40px" } },
+        // Theatre credits
+        (credits && credits.length > 0) && React.createElement(Section, { title: "Theatre Credits" },
+            credits.map((c, i) =>
+                React.createElement("div", { key: c.id || i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" } },
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, c.role || c.title),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 1 } }, [c.title !== (c.role || c.title) ? c.title : null, c.company].filter(Boolean).join(" \u00B7 "))
+                    ),
+                    c.year && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 600, flexShrink: 0, marginLeft: 10 } }, c.year)
+                )
+            )
+        ),
+        // Training
+        (training && training.length > 0) && React.createElement(Section, { title: "Training" },
+            training.map((t, i) =>
+                React.createElement("div", { key: t.id || i, style: { padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" } },
+                    React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, t.title),
+                    t.sub && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 1 } }, t.sub)
+                )
+            )
+        ),
+        // Skills
+        (skills && skills.trim()) && React.createElement(Section, { title: "Special Skills" },
+            React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7 } },
+                skills.split(",").map(s => s.trim()).filter(Boolean).map((s, i) =>
+                    React.createElement("span", { key: i, style: { fontSize: 12, padding: "6px 12px", background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 16, color: "#c9a84c" } }, s)
+                )
+            )
+        )
+    );
+}
+function ProfileScreen({ show }) {
+    const [subPage, setSubPage] = useState("main");
+    const [mediaTab, setMediaTab] = useState("videos");
+    // Load résumé data for this profile
+    useEffect(() => {
+        (async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                // resume_skills now comes from the main profile load; only fetch credits here
+                const { data: rc } = await supabase.from("resume_credits").select("*").eq("user_id", user.id).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+                if (rc) {
+                    setResumeCredits(rc.filter(r => r.kind === "credit").map(r => ({ id: r.id, title: r.title, role: r.role || "", company: r.company || "", year: r.year || "" })));
+                    setResumeTraining(rc.filter(r => r.kind === "training").map(r => ({ id: r.id, title: r.title, sub: r.sub || "" })));
+                }
+            } catch (e) {}
+        })();
+    }, []); // videos | liked | tapes
+    const PROFILE_DEFAULT = {
+        name: "", handle: "", bio: "", location: "", website: "", role: "", avatar: null, banner: null,
+    };
+    // Try to hydrate from localStorage cache for instant render
+    const cached = (() => { try { return JSON.parse(localStorage.getItem("sl_profile_cache") || "null"); } catch { return null; } })();
+    const [profile, setProfile] = useState(cached || PROFILE_DEFAULT);
+    const [draft, setDraft] = useState(cached || PROFILE_DEFAULT);
+    const [privacy, setPrivacy] = useState({ publicProfile: true, showLocation: true, allowMessages: true, showEarnings: false, twoFactor: false });
+    const cachedMedia = (() => { try { return JSON.parse(localStorage.getItem("sl_media_cache") || "null"); } catch { return null; } })();
+    const cachedTapes = (() => { try { return JSON.parse(localStorage.getItem("sl_tapes_cache") || "null"); } catch { return null; } })();
+    const [media, setMedia] = useState(cachedMedia || []);
+    const [tapes, setTapes] = useState(cachedTapes || []);
+    const [liked, setLiked] = useState([]);
+    const [resumeCredits, setResumeCredits] = useState([]);
+    const [resumeTraining, setResumeTraining] = useState([]);
+    const [resumeSkillsP, setResumeSkillsP] = useState("");
+    const cachedStats = (() => { try { return JSON.parse(localStorage.getItem("sl_stats_cache") || "null"); } catch { return null; } })();
+    const [stats, setStats] = useState(cachedStats || { posts: 0, followers: 0, following: 0, likes: 0 });
+    const [lightbox, setLightbox] = useState(null);
+    // Load from Supabase
+    useEffect(() => {
+        (async () => {
+            const { data: authData } = await supabase.auth.getUser();
+            if (!authData.user) return;
+            const uid = authData.user.id;
+            // Fire ALL queries in parallel — they don't depend on each other.
+            // This turns ~6 sequential round-trips into 1.
+            const [profR, mediaR, postsR, tapesR, followersR, followingR] = await Promise.all([
+                supabase.from("profiles").select("name,handle,bio,location,website,role,avatar_url,banner_url,resume_skills").eq("id", uid).single(),
+                supabase.from("media").select("id,type,url,caption,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(60),
+                supabase.from("posts").select("id,type,media_url,thumbnail_url,title,caption,likes,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(60),
+                supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
+                supabase.from("follows").select("follower_id").eq("following_id", uid),
+                supabase.from("follows").select("following_id").eq("follower_id", uid),
+            ]);
+            const prof = profR && profR.data;
+            const mediaRows = (mediaR && mediaR.data) || [];
+            const postRows = (postsR && postsR.data) || [];
+            const tapeRows = (tapesR && tapesR.data) || [];
+            const followerRows = (followersR && followersR.data) || [];
+            const followingRows = (followingR && followingR.data) || [];
+            if (prof) {
+                const p = {
+                    name: prof.name || "", handle: prof.handle || "", bio: prof.bio || "",
+                    location: prof.location || "", website: prof.website || "", role: prof.role || "",
+                    avatar: prof.avatar_url || null, banner: prof.banner_url || null,
+                };
+                setProfile(p); setDraft(p);
+                if (prof.resume_skills !== undefined) setResumeSkillsP(prof.resume_skills || "");
+                try { localStorage.setItem("sl_profile_cache", JSON.stringify(p)); } catch (e) {}
+            }
+            // Merge posts + direct media for the grid
+            const merged = [];
+            postRows.forEach(p => {
+                merged.push({
+                    id: "post-" + p.id, type: p.type || "video",
+                    url: p.media_url || p.thumbnail_url, caption: p.title || p.caption || "",
+                    likes: p.likes || 0, isPost: true, postId: p.id,
+                });
+            });
+            mediaRows.forEach(m => {
+                merged.push({
+                    id: "media-" + m.id, type: m.type, url: m.url, caption: m.caption || "",
+                    mediaId: m.id,
+                });
+            });
+            setMedia(merged);
+            try { localStorage.setItem("sl_media_cache", JSON.stringify(merged.slice(0, 30))); } catch (e) {}
+            const tapesMapped = tapeRows.map(t => ({ id: t.id, title: t.title, date: (t.created_at || "").slice(0, 10), status: t.status || "pending", url: t.media_url }));
+            setTapes(tapesMapped);
+            try { localStorage.setItem("sl_tapes_cache", JSON.stringify(tapesMapped)); } catch (e) {}
+            const finalStats = {
+                posts: postRows.length,
+                followers: followerRows.length,
+                following: followingRows.length,
+                likes: postRows.reduce((a, p) => a + (p.likes || 0), 0),
+            };
+            setStats(finalStats);
+            try { localStorage.setItem("sl_stats_cache", JSON.stringify(finalStats)); } catch (e) {}
+        })();
+    }, []);
+    // Upload to Supabase Storage
+    const uploadToStorage = async (file, bucket, folder) => {
+        const token = localStorage.getItem("sb_token");
+        if (!token || !file) return null;
+        const ext = ((file.name || "file").split(".").pop() || "bin").toLowerCase().slice(0, 5);
+        const path = folder + "/" + Date.now() + "." + ext;
+        try {
+            const res = await fetch(`${SUPA_URL}/storage/v1/object/${bucket}/${path}`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": file.type || "application/octet-stream", "x-upsert": "true" },
+                body: file,
+            });
+            if (!res.ok) { console.error("Upload failed", res.status, await res.text()); return null; }
+            return `${SUPA_URL}/storage/v1/object/public/${bucket}/${path}`;
+        } catch (e) { console.error("Upload error", e); return null; }
+    };
+    // Save profile edits (called from EditProfile)
+    const saveEdit = async () => {
+        show("Saving\u2026");
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) { show("\u26a0\ufe0f Sign in to save"); return; }
+        const uid = data.user.id;
+        // If avatar is a data URI (newly picked), upload it first
+        let avatarUrl = draft.avatar;
+        if (draft.avatar && draft.avatar.startsWith("data:")) {
+            const [header, b64] = draft.avatar.split(",");
+            const mime = (header.match(/:(.*?);/) || [])[1] || "image/jpeg";
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mime });
+            blob.name = "avatar." + (mime.includes("png") ? "png" : "jpg");
+            const up = await uploadToStorage(blob, "avatars", uid);
+            if (up) avatarUrl = up;
+        }
+        // Same for banner
+        let bannerUrl = draft.banner;
+        if (draft.banner && draft.banner.startsWith("data:")) {
+            const [header, b64] = draft.banner.split(",");
+            const mime = (header.match(/:(.*?);/) || [])[1] || "image/jpeg";
+            const binary = atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mime });
+            blob.name = "banner." + (mime.includes("png") ? "png" : "jpg");
+            const up = await uploadToStorage(blob, "media", uid + "/banners");
+            if (up) bannerUrl = up;
+        }
+        const payload = {
+            name: draft.name, handle: draft.handle, bio: draft.bio,
+            location: draft.location, website: draft.website, role: draft.role,
+            avatar_url: avatarUrl, banner_url: bannerUrl,
+        };
+        const { error } = await supabase.from("profiles").update(payload).eq("id", uid);
+        if (error) {
+            // Fallback to insert
+            const { error: insErr } = await supabase.from("profiles").insert({ id: uid, ...payload });
+            if (insErr) { show("\u274c Save failed"); return; }
+        }
+        const saved = { ...draft, avatar: avatarUrl, banner: bannerUrl };
+        setProfile(saved); setDraft(saved);
+        setSubPage("main");
+        show("\u2713 Profile saved");
+    };
+    // Upload media (photos/videos)
+    const handleMediaUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        for (const file of files) {
+            const isVideo = file.type.startsWith("video/");
+            const localUrl = URL.createObjectURL(file);
+            const tempId = Date.now() + Math.random();
+            const caption = file.name.replace(/\.[^.]+$/, "");
+            setMedia(p => [{ id: tempId, type: isVideo ? "video" : "photo", url: localUrl, caption, uploading: true }, ...p]);
+            show(isVideo ? "\uD83C\uDFAC Uploading video\u2026" : "\uD83D\uDCF8 Uploading photo\u2026");
+            if (!user) { show("\u26a0\ufe0f Sign in to save"); continue; }
+            const storageUrl = await uploadToStorage(file, "media", user.id);
+            if (storageUrl) {
+                setMedia(p => p.map(m => m.id === tempId ? { ...m, url: storageUrl, uploading: false } : m));
+                const { data: row } = await supabase.from("media").insert({ user_id: user.id, type: isVideo ? "video" : "photo", url: storageUrl, caption });
+                if (row?.[0]?.id) setMedia(p => p.map(m => m.id === tempId ? { ...m, id: row[0].id } : m));
+                show("\u2713 Saved");
+            } else {
+                setMedia(p => p.map(m => m.id === tempId ? { ...m, uploading: false } : m));
+                show("\u26a0\ufe0f Upload failed");
+            }
+        }
+    };
+    const removeMedia = async (item) => {
+        setMedia(p => p.filter(m => m.id !== item.id));
+        if (item.isPost) {
+            await supabase.from("posts").delete().eq("id", item.postId);
+        } else if (item.mediaId) {
+            await supabase.from("media").delete().eq("id", item.mediaId);
+        }
+        show("Removed");
+    };
+    if (subPage === "edit")
+        return React.createElement(EditProfile, { draft, setDraft, onSave: saveEdit, onBack: () => setSubPage("main"), show, profile, setProfile });
+    if (subPage === "settings")
+        return React.createElement(SettingsPage, { onBack: () => setSubPage("main"), show });
+    if (subPage === "privacy")
+        return React.createElement(PrivacyPage, { privacy, setPrivacy, onBack: () => setSubPage("main"), show });
+    // Helper to format counts like TikTok (1.2K, 45.7K, 1.2M)
+    const fmt = (n) => n >= 1e6 ? (n/1e6).toFixed(1) + "M" : n >= 1e3 ? (n/1e3).toFixed(1) + "K" : String(n);
+    // Filter media by tab
+    const visibleMedia = mediaTab === "videos" ? media
+        : mediaTab === "tapes" ? tapes
+        : liked;
+    return React.createElement("div", { style: { height: "calc(100dvh - 72px)", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#08080f" } },
+        // Cover banner - view only (tap goes to Edit Profile)
+        React.createElement("div", { onClick: () => setSubPage("edit"), style: { background: profile.banner ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", height: 140, position: "relative", cursor: "pointer", overflow: "hidden" } },
+            profile.banner && React.createElement("img", { loading: "lazy", decoding: "async", src: profile.banner, style: { width: "100%", height: "100%", objectFit: "cover" } }),
+            !profile.banner && React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", fontSize: 12, letterSpacing: "0.15em" } }, "EDIT PROFILE TO ADD COVER")
+        ),
+        // Avatar + stats row (TikTok style)
+        React.createElement("div", { style: { padding: "0 20px", marginTop: -44, position: "relative" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "flex-end", gap: 18, marginBottom: 14 } },
+                React.createElement("div", { style: { width: 90, height: 90, borderRadius: "50%", border: "3px solid #08080f", background: profile.avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 32, color: "#1a0a2e", flexShrink: 0 } },
+                    profile.avatar
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: profile.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : (profile.name || "U").slice(0, 2).toUpperCase()
+                ),
+                // Stats 3-up
+                React.createElement("div", { style: { display: "flex", flex: 1, justifyContent: "space-around", paddingBottom: 4 } },
+                    [["posts", "Posts"], ["followers", "Followers"], ["following", "Following"]].map(([k, l]) =>
+                        React.createElement("div", { key: k, style: { textAlign: "center" } },
+                            React.createElement("div", { style: { fontSize: 18, fontWeight: 700 } }, fmt(stats[k])),
+                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.04em", marginTop: 2 } }, l)
+                        )
+                    )
+                )
+            ),
+            // Name + handle + role
+            React.createElement("div", { style: { fontSize: 19, fontWeight: 700, marginBottom: 2 } }, profile.name || "Your Name"),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.55)", marginBottom: 2 } }, profile.handle || "@handle"),
+            profile.role && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", marginBottom: 8, fontWeight: 600 } }, profile.role),
+            // Bio
+            profile.bio && React.createElement("div", { style: { fontSize: 13.5, color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginBottom: 8, whiteSpace: "pre-wrap" } }, profile.bio),
+            // Location / website
+            (profile.location || profile.website) && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 14 } },
+                profile.location && React.createElement("span", null, "\uD83D\uDCCD " + profile.location),
+                profile.website && React.createElement("a", { href: profile.website.startsWith("http") ? profile.website : "https://" + profile.website, target: "_blank", rel: "noopener", style: { color: "#c9a84c", textDecoration: "none" } }, "\uD83D\uDD17 " + profile.website)
+            ),
+            // Total likes badge
+            stats.likes > 0 && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 14 } }, "\u2764\uFE0F " + fmt(stats.likes) + " likes"),
+            // Action buttons
+            React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } },
+                React.createElement("button", { onClick: () => setSubPage("edit"), style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 8, color: "#1a0a2e", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Edit Profile"),
+                React.createElement("button", { onClick: () => setSubPage("settings"), style: { width: 44, padding: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 16, cursor: "pointer" } }, "\u2699\uFE0F")
+            )
+        ),
+        // Tabs
+        React.createElement("div", { style: { display: "flex", borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            [["videos", "\uD83C\uDFAC Videos"], ["tapes", "\uD83C\uDFAD Self Tapes"], ["resume", "\uD83D\uDCC4 R\u00e9sum\u00e9"], ["liked", "\u2764\uFE0F Liked"]].map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setMediaTab(k), style: { flex: 1, padding: "13px 0", background: "none", border: "none", borderBottom: mediaTab === k ? "2px solid #c9a84c" : "2px solid transparent", color: mediaTab === k ? "#c9a84c" : "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: mediaTab === k ? 700 : 500, cursor: "pointer", letterSpacing: "0.02em" } }, l)
+            )
+        ),
+        // Upload button (only on videos tab)
+        mediaTab === "videos" && React.createElement("label", { style: { display: "block", margin: "14px 16px", padding: "11px", background: "rgba(201,168,76,0.12)", border: "1px dashed rgba(201,168,76,0.4)", borderRadius: 8, textAlign: "center", color: "#c9a84c", fontSize: 13, fontWeight: 600, cursor: "pointer" } },
+            React.createElement("input", { type: "file", accept: "image/*,video/*", multiple: true, onChange: handleMediaUpload, style: { display: "none" } }),
+            "\uD83D\uDCE4  Upload Photos or Videos"
+        ),
+        // Résumé tab content
+        mediaTab === "resume" && React.createElement("div", { style: { padding: "16px 16px 90px" } },
+            React.createElement(ProfileResume, { credits: resumeCredits, training: resumeTraining, skills: resumeSkillsP, profile: profile })
+        ),
+        // Grid (3-col like TikTok) — hidden on résumé tab
+        mediaTab !== "resume" && React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, padding: "0 0 80px" } },
+            visibleMedia.length === 0
+                ? React.createElement("div", { style: { gridColumn: "1 / -1", padding: "40px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: 13 } },
+                    mediaTab === "videos" ? "No videos yet. Upload your first one above." :
+                    mediaTab === "tapes" ? "No self tapes yet. Upload from Studio \u2192 Casting \u2192 Self Tapes." :
+                    "Posts you like will show up here.")
+                : visibleMedia.map(m =>
+                    React.createElement("div", { key: m.id, onClick: () => setLightbox(m), style: { aspectRatio: "9/16", background: "#1a0a2e", position: "relative", overflow: "hidden", cursor: "pointer" } },
+                        m.type === "video" || m.url?.endsWith(".mp4") || m.url?.endsWith(".webm")
+                            ? React.createElement("video", { src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" }, playsInline: true, muted: true, preload: "metadata" })
+                            : m.url
+                                ? React.createElement("img", { loading: "lazy", decoding: "async", src: m.url, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                                : React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, opacity: 0.5 } }, m.type === "video" ? "\uD83C\uDFAC" : "\uD83C\uDFAD"),
+                        m.type === "video" && React.createElement("div", { style: { position: "absolute", bottom: 4, left: 4, background: "rgba(0,0,0,0.7)", padding: "2px 5px", borderRadius: 3, fontSize: 9, color: "#fff" } }, "\u25B6"),
+                        m.uploading && React.createElement("div", { style: { position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11 } }, "Uploading\u2026")
+                    )
+                )
+        ),
+        // Lightbox
+        lightbox && React.createElement("div", { onClick: () => setLightbox(null), style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
+            lightbox.type === "video"
+                ? React.createElement("video", { src: lightbox.url, controls: true, autoPlay: true, playsInline: true, style: { maxWidth: "100%", maxHeight: "90vh" } })
+                : React.createElement("img", { src: lightbox.url, style: { maxWidth: "100%", maxHeight: "90vh", objectFit: "contain" } }),
+            React.createElement("button", { onClick: (e) => { e.stopPropagation(); removeMedia(lightbox); setLightbox(null); }, style: { position: "absolute", top: 20, right: 20, background: "rgba(239,68,68,0.9)", border: "none", color: "#fff", padding: "8px 14px", borderRadius: 20, fontSize: 12, cursor: "pointer" } }, "\uD83D\uDDD1 Delete")
+        )
+    );
+}
+function EditProfile({ draft, setDraft, onSave, onBack, show, profile, setProfile }) {
+    const pickImage = (key) => (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = ev => {
+            setDraft(p => ({ ...p, [key]: ev.target.result }));
+        };
+        r.readAsDataURL(f);
+    };
+    const field = (label, key, multiline = false, placeholder = "") => React.createElement("div", { style: { marginBottom: 14 } },
+        React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, label),
+        multiline
+            ? React.createElement("textarea", { value: draft[key] || "", onChange: e => setDraft(p => ({ ...p, [key]: e.target.value })), rows: 3, style: { ...inputSt, resize: "none" }, placeholder })
+            : React.createElement("input", { value: draft[key] || "", onChange: e => setDraft(p => ({ ...p, [key]: e.target.value })), style: inputSt, placeholder })
+    );
+    return React.createElement(SubPage, { title: "Edit Profile", onBack },
+        // Cover photo
+        React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 } }, "COVER PHOTO"),
+        React.createElement("label", { style: { display: "block", marginBottom: 20, cursor: "pointer", position: "relative", borderRadius: 10, overflow: "hidden", background: draft.banner ? "transparent" : "linear-gradient(160deg,#1a0a2e,#2d1040)", height: 120 } },
+            React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: pickImage("banner") }),
+            draft.banner && React.createElement("img", { loading: "lazy", decoding: "async", src: draft.banner, style: { width: "100%", height: "100%", objectFit: "cover" } }),
+            React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: draft.banner ? "rgba(0,0,0,0.3)" : "transparent", color: "#fff", fontSize: 12, letterSpacing: "0.1em" } }, draft.banner ? "\uD83D\uDCF7  CHANGE COVER" : "\uD83D\uDCF7  TAP TO ADD COVER")
+        ),
+        // Avatar
+        React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 } },
+            React.createElement("label", { style: { cursor: "pointer", position: "relative" } },
+                React.createElement("input", { type: "file", accept: "image/*", style: { display: "none" }, onChange: pickImage("avatar") }),
+                React.createElement("div", { style: { width: 86, height: 86, borderRadius: "50%", border: "3px solid #c9a84c", overflow: "hidden", background: "rgba(201,168,76,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28 } },
+                    draft.avatar
+                        ? React.createElement("img", { loading: "lazy", decoding: "async", src: draft.avatar, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : (draft.name || "U").slice(0, 2).toUpperCase()
+                ),
+                React.createElement("div", { style: { position: "absolute", bottom: 2, right: 2, width: 24, height: 24, background: "#c9a84c", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 } }, "\uD83D\uDCF7")
+            ),
+            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8 } }, "Profile Photo")
+        ),
+        field("DISPLAY NAME", "name", false, "Your stage name"),
+        field("HANDLE", "handle", false, "@yourhandle"),
+        field("ROLE / TITLE", "role", false, "Composer, Lyricist, Actor\u2026"),
+        field("BIO", "bio", true, "Tell your story\u2026"),
+        field("LOCATION", "location", false, "City, State"),
+        field("WEBSITE", "website", false, "yoursite.com"),
+        React.createElement("button", { onClick: onSave, style: primaryBtn("#c9a84c") }, "Save Changes"),
+        React.createElement("button", { onClick: onBack, style: ghostBtn }, "Cancel")
+    );
+}
+
+function PrivacyPage({ privacy, setPrivacy, onBack, show }) {
+    const toggle = (key) => { setPrivacy(p => (Object.assign(Object.assign({}, p), { [key]: !p[key] }))); show("Privacy setting updated"); };
+    const sections = [
+        { label: "PROFILE", items: [["Public profile", "publicProfile", "Anyone can find and view your profile"], ["Show location", "showLocation", "Display your city on your profile"]] },
+        { label: "INTERACTIONS", items: [["Allow messages", "allowMessages", "Receive direct messages from anyone"], ["Show online status", "onlineStatus", "Let others see when you're active"]] },
+        { label: "FINANCIAL", items: [["Show earnings", "showEarnings", "Display your total earned on your profile"]] },
+        { label: "SECURITY", items: [["Two-factor auth", "twoFactor", "Require a code when signing in"]] },
+    ];
+    return (React.createElement(SubPage, { title: "Privacy & Security", onBack: onBack },
+        sections.map(sec => (React.createElement("div", { key: sec.label, style: { marginBottom: 20 } },
+            React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, sec.label),
+            React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, overflow: "hidden" } }, sec.items.map(([label, key, desc], i) => (React.createElement("div", { key: key, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
+                React.createElement("div", null,
+                    React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, label),
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.36)", marginTop: 2 } }, desc)),
+                React.createElement(Toggle, { on: !!privacy[key], onToggle: () => toggle(key) })))))))),
+        React.createElement("div", { style: { background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 14, padding: "16px" } },
+            React.createElement("div", { style: { fontWeight: 700, fontSize: 14, color: "#f87171", marginBottom: 4 } }, "Danger Zone"),
+            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 12 } }, "These actions are irreversible."),
+            React.createElement("button", { onClick: () => show("Account deletion requires email confirmation"), style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Delete Account"))));
+}
+function SettingsPage({ onBack, show }) {
+    const [notifs, setNotifs] = useState({ likes: true, comments: true, gifts: true, follows: true, collab: true });
+    const [theme, setTheme] = useState("dark");
+    const [quality, setQuality] = useState("auto");
+    const toggle = (key) => { setNotifs(p => (Object.assign(Object.assign({}, p), { [key]: !p[key] }))); show("Notification setting updated"); };
+    return (React.createElement(SubPage, { title: "Settings", onBack: onBack },
+        React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "NOTIFICATIONS"),
+        React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, overflow: "hidden", marginBottom: 20 } }, [["Likes & reactions", "likes"], ["Comments", "comments"], ["Gift donations", "gifts"], ["New followers", "follows"], ["Collab requests", "collab"]].map(([label, key], i) => (React.createElement("div", { key: key, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.6)" : "none" } },
+            React.createElement("span", { style: { fontSize: 13, fontWeight: 500 } }, label),
+            React.createElement(Toggle, { on: notifs[key], onToggle: () => toggle(key) }))))),
+        React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "APPEARANCE"),
+        React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 20 } }, [["Dark", "dark"], ["Light", "light"], ["Auto", "auto"]].map(([l, v]) => (React.createElement("button", { key: v, onClick: () => { setTheme(v); show(`Theme set to ${l}`); }, style: { flex: 1, padding: "11px", background: theme === v ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${theme === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: theme === v ? "#c9a84c" : "rgba(255,255,255,0.6)", fontWeight: theme === v ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
+        React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "PLAYBACK QUALITY"),
+        React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 20 } }, [["Auto", "auto"], ["SD", "sd"], ["HD", "hd"]].map(([l, v]) => (React.createElement("button", { key: v, onClick: () => { setQuality(v); show(`Quality set to ${l}`); }, style: { flex: 1, padding: "11px", background: quality === v ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${quality === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: quality === v ? "#c9a84c" : "rgba(255,255,255,0.6)", fontWeight: quality === v ? 700 : 400, fontSize: 13, cursor: "pointer" } }, l)))),
+        React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.3)", marginBottom: 10 } }, "ACCOUNT"),
+        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 } }, [["Change Password", "password"], ["Linked Accounts", "links"], ["Download My Data", "data"]].map(([l, k]) => (React.createElement("button", { key: k, onClick: () => show(`Opening ${l}\u2026`), style: { width: "100%", padding: "13px 16px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500, fontSize: 13, cursor: "pointer", textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" } },
+            l,
+            React.createElement("span", { style: { opacity: 0.4, fontSize: 16 } }, "\u203A"))))),
+        React.createElement("button", { onClick: async () => {
+            try { localStorage.removeItem("sl_tutorial_seen"); } catch (e) {}
+            try { const { data: { user } } = await supabase.auth.getUser(); if (user) await supabase.from("profiles").update({ tutorial_seen: false }).eq("id", user.id); } catch (e) {}
+            show("\uD83C\uDFAD Tutorial will show on next launch \u2014 reloading\u2026");
+            setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 900);
+        }, style: Object.assign(Object.assign({}, ghostBtn), { marginBottom: 10 }) }, "\uD83C\uDFAD Replay Tutorial"),
+        React.createElement("button", { onClick: async () => { try { localStorage.removeItem("sl_profile_cache"); localStorage.removeItem("sl_stats_cache"); localStorage.removeItem("sl_media_cache"); localStorage.removeItem("sl_tapes_cache"); localStorage.removeItem("sl_discover_cache"); } catch(e){} await supabase.auth.signOut(); show("Logged out"); }, style: Object.assign(Object.assign({}, ghostBtn), { color: "#f87171", borderColor: "rgba(239,68,68,0.3)" }) }, "Log Out")));
+}
+// --------------------------- LIVE -----------------------------------
+const LIVE_CHAT_SEEDS = [
+    { user: "MelodyMaker", text: "This is incredible!! \uD83C\uDFB6", emoji: "MM" },
+    { user: "TheatreKid99", text: "The harmonics on that last section \uD83D\uDE2D", emoji: "TK" },
+    { user: "JazzFan2026", text: "Can we get sheet music for this? \uD83D\uDE4F", emoji: "JF" },
+    { user: "BwayBound", text: "I've been waiting for this collab \u2728", emoji: "BB" },
+    { user: "StageMom", text: "My daughter would LOVE this \uD83C\uDFAD", emoji: "SM" },
+    { user: "PitOrchestra", text: "That modulation!! \u2764\ufe0f\u200d\uD83D\uDD25", emoji: "PO" },
+    { user: "CastingAgent", text: "Incredible talent here \uD83D\uDC4F", emoji: "CA" },
+    { user: "NewMusicalFan", text: "When's the next session?", emoji: "NM" },
+    { user: "VocalCoach", text: "Impeccable breath control \uD83C\uDF1F", emoji: "VC" },
+    { user: "Composer99", text: "What key are you in?", emoji: "C9" },
+];
+function LiveScreen({ show, onJoin }) {
+    return (React.createElement("div", { style: { padding: "18px 16px 80px", overflowY: "auto", WebkitOverflowScrolling: "touch", height: "100%" } },
+        React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#2d1040)", borderRadius: 18, padding: "20px", marginBottom: 20, position: "relative", overflow: "hidden" } },
+            React.createElement("div", { style: { position: "absolute", top: "-60%", left: "50%", width: "140%", height: "120%", background: "radial-gradient(circle,rgba(201,168,76,0.15) 0%,transparent 65%)", animation: "spotlight 8s ease-in-out infinite", pointerEvents: "none" } }),
+            React.createElement("div", { style: { position: "relative", zIndex: 1, textAlign: "center" } },
+                React.createElement("div", { style: { fontSize: 36, marginBottom: 8 } }, "\uD83C\uDF99\uFE0F"),
+                React.createElement("div", { style: { fontSize: 18, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 4 } }, "Go Live"),
+                React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 14 } }, "Share your rehearsal, workshop, or premiere in real time"),
+                React.createElement("button", { onClick: () => show("\uD83D\uDD34 Going live\u2026 (Demo - browser mic access needed)"), style: { padding: "11px 28px", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "none", borderRadius: 20, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\u25CF Start Broadcasting"))),
+        React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.3)", marginBottom: 12 } }, "LIVE NOW"),
+        LIVE_ROOMS.map(room => (React.createElement("div", { key: room.id, onClick: () => onJoin(room), style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, cursor: "pointer" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 } },
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 3 } },
+                        React.createElement("span", { style: { color: "#ef4444", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", animation: "liveDot 1.5s infinite" } }, "\u25CF LIVE"),
+                        React.createElement("span", { style: { fontWeight: 700, fontSize: 14, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, room.title)),
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } },
+                        "Hosted by ",
+                        room.host)),
+                React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", flexShrink: 0, marginLeft: 8 } },
+                    "\uD83D\uDC65 ",
+                    room.listeners)),
+            React.createElement("div", { style: { display: "flex", gap: 1.5, height: 24, alignItems: "flex-end", marginBottom: 12, opacity: 0.6 } }, Array.from({ length: 32 }).map((_, i) => (React.createElement("div", { key: i, className: "bar", style: { flex: 1, borderRadius: 1, height: `${25 + Math.sin(i * 0.7 + room.id) * 55}%`, background: room.accent } })))),
+            React.createElement("button", { style: { width: "100%", padding: "10px", background: room.accent + "22", border: `1px solid ${room.accent}44`, borderRadius: 10, color: room.accent, fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "Join Room \u2192"))))));
+}
+function LiveRoomOverlay({ room, onLeave, show }) {
+    const [micOn, setMicOn] = useState(true);
+    const [camOn, setCamOn] = useState(false);
+    const [raised, setRaised] = useState(false);
+    const [viewers, setViewers] = useState(room.listeners);
+    const [chatInput, setChatInput] = useState("");
+    const [chatMsgs, setChatMsgs] = useState([
+        { id: 1, user: "MelodyMaker", text: "Just joined! \uD83C\uDFB6", accent: "#c9a84c", self: false },
+        { id: 2, user: "TheatreKid99", text: "Sound is perfect tonight \u2728", accent: "#4cb8c4", self: false },
+    ]);
+    const [reactions, setReactions] = useState([]);
+    const chatEndRef = useRef(null);
+    const reactionTimers = useRef([]);
+    // Tick up viewers
+    useEffect(() => {
+        const id = setInterval(() => setViewers(v => v + Math.floor(Math.random() * 3)), 4000);
+        return () => clearInterval(id);
+    }, []);
+    // Simulate incoming chat (+ subscribe to Supabase realtime if available)
+    useEffect(() => {
+        let idx = 2;
+        // Simulated messages for demo feel
+        const scheduleNext = () => {
+            const delay = 3000 + Math.random() * 5000;
+            const t = setTimeout(() => {
+                const seed = LIVE_CHAT_SEEDS[idx % LIVE_CHAT_SEEDS.length];
+                setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: seed.user, text: seed.text, accent: room.accent, self: false }]);
+                idx++;
+                scheduleNext();
+            }, delay);
+            reactionTimers.current.push(t);
+        };
+        scheduleNext();
+        // Real-time channel for actual users
+        const chan = supabase.channel && supabase.channel("live-room-" + room.id, { config: { broadcast: { self: false } } });
+        if (chan && chan.on) {
+            chan.on("broadcast", { event: "chat" }, ({ payload }) => {
+                setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: payload.user || "Viewer", text: payload.text, accent: room.accent, self: false }]);
+            }).subscribe();
+            reactionTimers.current._chan = chan;
+        }
+        return () => {
+            var _a, _b;
+            reactionTimers.current.forEach(t => typeof t === "number" && clearTimeout(t));
+            (_b = (_a = reactionTimers.current._chan) === null || _a === void 0 ? void 0 : _a.unsubscribe) === null || _b === void 0 ? void 0 : _b.call(_a);
+        };
+    }, []);
+    const sendChat = () => {
+        if (!chatInput.trim())
+            return;
+        const txt = chatInput.trim();
+        setChatMsgs(p => [...p.slice(-49), { id: Date.now(), user: "You", text: txt, accent: "#c9a84c", self: true }]);
+        setChatInput("");
+        // Broadcast to other users in the room
+        const chan = reactionTimers.current._chan;
+        if (chan)
+            chan.send({ type: "broadcast", event: "chat", payload: { user: "You", text: txt } });
+    };
+    // Auto-scroll chat
+    useEffect(() => {
+        var _a;
+        (_a = chatEndRef.current) === null || _a === void 0 ? void 0 : _a.scrollIntoView({ behavior: "smooth" });
+    }, [chatMsgs]);
+    const sendReaction = (emoji) => {
+        const id = Date.now();
+        const x = 20 + Math.random() * 60;
+        setReactions(p => [...p, { id, emoji, x }]);
+        setTimeout(() => setReactions(p => p.filter(r => r.id !== id)), 2200);
+        show(`${emoji} Reaction sent!`);
+    };
+    return (React.createElement("div", { style: { position: "fixed", inset: 0, background: "#08080f", zIndex: 300, display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        React.createElement("div", { style: { background: "linear-gradient(180deg,rgba(18,7,36,0.99),rgba(8,4,14,0.97))", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 } },
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontWeight: 700, fontSize: 14, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, room.title),
+                React.createElement("div", { style: { fontSize: 11, color: room.accent } },
+                    "Hosted by ",
+                    room.host,
+                    " \u00B7 \uD83D\uDC65 ",
+                    viewers)),
+            React.createElement("div", { style: { display: "flex", gap: 8, flexShrink: 0 } },
+                React.createElement("span", { style: { background: "rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: 20, padding: "4px 10px", fontSize: 10, fontWeight: 700, animation: "liveDot 1.5s infinite" } }, "\u25CF LIVE"),
+                React.createElement("button", { onClick: onLeave, style: { padding: "6px 14px", background: "#dc2626", border: "none", borderRadius: 20, color: "#fff", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "Leave"))),
+        React.createElement("div", { style: { height: "42%", background: "linear-gradient(180deg,#1a0f1f,#0a050f)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", flexShrink: 0 } },
+            React.createElement("div", { style: { position: "absolute", top: "-50%", left: "50%", width: "120%", height: "80%", background: `radial-gradient(circle, ${room.accent}22 0%, transparent 60%)`, animation: "spotlight 8s ease-in-out infinite" } }),
+            reactions.map(r => (React.createElement("div", { key: r.id, style: { position: "absolute", bottom: "30%", left: `${r.x}%`, fontSize: 26, animation: "floatUp 2.2s ease-out forwards", pointerEvents: "none", zIndex: 10 } }, r.emoji))),
+            React.createElement("div", { style: { textAlign: "center", zIndex: 2 } },
+                React.createElement("div", { style: { width: 80, height: 80, margin: "0 auto 8px", background: `linear-gradient(135deg,${room.accent}44,${room.accent}22)`, borderRadius: "50%", border: `3px solid ${room.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 28, animation: "speaking 2s ease-in-out infinite alternate" } }, "\uD83C\uDFA4"),
+                React.createElement("div", { style: { fontWeight: 700, fontSize: 13, fontFamily: "'Cormorant Garamond',serif" } }, room.host),
+                React.createElement("div", { style: { fontSize: 10, color: room.accent } }, "Speaking")),
+            React.createElement("div", { style: { display: "flex", gap: 14, zIndex: 2, marginTop: 16 } }, ["\uD83C\uDFB9", "\uD83C\uDFB8", "\uD83E\uDD41"].map((e, i) => (React.createElement("div", { key: i, style: { textAlign: "center" } },
+                React.createElement("div", { style: { width: 44, height: 44, background: "rgba(255,255,255,0.08)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 } }, e)))))),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "8px 14px 4px", display: "flex", flexDirection: "column", gap: 6 } },
+            chatMsgs.map(m => (React.createElement("div", { key: m.id, style: { display: "flex", alignItems: "flex-start", gap: 7 } },
+                React.createElement("div", { style: { width: 22, height: 22, borderRadius: "50%", background: m.accent + "33", border: `1.5px solid ${m.accent}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0, color: m.accent } }, m.user.slice(0, 2).toUpperCase()),
+                React.createElement("div", { style: { maxWidth: "85%" } },
+                    React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: m.self ? "#c9a84c" : m.accent, marginRight: 5 } }, m.user),
+                    React.createElement("span", { style: { fontSize: 12, color: "rgba(255,255,255,0.82)", lineHeight: 1.4 } }, m.text))))),
+            React.createElement("div", { ref: chatEndRef })),
+        React.createElement("div", { style: { display: "flex", gap: 6, padding: "6px 14px", background: "rgba(0,0,0,0.3)", flexShrink: 0 } }, ["\u2764\ufe0f", "\uD83D\uDD25", "\uD83C\uDFB6", "\uD83D\uDC4F", "\u2728", "\uD83D\uDE2D"].map(e => (React.createElement("button", { key: e, onClick: () => sendReaction(e), style: { flex: 1, padding: "6px 0", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 16, cursor: "pointer" } }, e)))),
+        React.createElement("div", { style: { padding: "8px 12px 12px", background: "linear-gradient(0deg,rgba(8,4,14,0.98),rgba(18,7,36,0.9))", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 } },
+            React.createElement("input", { value: chatInput, onChange: e => setChatInput(e.target.value), onKeyDown: e => { if (e.key === "Enter")
+                    sendChat(); }, placeholder: "Say something\u2026", style: { flex: 1, padding: "10px 14px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 22, color: "#fff", fontSize: 13, outline: "none" } }),
+            React.createElement("button", { onClick: sendChat, style: { width: 38, height: 38, background: room.accent, border: "none", borderRadius: "50%", color: "#1a0a2e", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" } }, "\u2191")),
+        React.createElement("div", { style: { background: "linear-gradient(0deg,rgba(18,7,36,0.99),rgba(8,4,14,0.97))", padding: "10px 16px 24px", display: "flex", justifyContent: "space-around", flexShrink: 0 } }, [
+            { icon: micOn ? "\uD83C\uDF99" : "\uD83D\uDD07", label: micOn ? "Mic" : "Muted", active: micOn, fn: () => { setMicOn(p => !p); show(micOn ? "\uD83D\uDD07 Muted" : "\uD83C\uDF99 Mic on"); } },
+            { icon: camOn ? "\uD83D\uDCF9" : "\uD83D\uDCF7", label: camOn ? "Cam" : "Off", active: camOn, fn: () => { setCamOn(p => !p); show(camOn ? "\uD83D\uDCF7 Cam off" : "\uD83D\uDCF9 Cam on"); } },
+            { icon: "\u270b", label: raised ? "\u2713 Hand" : "Raise", active: raised, fn: () => { setRaised(p => !p); show(raised ? "Hand lowered" : "\u270b Hand raised!"); } },
+            { icon: "\uD83C\uDFB5", label: "Note", fn: () => show("\uD83C\uDFB5 Shared a music note!") },
+            { icon: "\u2197", label: "Share", fn: () => show("Link copied!") },
+        ].map((c, i) => (React.createElement("button", { key: i, onClick: c.fn, style: { background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 } },
+            React.createElement("div", { style: { width: 42, height: 42, borderRadius: 13, display: "flex", alignItems: "center", justifyContent: "center", background: c.active ? room.accent + "33" : "rgba(255,255,255,0.08)", fontSize: 18, border: c.active ? `1px solid ${room.accent}55` : "none" } }, c.icon),
+            React.createElement("span", { style: { fontSize: 9, color: "rgba(255,255,255,0.4)" } }, c.label)))))));
+}
+// --------------------------- INBOX ----------------------------------
+function AuditionsScreen({ show, onViewUser }) {
+    // Auditions hub — reuses the full Casting interface (Calls, Auditions, Self Tapes, Résumé)
+    return React.createElement(CastingScreen, { show: show, onViewUser: onViewUser, isHub: true });
+}
+function CastingScreen({ show, onViewUser, isHub }) {
+    const [sub, setSub] = useState("calls");
+    // FIX 1: persisted casting data
+    const [castingCalls, setCastingCalls] = useState(INIT_CASTING_CALLS);
+    const [auditions, setAuditions] = useState(INIT_AUDITIONS);
+    const [selfTapes, setSelfTapes] = useState(INIT_SELFTAPES);
+    const [credits, setCredits] = useState(INIT_CREDITS);
+    const [training, setTraining] = useState([]);
+    const [resumeProfile, setResumeProfile] = useState(null);
+    const [resumeSkills, setResumeSkills] = useState("");
+    // Load casting data from Supabase on mount
+    useEffect(() => {
+        (async () => {
+            // Load ALL public casting calls (from any director) — this is the hub
+            try {
+                const { data: calls } = await supabase.from("casting_calls").select("*").order("created_at", { ascending: false }).limit(50);
+                if (calls && calls.length > 0) {
+                    const mapped = calls.map(c => ({
+                        id: c.id, user_id: c.user_id, title: c.title, role: c.role, type: c.type, voice: c.voice,
+                        comp: c.comp || c.compensation, company: c.company, location: c.location, date: c.date || c.audition_dates,
+                        prep: c.prep || c.prepare, selftape: c.selftape,
+                        production_type: c.production_type, synopsis: c.synopsis,
+                        audition_dates: c.audition_dates, callback_dates: c.callback_dates,
+                        rehearsal_period: c.rehearsal_period, performance_dates: c.performance_dates,
+                        deadline: c.deadline, characters: c.characters || [],
+                        submission_type: c.submission_type, prepare: c.prepare, contact: c.contact,
+                        compensation: c.compensation,
+                        posted: c.created_at ? new Date(c.created_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "Recently",
+                    }));
+                    // Show real calls first, then seed examples
+                    setCastingCalls(p => [...mapped, ...p.filter(x => typeof x.id === "number")]);
+                }
+            } catch (e) { console.warn("Could not load casting calls", e); }
+            // Load user-specific data
+            const { data: auth } = await supabase.auth.getUser();
+            if (!auth.user) return;
+            setMe(auth.user);
+            const uid = auth.user.id;
+            // Self tapes
+            try {
+                const { data: tapes } = await supabase.from("self_tapes").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+                if (tapes && tapes.length > 0) {
+                    setSelfTapes(tapes.map(t => ({ id: t.id, show: t.title, scene: t.scene || "", deadline: t.deadline || "", submitTo: t.submit_to || "", status: t.status || "pending", emoji: "\uD83D\uDCF9" })));
+                }
+            } catch (e) {}
+            // Auditions (personal tracking)
+            try {
+                const { data: auds } = await supabase.from("auditions").select("*").eq("user_id", uid).order("created_at", { ascending: false });
+                if (auds && auds.length > 0) {
+                    setAuditions(auds.map(a => ({ id: a.id, show: a.show, role: a.role || "", company: a.company || "", date: a.date || "", location: a.location || "", prep: a.prep || "", status: a.status || "upcoming", emoji: "\uD83C\uDFAD" })));
+                }
+            } catch (e) {}
+            // Resume — load profile header, credits, training, skills
+            try {
+                const { data: prof } = await supabase.from("profiles").select("name,role,avatar_url,location,resume_skills,resume_headline").eq("id", uid).single();
+                if (prof) { setResumeProfile(prof); setResumeSkills(prof.resume_skills || ""); }
+            } catch (e) {}
+            try {
+                const { data: rc } = await supabase.from("resume_credits").select("*").eq("user_id", uid).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+                if (rc) {
+                    const creditRows = rc.filter(r => r.kind === "credit");
+                    const trainingRows = rc.filter(r => r.kind === "training");
+                    if (creditRows.length) setCredits(creditRows.map(r => ({ id: r.id, title: r.title, role: r.role || "", company: r.company || "", year: r.year || "" })));
+                    if (trainingRows.length) setTraining(trainingRows.map(r => ({ id: r.id, title: r.title, sub: r.sub || "" })));
+                }
+            } catch (e) {}
+        })();
+    }, []);
+    const [callFilter, setCallFilter] = useState("all");
+    const [audFilter, setAudFilter] = useState("upcoming");
+    const [modal, setModal] = useState(null);
+    const [viewingCall, setViewingCall] = useState(null);
+    const [me, setMe] = useState(null);
+    const [reviewingCall, setReviewingCall] = useState(null);
+    const SUBS = [
+        { key: "calls", label: "\uD83D\uDCE3 Calls" },
+        { key: "auditions", label: "\u2b50 Auditions" },
+        { key: "selftapes", label: "\uD83D\uDCF9 Self Tapes" },
+        { key: "resume", label: "\uD83D\uDCC4 R\u00e9sum\u00e9" },
+    ];
+    const filteredCalls = castingCalls.filter(c => callFilter === "all" ? true :
+        callFilter === "lead" ? c.type === "Lead" :
+            callFilter === "ensemble" ? c.type === "Ensemble" :
+                callFilter === "remote" ? c.selftape :
+                    callFilter === "paid" ? c.comp === "Paid" : true);
+    const filteredAuditions = auditions.filter(a => a.status === audFilter);
+    const addCall = async (data) => {
+        const localId = Date.now();
+        setCastingCalls(p => [Object.assign(Object.assign({}, data), { id: localId, posted: "Just now" }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("casting_calls").insert({
+            user_id: user.id,
+            title: data.title || "",
+            role: data.role || "Multiple roles",
+            type: data.type || null,
+            voice: data.voice || null,
+            comp: data.comp || null,
+            company: data.company || null,
+            location: data.location || null,
+            date: data.date || null,
+            prep: data.prep || null,
+            selftape: data.submission_type === "Self-tape" || data.submission_type === "Both",
+            production_type: data.production_type || null,
+            synopsis: data.synopsis || null,
+            audition_dates: data.audition_dates || null,
+            callback_dates: data.callback_dates || null,
+            rehearsal_period: data.rehearsal_period || null,
+            performance_dates: data.performance_dates || null,
+            deadline: data.deadline || null,
+            characters: data.characters || [],
+            submission_type: data.submission_type || null,
+            prepare: data.prepare || null,
+            contact: data.contact || null,
+            compensation: data.compensation || null,
+        });
+        if (row && row[0]) setCastingCalls(p => p.map(c => c.id === localId ? Object.assign(Object.assign({}, c), { id: row[0].id }) : c));
+    };
+    const addAudition = async (data) => {
+        const localId = Date.now();
+        setAuditions(p => [Object.assign(Object.assign({}, data), { id: localId, emoji: "\uD83C\uDFAD" }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("auditions").insert({
+            user_id: user.id,
+            show: data.show || data.title || "",
+            role: data.role || null,
+            company: data.company || null,
+            date: data.date || null,
+            location: data.location || null,
+            prep: data.prep || null,
+            status: data.status || "upcoming",
+        });
+        if (row && row[0]) setAuditions(p => p.map(a => a.id === localId ? Object.assign(Object.assign({}, a), { id: row[0].id }) : a));
+    };
+    const addTape = async (data) => {
+        const localId = Date.now();
+        setSelfTapes(p => [Object.assign(Object.assign({}, data), { id: localId, emoji: "\uD83D\uDCF9" }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("self_tapes").insert({
+            user_id: user.id,
+            title: data.show || data.title || "",
+            scene: data.scene || null,
+            deadline: data.deadline || null,
+            submit_to: data.submitTo || null,
+            status: data.status || "pending",
+        });
+        if (row && row[0]) setSelfTapes(p => p.map(t => t.id === localId ? Object.assign(Object.assign({}, t), { id: row[0].id }) : t));
+    };
+    const markAudStatus = (id, status) => { setAuditions(p => p.map(a => a.id === id ? Object.assign(Object.assign({}, a), { status }) : a)); };
+    const markTapeSubmitted = (id) => { setSelfTapes(p => p.map(t => t.id === id ? Object.assign(Object.assign({}, t), { status: "submitted" }) : t)); };
+    const removeAud = (id) => { setAuditions(p => p.filter(a => a.id !== id)); show("Removed."); };
+    const removeTape = (id) => { setSelfTapes(p => p.filter(t => t.id !== id)); show("Removed."); };
+    const addCredit = async (c) => {
+        const localId = "tmp-" + Date.now();
+        setCredits(p => [Object.assign(Object.assign({}, c), { id: localId }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("resume_credits").insert({
+            user_id: user.id, kind: "credit", title: c.title, role: c.role || null, company: c.company || null, year: c.year || null,
+        });
+        if (row && row[0]) setCredits(p => p.map(x => x.id === localId ? Object.assign(Object.assign({}, x), { id: row[0].id }) : x));
+        try { await supabase.from("profiles").update({ has_resume: true }).eq("id", user.id); } catch (e) {}
+    };
+    const addTraining = async (t) => {
+        const localId = "tmp-" + Date.now();
+        setTraining(p => [Object.assign(Object.assign({}, t), { id: localId }), ...p]);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: row } = await supabase.from("resume_credits").insert({
+            user_id: user.id, kind: "training", title: t.title, sub: t.sub || null,
+        });
+        if (row && row[0]) setTraining(p => p.map(x => x.id === localId ? Object.assign(Object.assign({}, x), { id: row[0].id }) : x));
+        try { await supabase.from("profiles").update({ has_resume: true }).eq("id", user.id); } catch (e) {}
+    };
+    const removeCredit = async (id) => {
+        setCredits(p => p.filter(c => c.id !== id));
+        if (typeof id === "string" && id.startsWith("tmp-")) return;
+        await supabase.from("resume_credits").delete().eq("id", id);
+    };
+    const removeTraining = async (id) => {
+        setTraining(p => p.filter(t => t.id !== id));
+        if (typeof id === "string" && id.startsWith("tmp-")) return;
+        await supabase.from("resume_credits").delete().eq("id", id);
+    };
+    const saveSkills = async (val) => {
+        setResumeSkills(val);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase.from("profiles").update({ resume_skills: val, has_resume: true }).eq("id", user.id);
+    };
+    const trackFromCall = (show_t, role) => {
+        setAuditions(p => [{ id: Date.now(), show: show_t, role, company: "From Casting Call", date: "TBA", location: "TBA", prep: "", status: "upcoming", emoji: "\uD83C\uDFAD" }, ...p]);
+        show(`"${role}" added to Auditions! \u2b50`);
+        setSub("auditions");
+    };
+    return (React.createElement("div", { style: { height: "calc(100dvh - 72px)", display: "flex", flexDirection: "column" } },
+        React.createElement("div", { style: { display: "flex", background: "rgba(0,0,0,0.4)", borderBottom: "1px solid rgba(255,255,255,0.08)", overflowX: "auto", flexShrink: 0 } }, SUBS.map(s => (React.createElement("button", { key: s.key, onClick: () => setSub(s.key), style: { flex: "0 0 auto", padding: "12px 18px", background: "none", border: "none", color: sub === s.key ? "#c9a84c" : "rgba(255,255,255,0.45)", fontWeight: sub === s.key ? 700 : 400, fontSize: 13, cursor: "pointer", borderBottom: sub === s.key ? "2px solid #c9a84c" : "2px solid transparent", whiteSpace: "nowrap" } }, s.label)))),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" } },
+            sub === "calls" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 24, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Casting Calls"),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 } }, "Open roles near you & remote")),
+                    React.createElement("button", { onClick: () => setModal("post-call"), style: { padding: "9px 16px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "+ Post")),
+                React.createElement("div", { style: { display: "flex", gap: 8, overflowX: "auto", marginBottom: 18, paddingBottom: 4 } }, [["all", "All"], ["lead", "Lead"], ["ensemble", "Ensemble"], ["remote", "Remote \uD83D\uDCF9"], ["paid", "Paid \uD83D\uDCB0"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setCallFilter(v), style: { flexShrink: 0, padding: "6px 14px", background: callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.06)", border: `1px solid ${callFilter === v ? "#c9a84c" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, color: callFilter === v ? "#1a0a2e" : "rgba(255,255,255,0.6)", fontWeight: callFilter === v ? 700 : 400, fontSize: 12, cursor: "pointer" } }, l)))),
+                filteredCalls.map(c => (React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, overflow: "hidden", marginBottom: 16 } },
+                    React.createElement("div", { style: { background: `linear-gradient(135deg,#1a0a2e,#2d1040)`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 } },
+                        React.createElement("span", { style: { fontSize: 28 } }, c.emoji),
+                        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                            React.createElement("div", { style: { fontWeight: 700, fontSize: 16, fontFamily: "'Cormorant Garamond',serif" } }, c.title),
+                            React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", marginTop: 1 } }, c.company)),
+                        React.createElement("span", { style: { fontSize: 11, color: "rgba(255,255,255,0.35)" } }, c.posted)),
+                    React.createElement("div", { style: { padding: "14px 16px" } },
+                        React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 } },
+                            React.createElement(Tag, { label: c.role, color: "#c9a84c" }),
+                            React.createElement(Tag, { label: c.type }),
+                            React.createElement(Tag, { label: c.voice }),
+                            React.createElement(Tag, { label: c.comp, color: c.comp === "Paid" ? "#4ade80" : undefined }),
+                            c.selftape && React.createElement(Tag, { label: "\uD83D\uDCF9 Self Tape OK", color: "#4cb8c4" })),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 5, display: "flex", alignItems: "center", gap: 8 } },
+                            "\uD83D\uDCC5 ",
+                            c.date),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 } },
+                            "\uD83D\uDCCD ",
+                            c.location),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.6)", background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 12px", marginBottom: 14, lineHeight: 1.5 } },
+                            React.createElement("strong", { style: { color: "rgba(255,255,255,0.8)" } }, "Prepare: "),
+                            c.prep),
+                        React.createElement("div", { style: { display: "flex", gap: 10 } },
+                            React.createElement("button", { onClick: () => setViewingCall(c), style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "View Details"),
+                            (me && c.user_id === me.id)
+                                ? React.createElement("button", { onClick: () => setReviewingCall(c), style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#1a0a2e,#4ade8022)", border: "1px solid #4ade8044", borderRadius: 12, color: "#4ade80", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\uD83D\uDCCB Applications")
+                                : React.createElement("button", { onClick: () => { trackFromCall(c.title, c.role); }, style: { flex: 1, padding: "11px", background: "linear-gradient(135deg,#1a0a2e,#c9a84c22)", border: "1px solid #c9a84c44", borderRadius: 12, color: "#c9a84c", fontWeight: 700, fontSize: 13, cursor: "pointer" } }, "\u2B50 Track"),
+                            React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"),
+                            React.createElement("button", { onClick: () => show("Link copied!"), style: { width: 42, height: 42, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.5)", fontSize: 18, cursor: "pointer" } }, "\u2197")))))))),
+            sub === "auditions" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 24, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "My Auditions"),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 } }, "Track every audition you have")),
+                    React.createElement("button", { onClick: () => setModal("add-audition"), style: { padding: "9px 16px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "+ Add")),
+                React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 18 } }, [["upcoming", "Upcoming"], ["callback", "Callbacks \uD83C\uDF1F"], ["completed", "Completed \u2713"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => setAudFilter(v), style: { flex: 1, padding: "8px 0", background: audFilter === v ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${audFilter === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 12, color: audFilter === v ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: audFilter === v ? 700 : 400, fontSize: 11, cursor: "pointer" } }, l)))),
+                filteredAuditions.length === 0 ? (React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" } },
+                    React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\uD83C\uDF1F"),
+                    React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontSize: 18, marginBottom: 6 } },
+                        "No ",
+                        audFilter,
+                        " auditions"),
+                    React.createElement("div", { style: { fontSize: 13 } }, "Add one or track from a Casting Call"))) : filteredAuditions.map(a => (React.createElement("div", { key: a.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    React.createElement("div", { style: { display: "flex", gap: 12 } },
+                        React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,#1a0a2e,#2d1040)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, a.emoji),
+                        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                                React.createElement("div", null,
+                                    React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif" } }, a.show),
+                                    React.createElement("div", { style: { fontSize: 12, color: "#c9a84c", fontWeight: 700 } }, a.role),
+                                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } }, a.company)),
+                                React.createElement("span", { style: { padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: a.status === "callback" ? "rgba(251,191,36,0.15)" : a.status === "completed" ? "rgba(74,222,128,0.15)" : "rgba(96,165,250,0.15)", color: a.status === "callback" ? "#fbbf24" : a.status === "completed" ? "#4ade80" : "#60a5fa" } }, a.status === "callback" ? "\uD83C\uDF1F Callback" : a.status === "completed" ? "\u2713 Done" : "Upcoming")),
+                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 8, display: "flex", flexDirection: "column", gap: 3 } },
+                                React.createElement("span", null,
+                                    "\uD83D\uDD50 ",
+                                    a.date),
+                                React.createElement("span", null,
+                                    "\uD83D\uDCCD ",
+                                    a.location),
+                                a.prep && React.createElement("div", { style: { fontSize: 12, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "8px 10px", marginTop: 4 } },
+                                    React.createElement("strong", null, "Prepare: "),
+                                    a.prep)))),
+                    React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
+                        a.status === "upcoming" && React.createElement("button", { onClick: () => markAudStatus(a.id, "callback"), style: { flex: 1, padding: "9px", background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.3)", borderRadius: 10, color: "#fbbf24", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Mark Callback \uD83C\uDF1F"),
+                        a.status === "upcoming" && React.createElement("button", { onClick: () => markAudStatus(a.id, "completed"), style: { flex: 1, padding: "9px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, color: "#4ade80", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Mark Done \u2713"),
+                        React.createElement("button", { onClick: () => removeAud(a.id), style: { width: 38, height: 38, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#f87171", fontSize: 16, cursor: "pointer" } }, "\uD83D\uDDD1"))))))),
+            sub === "selftapes" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 24, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "Self Tapes"),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 } }, "Record, manage & submit tapes")),
+                    React.createElement("button", { onClick: () => setModal("new-tape"), style: { padding: "9px 16px", background: "linear-gradient(135deg,#ef4444,#c9a84c)", border: "none", borderRadius: 12, color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u23FA Record")),
+                React.createElement("div", { style: { background: "linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.6))", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 14, padding: "14px 16px", marginBottom: 18 } },
+                    React.createElement("div", { style: { fontSize: 10, color: "#c9a84c", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 4 } }, "PRO TIP"),
+                    React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 } }, "Slate first \u2014 state your name, the role, and your rep. Keep slates under 10 seconds. Good lighting beats fancy equipment.")),
+                selfTapes.length === 0 ? (React.createElement("div", { style: { textAlign: "center", padding: "48px 0", color: "rgba(255,255,255,0.3)" } },
+                    React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\uD83D\uDCF9"),
+                    React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontSize: 18, marginBottom: 6 } }, "No self tapes yet"),
+                    React.createElement("div", { style: { fontSize: 13 } }, "Hit Record to add your first one"))) : selfTapes.map(t => (React.createElement("div", { key: t.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "16px", marginBottom: 12 } },
+                    React.createElement("div", { style: { display: "flex", gap: 12 } },
+                        React.createElement("div", { style: { width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,#1a0f1f,#2d1040)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, t.emoji),
+                        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" } },
+                                React.createElement("div", { style: { fontWeight: 700, fontSize: 15, fontFamily: "'Cormorant Garamond',serif" } }, t.show),
+                                React.createElement("span", { style: { padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: t.status === "submitted" ? "rgba(74,222,128,0.15)" : "rgba(251,146,60,0.15)", color: t.status === "submitted" ? "#4ade80" : "#fb923c" } }, t.status === "submitted" ? "\u2713 Sent" : "\u23f3 Pending")),
+                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 } }, t.scene),
+                            React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 6, display: "flex", flexDirection: "column", gap: 2 } },
+                                React.createElement("span", null,
+                                    "\u23F0 Deadline: ",
+                                    t.deadline),
+                                React.createElement("span", null,
+                                    "\u2709\uFE0F ",
+                                    t.submitTo)))),
+                    React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 12 } },
+                        React.createElement("button", { onClick: () => show("\u25b6 Playing preview\u2026 (Demo)"), style: { flex: 1, padding: "9px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "\u25B6 Preview"),
+                        t.status === "pending" && React.createElement("button", { onClick: () => markTapeSubmitted(t.id), style: { flex: 1, padding: "9px", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", borderRadius: 10, color: "#4ade80", fontWeight: 700, fontSize: 12, cursor: "pointer" } }, "Mark Sent \u2713"),
+                        React.createElement("button", { onClick: () => removeTape(t.id), style: { width: 38, height: 38, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, color: "#f87171", fontSize: 16, cursor: "pointer" } }, "\uD83D\uDDD1"))))))),
+            sub === "resume" && (React.createElement("div", { style: { padding: "18px 16px 60px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 24, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, "R\u00E9sum\u00E9"),
+                        React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.38)", marginTop: 2 } }, "Your theatre CV, always ready to share")),
+                    React.createElement("div", { style: { padding: "7px 13px", background: "rgba(76,222,128,0.12)", border: "1px solid rgba(76,222,128,0.3)", borderRadius: 12, color: "#4ade80", fontWeight: 700, fontSize: 11, display: "flex", alignItems: "center", gap: 5 } }, "\u2713 On your profile")),
+                React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0a2e,#2d1040,#0d1a2e)", borderRadius: 18, padding: "20px", marginBottom: 18 } },
+                    React.createElement("div", { style: { display: "flex", gap: 14, alignItems: "center", marginBottom: 16 } },
+                        React.createElement("div", { style: { width: 60, height: 60, borderRadius: 16, background: (resumeProfile && resumeProfile.avatar_url) ? "transparent" : "rgba(201,168,76,0.2)", border: "2px solid #c9a84c", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, overflow: "hidden" } }, (resumeProfile && resumeProfile.avatar_url) ? React.createElement("img", { src: resumeProfile.avatar_url, style: { width: "100%", height: "100%", objectFit: "cover" } }) : ((resumeProfile && resumeProfile.name) ? resumeProfile.name.slice(0, 2).toUpperCase() : "\uD83C\uDFAD")),
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, (resumeProfile && resumeProfile.name) ? resumeProfile.name : "Your Name"),
+                            React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, (resumeProfile && resumeProfile.role) ? resumeProfile.role : "Add your role in your profile"),
+                            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)" } }, (resumeProfile && resumeProfile.location) ? resumeProfile.location : "Add location in profile"))),
+                    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 } }, [
+                        [String(credits.length), credits.length === 1 ? "Show" : "Shows"],
+                        [String(credits.filter(c => /lead|principal|title/i.test((c.role || ""))).length), "Lead Roles"],
+                        [String(training.length), training.length === 1 ? "Training" : "Trainings"]
+                    ].map(([n, l]) => (React.createElement("div", { key: l, style: { background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "10px 0", textAlign: "center" } },
+                        React.createElement("div", { style: { fontSize: 18, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif" } }, n),
+                        React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.45)", letterSpacing: "0.06em" } }, l)))))),
+                React.createElement(ResumeSection, { title: "Training", onAdd: () => setModal("add-training") }, training.length === 0 ? React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "No training added yet") : training.map((t, i) => (React.createElement("div", { key: t.id || i, style: { padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } }, t.title),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } }, t.sub)),
+                    React.createElement("button", { onClick: () => removeTraining(t.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 16, cursor: "pointer", padding: 4 } }, "\u00D7"))))),
+                React.createElement(ResumeSection, { title: "Theatre Credits", onAdd: () => setModal("add-credit") }, credits.map((c, i) => (React.createElement("div", { key: c.id || i, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: 600 } },
+                            c.title,
+                            " ",
+                            React.createElement("span", { style: { fontWeight: 400, color: "rgba(255,255,255,0.5)" } },
+                                "\u2014 ",
+                                c.role)),
+                        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.38)" } },
+                            c.company,
+                            " \u00B7 ",
+                            c.year)),
+                    React.createElement("button", { onClick: () => removeCredit(c.id), style: { background: "none", border: "none", color: "rgba(255,255,255,0.25)", fontSize: 16, cursor: "pointer" } }, "\u00D7"))))),
+                React.createElement(ResumeSection, { title: "Skills & Special", onAdd: () => setModal("edit-skills") },
+                    (resumeSkills && resumeSkills.trim())
+                        ? React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 4 } }, resumeSkills.split(",").map(s => s.trim()).filter(Boolean).map((s, i) => (React.createElement("span", { key: i, style: { background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.25)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "rgba(255,255,255,0.7)" } }, s))))
+                        : React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "Tap + to add your skills")),
+                React.createElement(ResumeSection, { title: "Representation", onAdd: () => show("Rep editor coming soon") },
+                    React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", padding: "8px 0" } }, "No representation added yet"))))),
+        reviewingCall && React.createElement(ApplicationsReview, { call: reviewingCall, onClose: () => setReviewingCall(null), show: show, onViewUser: onViewUser }),
+        viewingCall && React.createElement(CastingCallDetail, { call: viewingCall, onClose: () => setViewingCall(null), onTrack: () => { trackFromCall(viewingCall.title, viewingCall.role); setViewingCall(null); }, show: show }),
+        modal === "post-call" && React.createElement(PostCastingModal, { onClose: () => setModal(null), onSubmit: (d) => { addCall(d); setModal(null); show(`"${d.title}" casting call posted! \uD83C\uDFAD`); } }),
+        modal === "add-audition" && React.createElement(AddAuditionModal, { onClose: () => setModal(null), onSubmit: (d) => { addAudition(d); setModal(null); show(`Audition saved! \u2b50`); } }),
+        modal === "new-tape" && React.createElement(NewTapeModal, { onClose: () => setModal(null), onSubmit: (d) => { addTape(d); setModal(null); show("Self tape saved! \uD83C\uDFAC"); } }),
+        modal === "add-credit" && React.createElement(AddCreditModal, { onClose: () => setModal(null), onSubmit: (d) => { addCredit(d); setModal(null); show("Credit added \u2713"); } }),
+        modal === "add-training" && React.createElement(AddTrainingModal, { onClose: () => setModal(null), onSubmit: (d) => { addTraining(d); setModal(null); show("Training added \u2713"); } }),
+        modal === "edit-skills" && React.createElement(EditSkillsModal, { current: resumeSkills, onClose: () => setModal(null), onSubmit: (val) => { saveSkills(val); setModal(null); show("Skills saved \u2713"); } })));
+}
+// -- Casting sub-components ----------------------------------------------------
+const Tag = ({ label, color }) => (React.createElement("span", { style: { background: color ? color + "18" : "rgba(255,255,255,0.7)", border: `1px solid ${color ? color + "44" : "rgba(255,255,255,0.12)"}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600, color: color || "rgba(255,255,255,0.65)" } }, label));
+const ResumeSection = ({ title, onAdd, children }) => (React.createElement("div", { style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px", marginBottom: 14 } },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
+        React.createElement("div", { style: { fontSize: 10, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.4)" } }, title.toUpperCase()),
+        React.createElement("button", { onClick: onAdd, style: { background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.3)", borderRadius: 8, padding: "4px 10px", color: "#c9a84c", fontWeight: 700, fontSize: 11, cursor: "pointer" } }, "+ Add")),
+    children));
+function ApplicationsReview({ call, onClose, show, onViewUser }) {
+    const [apps, setApps] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState("all");
+    const reload = async () => {
+        setLoading(true);
+        try {
+            const { data } = await supabase.from("casting_applications")
+                .select("*, applicant:applicant_id(name,handle,avatar_url,role)")
+                .eq("call_id", call.id)
+                .order("created_at", { ascending: false });
+            setApps(data || []);
+        } catch (e) { console.warn(e); }
+        setLoading(false);
+    };
+    useEffect(() => { reload(); }, [call.id]);
+    const setStatus = async (app, status) => {
+        setApps(p => p.map(a => a.id === app.id ? Object.assign(Object.assign({}, a), { status }) : a));
+        await supabase.from("casting_applications").update({ status }).eq("id", app.id);
+        // Notify the applicant
+        const labels = { reviewed: "Your audition was reviewed", callback: "\uD83C\uDF89 You got a callback!", passed: "Audition update", cast: "\uD83C\uDFAD You've been cast!" };
+        await notify({
+            userId: app.applicant_id,
+            type: "cast",
+            title: labels[status] || "Audition update",
+            body: (app.character_name ? app.character_name + " \u2014 " : "") + (call.title || ""),
+            link: "auditions",
+        });
+        show("\u2713 " + status + " \u2014 applicant notified");
+    };
+    const STATUSES = [
+        { k: "reviewed", l: "Reviewed", c: "#9ca3af" },
+        { k: "callback", l: "Callback", c: "#fbbf24" },
+        { k: "cast", l: "Cast", c: "#4ade80" },
+        { k: "passed", l: "Pass", c: "#ef4444" },
+    ];
+    const filtered = filter === "all" ? apps : apps.filter(a => a.status === filter);
+    return React.createElement("div", { style: { position: "fixed", inset: 0, zIndex: 520, background: "#08080f", display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)" } },
+            React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", width: 40, height: 40, borderRadius: "50%", fontSize: 18, cursor: "pointer", flexShrink: 0 } }, "\u2190"),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 16, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, "Applications"),
+                React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, call.title + " \u00B7 " + apps.length + " submitted"))),
+        // Filter pills
+        React.createElement("div", { style: { display: "flex", gap: 6, padding: "12px 16px", overflowX: "auto", borderBottom: "1px solid rgba(255,255,255,0.06)" } },
+            [["all", "All"]].concat(STATUSES.map(s => [s.k, s.l])).map(([k, l]) =>
+                React.createElement("button", { key: k, onClick: () => setFilter(k), style: { flexShrink: 0, padding: "7px 14px", background: filter === k ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.04)", border: "1px solid " + (filter === k ? "rgba(201,168,76,0.4)" : "rgba(255,255,255,0.08)"), borderRadius: 16, color: filter === k ? "#c9a84c" : "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" } }, l))),
+        React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "12px 16px 40px" } },
+            loading
+                ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "rgba(255,255,255,0.4)" } }, "Loading\u2026")
+                : filtered.length === 0
+                    ? React.createElement("div", { style: { textAlign: "center", padding: "60px 20px", color: "rgba(255,255,255,0.4)" } },
+                        React.createElement("div", { style: { fontSize: 40, marginBottom: 12, opacity: 0.5 } }, "\uD83C\uDFA4"),
+                        React.createElement("div", { style: { fontSize: 14, fontWeight: 600 } }, filter === "all" ? "No applications yet" : "None marked " + filter),
+                        filter === "all" && React.createElement("div", { style: { fontSize: 12, marginTop: 6 } }, "Submissions will appear here as performers apply."))
+                    : filtered.map(app => {
+                        var _a, _b;
+                        const name = ((_a = app.applicant) === null || _a === void 0 ? void 0 : _a.name) || "Performer";
+                        const avatar = (_b = app.applicant) === null || _b === void 0 ? void 0 : _b.avatar_url;
+                        const statusObj = STATUSES.find(s => s.k === app.status);
+                        return React.createElement("div", { key: app.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: 14, marginBottom: 10 } },
+                            React.createElement("div", { style: { display: "flex", gap: 11, alignItems: "center", marginBottom: 10 } },
+                                React.createElement("div", { onClick: () => app.applicant_id && onViewUser && onViewUser(app.applicant_id), style: { width: 44, height: 44, borderRadius: "50%", background: avatar ? "transparent" : "linear-gradient(135deg,#c9a84c,#e8a87c)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15, color: "#1a0a2e", flexShrink: 0, cursor: "pointer" } },
+                                    avatar ? React.createElement("img", { src: avatar, loading: "lazy", decoding: "async", style: { width: "100%", height: "100%", objectFit: "cover" } }) : name.slice(0, 2).toUpperCase()),
+                                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                                    React.createElement("div", { style: { fontSize: 15, fontWeight: 700 } }, name),
+                                    app.character_name && React.createElement("div", { style: { fontSize: 12, color: "#c9a84c" } }, "for " + app.character_name)),
+                                statusObj && React.createElement("div", { style: { fontSize: 10, padding: "3px 9px", borderRadius: 12, background: statusObj.c + "22", color: statusObj.c, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase" } }, statusObj.l)),
+                            app.note && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5, marginBottom: 10, padding: "10px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 10 } }, app.note),
+                            app.tape_url && React.createElement("a", { href: app.tape_url, target: "_blank", rel: "noopener noreferrer", style: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "#4cb8c4", textDecoration: "none", marginBottom: 12, fontWeight: 600 } }, "\uD83D\uDCF9 Watch self-tape \u2197"),
+                            React.createElement("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
+                                STATUSES.map(s =>
+                                    React.createElement("button", { key: s.k, onClick: () => setStatus(app, s.k), style: { flex: "1 1 auto", padding: "9px 6px", background: app.status === s.k ? s.c + "26" : "rgba(255,255,255,0.05)", border: "1px solid " + (app.status === s.k ? s.c + "66" : "rgba(255,255,255,0.1)"), borderRadius: 9, color: app.status === s.k ? s.c : "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 700, cursor: "pointer" } }, s.l))));
+                    }))
+    );
+}
+function ApplyModal({ call, onClose, show, onApplied }) {
+    const chars = (call.characters && call.characters.length) ? call.characters : [];
+    const [role, setRole] = useState(chars.length ? chars[0].name : "");
+    const [note, setNote] = useState("");
+    const [tape, setTape] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const submit = async () => {
+        setSubmitting(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { alert("Please sign in to submit an audition."); setSubmitting(false); return; }
+        // Need the call owner (director). casting_calls has user_id.
+        let directorId = call.user_id || call.director_id;
+        if (!directorId) {
+            try {
+                const { data: cc } = await supabase.from("casting_calls").select("user_id").eq("id", call.id).single();
+                directorId = cc && cc.user_id;
+            } catch (e) {}
+        }
+        const { error } = await supabase.from("casting_applications").insert({
+            call_id: call.id,
+            applicant_id: user.id,
+            director_id: directorId || user.id,
+            character_name: role || null,
+            note: note.trim() || null,
+            tape_url: tape.trim() || null,
+        });
+        if (error) {
+            console.error(error);
+            // Unique violation = already applied
+            if (error.code === "23505" || (error.message || "").includes("duplicate")) {
+                alert("You've already submitted for this role.");
+            } else {
+                alert("Could not submit: " + (error.message || "unknown error") + "\n\nMake sure applications_notifications_setup.sql has been run.");
+            }
+            setSubmitting(false);
+            return;
+        }
+        // Notify the director
+        if (directorId && directorId !== user.id) {
+            await notify({
+                userId: directorId,
+                type: "application",
+                title: "New audition submission",
+                body: (role ? role + " \u2014 " : "") + (call.title || "your casting call"),
+                link: "auditions",
+            });
+        }
+        // Also track it on the applicant's side
+        try {
+            await supabase.from("auditions").insert({
+                user_id: user.id, show: call.title || "", role: role || null,
+                company: call.company || null, date: call.audition_dates || call.date || null,
+                location: call.location || null, status: "submitted",
+            });
+        } catch (e) {}
+        setSubmitting(false);
+        show("\uD83C\uDFA4 Audition submitted!");
+        onApplied();
+    };
+    const inputSt = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", marginBottom: 14 };
+    const labelSt = { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.1em", marginBottom: 6 };
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 600, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 500, maxHeight: "88dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#15082a", borderRadius: "22px 22px 0 0", padding: "24px 20px 32px", paddingBottom: "calc(32px + env(safe-area-inset-bottom))" } },
+            React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 18px" } }),
+            React.createElement("div", { style: { fontSize: 20, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", marginBottom: 4 } }, "Submit Audition"),
+            React.createElement("div", { style: { fontSize: 13, color: "#c9a84c", marginBottom: 20 } }, call.title + (call.company ? " \u00B7 " + call.company : "")),
+            chars.length > 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: labelSt }, "AUDITIONING FOR"),
+                React.createElement("select", { value: role, onChange: e => setRole(e.target.value), style: inputSt },
+                    chars.map((ch, i) => React.createElement("option", { key: i, value: ch.name }, ch.name)))),
+            chars.length === 0 && React.createElement(React.Fragment, null,
+                React.createElement("div", { style: labelSt }, "ROLE (OPTIONAL)"),
+                React.createElement("input", { value: role, onChange: e => setRole(e.target.value), placeholder: "Which role?", style: inputSt })),
+            React.createElement("div", { style: labelSt }, "MESSAGE TO CASTING (OPTIONAL)"),
+            React.createElement("textarea", { value: note, onChange: e => setNote(e.target.value), rows: 3, placeholder: "Introduce yourself, share your availability, anything they should know\u2026", style: Object.assign(Object.assign({}, inputSt), { resize: "none", fontFamily: "inherit" }) }),
+            React.createElement("div", { style: labelSt }, "SELF-TAPE LINK (OPTIONAL)"),
+            React.createElement("input", { value: tape, onChange: e => setTape(e.target.value), placeholder: "YouTube, Vimeo, Drive link\u2026", style: inputSt }),
+            React.createElement("button", { onClick: submit, disabled: submitting, style: { width: "100%", padding: "15px", marginTop: 4, background: submitting ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: submitting ? "rgba(255,255,255,0.5)" : "#1a0a2e", fontSize: 15, fontWeight: 700, cursor: submitting ? "default" : "pointer" } }, submitting ? "Submitting\u2026" : "Submit My Audition"),
+            React.createElement("button", { onClick: onClose, style: { width: "100%", padding: "12px", background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 6, cursor: "pointer" } }, "Cancel"))
+    );
+}
+function CastingCallDetail({ call, onClose, onTrack, show }) {
+    const [showApply, setShowApply] = useState(false);
+    const c = call;
+    const Row = ({ icon, label, value }) => value ? React.createElement("div", { style: { display: "flex", gap: 10, marginBottom: 10 } },
+        React.createElement("span", { style: { fontSize: 15, flexShrink: 0 } }, icon),
+        React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em", marginBottom: 1 } }, label),
+            React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.4 } }, value))
+    ) : null;
+    return React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 550, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: (e) => e.stopPropagation(), style: { width: "100%", maxWidth: 540, maxHeight: "92dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "#15082a", borderRadius: "22px 22px 0 0", paddingBottom: "calc(20px + env(safe-area-inset-bottom))" } },
+            // Header
+            React.createElement("div", { style: { position: "sticky", top: 0, background: "linear-gradient(135deg,#1a0a2e,#2d1040)", padding: "20px 20px 16px", borderRadius: "22px 22px 0 0", zIndex: 2 } },
+                React.createElement("div", { style: { width: 40, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, margin: "0 auto 16px" } }),
+                React.createElement("div", { style: { display: "flex", gap: 12, alignItems: "flex-start" } },
+                    React.createElement("span", { style: { fontSize: 34 } }, c.emoji || "\uD83C\uDFAD"),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 22, fontWeight: 700, fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.1 } }, c.title),
+                        c.company && React.createElement("div", { style: { fontSize: 13, color: "#c9a84c", marginTop: 3 } }, c.company),
+                        c.production_type && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 } }, c.production_type + (c.location ? " \u00B7 " + c.location : ""))),
+                    React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", width: 32, height: 32, borderRadius: "50%", fontSize: 16, cursor: "pointer", flexShrink: 0 } }, "\u00D7"))),
+            React.createElement("div", { style: { padding: "18px 20px" } },
+                // Synopsis
+                c.synopsis && React.createElement("div", { style: { fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, marginBottom: 18, fontStyle: "italic" } }, c.synopsis),
+                // Characters
+                (c.characters && c.characters.length > 0) && React.createElement("div", { style: { marginBottom: 20 } },
+                    React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 12 } }, "ROLES BEING CAST"),
+                    c.characters.map((ch, i) =>
+                        React.createElement("div", { key: i, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, marginBottom: 8 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ch.description ? 6 : 0 } },
+                                React.createElement("div", { style: { fontSize: 15, fontWeight: 700, color: "#fff" } }, ch.name),
+                                React.createElement("div", { style: { display: "flex", gap: 5 } },
+                                    ch.gender && ch.gender !== "Any" && React.createElement("span", { style: { fontSize: 10, padding: "2px 7px", background: "rgba(201,168,76,0.15)", borderRadius: 10, color: "#c9a84c" } }, ch.gender),
+                                    ch.voice && ch.voice !== "Any" && React.createElement("span", { style: { fontSize: 10, padding: "2px 7px", background: "rgba(76,184,196,0.15)", borderRadius: 10, color: "#4cb8c4" } }, ch.voice))),
+                            ch.age_range && React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: ch.description ? 5 : 0 } }, "Age: " + ch.age_range),
+                            ch.description && React.createElement("div", { style: { fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 } }, ch.description))
+                    )
+                ),
+                // Dates section
+                React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 12 } }, "SCHEDULE"),
+                React.createElement(Row, { icon: "\uD83C\uDFA4", label: "AUDITIONS", value: c.audition_dates || c.date }),
+                React.createElement(Row, { icon: "\uD83D\uDCDE", label: "CALLBACKS", value: c.callback_dates }),
+                React.createElement(Row, { icon: "\u23F0", label: "SUBMISSION DEADLINE", value: c.deadline }),
+                React.createElement(Row, { icon: "\uD83C\uDFAD", label: "REHEARSALS", value: c.rehearsal_period }),
+                React.createElement(Row, { icon: "\u2728", label: "PERFORMANCES", value: c.performance_dates }),
+                // How to audition
+                React.createElement("div", { style: { fontSize: 11, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 12, marginTop: 18 } }, "HOW TO AUDITION"),
+                React.createElement(Row, { icon: "\uD83D\uDCCD", label: "SUBMISSION TYPE", value: c.submission_type }),
+                React.createElement(Row, { icon: "\uD83D\uDCB0", label: "COMPENSATION", value: c.compensation || c.comp }),
+                React.createElement(Row, { icon: "\u270D\uFE0F", label: "WHAT TO PREPARE", value: c.prepare || c.prep }),
+                React.createElement(Row, { icon: "\uD83D\uDCE7", label: "CONTACT / SUBMIT", value: c.contact }),
+                // Actions
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 22 } },
+                    React.createElement("button", { onClick: () => setShowApply(true), style: { width: "100%", padding: "15px", background: "linear-gradient(135deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 14, color: "#1a0a2e", fontWeight: 700, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 16px rgba(201,168,76,0.35)" } }, "\uD83C\uDFA4 Submit Audition"),
+                    React.createElement("div", { style: { display: "flex", gap: 10 } },
+                        React.createElement("button", { onClick: onTrack, style: { flex: 1, padding: "13px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.75)", fontWeight: 600, fontSize: 13, cursor: "pointer" } }, "\u2B50 Track"),
+                        React.createElement("button", { onClick: () => show("Saved! \uD83D\uDD16"), style: { width: 48, padding: "13px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer" } }, "\uD83D\uDD16"))),
+                showApply && React.createElement(ApplyModal, { call: c, onClose: () => setShowApply(false), show: show, onApplied: () => { setShowApply(false); } })
+            )
+        )
+    );
+}
+function PostCastingModal({ onClose, onSubmit }) {
+    const [f, setF] = useState({
+        title: "", company: "", production_type: "Community", location: "",
+        synopsis: "",
+        audition_dates: "", callback_dates: "", rehearsal_period: "", performance_dates: "",
+        deadline: "", submission_type: "In-person", prepare: "", contact: "", compensation: "Paid",
+        selftape: false,
+    });
+    const [characters, setCharacters] = useState([]);
+    const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
+    const addChar = () => setCharacters(p => [...p, { id: "c" + Date.now(), name: "", description: "", voice: "Any", age_range: "", gender: "Any" }]);
+    const updateChar = (id, k, v) => setCharacters(p => p.map(c => c.id === id ? Object.assign(Object.assign({}, c), { [k]: v }) : c));
+    const removeChar = (id) => setCharacters(p => p.filter(c => c.id !== id));
+    return (React.createElement(CastingModal, { title: "Post Audition Notice", onClose: onClose, onSubmit: () => {
+            if (!f.title.trim()) { alert("Please enter the show title."); return; }
+            if (!f.audition_dates.trim()) { alert("Please enter audition date(s)."); return; }
+            const cleanChars = characters.filter(c => c.name.trim());
+            // Build a summary role string for the card preview
+            const roleSummary = cleanChars.length ? cleanChars.map(c => c.name).slice(0, 3).join(", ") + (cleanChars.length > 3 ? " +" + (cleanChars.length - 3) + " more" : "") : "Multiple roles";
+            onSubmit(Object.assign(Object.assign({}, f), {
+                emoji: "\uD83C\uDFAD",
+                role: roleSummary,
+                characters: cleanChars.map(c => ({ name: c.name.trim(), description: c.description.trim(), voice: c.voice, age_range: c.age_range.trim(), gender: c.gender })),
+                comp: f.compensation,
+                date: f.audition_dates,
+                prep: f.prepare,
+                type: f.production_type,
+            }));
+        } },
+        // ─── SHOW INFO ───
+        React.createElement("div", { style: { fontSize: 10, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 10, marginTop: 2 } }, "SHOW INFO"),
+        React.createElement(CField, { label: "SHOW TITLE" },
+            React.createElement("input", { value: f.title, onChange: e => u("title", e.target.value), style: Object.assign(Object.assign({}, darkInput), { borderColor: f.title ? "rgba(255,255,255,0.12)" : "rgba(239,68,68,0.5)" }), placeholder: "e.g. Into the Woods (required)" })),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+            React.createElement(CField, { label: "COMPANY / THEATRE" },
+                React.createElement("input", { value: f.company, onChange: e => u("company", e.target.value), style: darkInput, placeholder: "e.g. The Old Globe" })),
+            React.createElement(CField, { label: "PRODUCTION TYPE" },
+                React.createElement("select", { value: f.production_type, onChange: e => u("production_type", e.target.value), style: darkInput },
+                    React.createElement("option", null, "Community"),
+                    React.createElement("option", null, "Regional"),
+                    React.createElement("option", null, "Educational"),
+                    React.createElement("option", null, "Professional"),
+                    React.createElement("option", null, "Youth"),
+                    React.createElement("option", null, "Fringe / Indie")))),
+        React.createElement(CField, { label: "LOCATION" },
+            React.createElement("input", { value: f.location, onChange: e => u("location", e.target.value), style: darkInput, placeholder: "e.g. San Diego, CA" })),
+        React.createElement(CField, { label: "ABOUT THE SHOW (OPTIONAL)" },
+            React.createElement("textarea", { value: f.synopsis, onChange: e => u("synopsis", e.target.value), rows: 2, style: Object.assign(Object.assign({}, darkInput), { resize: "none" }), placeholder: "Brief synopsis or production concept\u2026" })),
+        // ─── CHARACTERS ───
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, marginTop: 18 } },
+            React.createElement("div", { style: { fontSize: 10, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700 } }, "CHARACTERS BEING CAST"),
+            React.createElement("button", { onClick: addChar, style: { padding: "6px 12px", background: "rgba(201,168,76,0.15)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: 8, color: "#c9a84c", fontSize: 11, fontWeight: 700, cursor: "pointer" } }, "+ Add Character")),
+        characters.length === 0 && React.createElement("div", { style: { padding: 14, background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 12, color: "rgba(255,255,255,0.4)", textAlign: "center", marginBottom: 14 } }, "Add the roles you're casting. Tap + Add Character."),
+        characters.map((c, i) =>
+            React.createElement("div", { key: c.id, style: { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 12, marginBottom: 10 } },
+                React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+                    React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 700 } }, "ROLE " + (i + 1)),
+                    React.createElement("button", { onClick: () => removeChar(c.id), style: { background: "none", border: "none", color: "rgba(239,68,68,0.7)", fontSize: 16, cursor: "pointer", padding: 0 } }, "\u00D7")),
+                React.createElement("input", { value: c.name, onChange: e => updateChar(c.id, "name", e.target.value), style: Object.assign(Object.assign({}, darkInput), { marginBottom: 8 }), placeholder: "Character name (e.g. The Witch)" }),
+                React.createElement("textarea", { value: c.description, onChange: e => updateChar(c.id, "description", e.target.value), rows: 2, style: Object.assign(Object.assign({}, darkInput), { resize: "none", marginBottom: 8 }), placeholder: "Character description / breakdown\u2026" }),
+                React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 } },
+                    React.createElement("select", { value: c.voice, onChange: e => updateChar(c.id, "voice", e.target.value), style: Object.assign(Object.assign({}, darkInput), { fontSize: 12, padding: "8px" }) },
+                        ["Any", "Soprano", "Mezzo", "Alto", "Tenor", "Baritone", "Bass"].map(v => React.createElement("option", { key: v }, v))),
+                    React.createElement("input", { value: c.age_range, onChange: e => updateChar(c.id, "age_range", e.target.value), style: Object.assign(Object.assign({}, darkInput), { fontSize: 12, padding: "8px" }), placeholder: "Age" }),
+                    React.createElement("select", { value: c.gender, onChange: e => updateChar(c.id, "gender", e.target.value), style: Object.assign(Object.assign({}, darkInput), { fontSize: 12, padding: "8px" }) },
+                        ["Any", "Male", "Female", "Non-binary"].map(g => React.createElement("option", { key: g }, g))))
+            )
+        ),
+        // ─── DATES ───
+        React.createElement("div", { style: { fontSize: 10, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 10, marginTop: 18 } }, "DATES"),
+        React.createElement(CField, { label: "AUDITION DATE(S)" },
+            React.createElement("input", { value: f.audition_dates, onChange: e => u("audition_dates", e.target.value), style: Object.assign(Object.assign({}, darkInput), { borderColor: f.audition_dates ? "rgba(255,255,255,0.12)" : "rgba(239,68,68,0.5)" }), placeholder: "e.g. April 20-21, 6-9pm (required)" })),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+            React.createElement(CField, { label: "CALLBACKS" },
+                React.createElement("input", { value: f.callback_dates, onChange: e => u("callback_dates", e.target.value), style: darkInput, placeholder: "e.g. April 25" })),
+            React.createElement(CField, { label: "SUBMISSION DEADLINE" },
+                React.createElement("input", { value: f.deadline, onChange: e => u("deadline", e.target.value), style: darkInput, placeholder: "e.g. April 18" }))),
+        React.createElement(CField, { label: "REHEARSAL PERIOD" },
+            React.createElement("input", { value: f.rehearsal_period, onChange: e => u("rehearsal_period", e.target.value), style: darkInput, placeholder: "e.g. May 1 - June 10" })),
+        React.createElement(CField, { label: "PERFORMANCE DATES" },
+            React.createElement("input", { value: f.performance_dates, onChange: e => u("performance_dates", e.target.value), style: darkInput, placeholder: "e.g. June 13-28" })),
+        // ─── SUBMISSION ───
+        React.createElement("div", { style: { fontSize: 10, color: "#c9a84c", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 10, marginTop: 18 } }, "HOW TO AUDITION"),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+            React.createElement(CField, { label: "SUBMISSION TYPE" },
+                React.createElement("select", { value: f.submission_type, onChange: e => u("submission_type", e.target.value), style: darkInput },
+                    React.createElement("option", null, "In-person"),
+                    React.createElement("option", null, "Self-tape"),
+                    React.createElement("option", null, "Both"))),
+            React.createElement(CField, { label: "COMPENSATION" },
+                React.createElement("select", { value: f.compensation, onChange: e => u("compensation", e.target.value), style: darkInput },
+                    React.createElement("option", null, "Paid"),
+                    React.createElement("option", null, "Stipend"),
+                    React.createElement("option", null, "Volunteer"),
+                    React.createElement("option", null, "TBD")))),
+        React.createElement(CField, { label: "WHAT TO PREPARE" },
+            React.createElement("textarea", { value: f.prepare, onChange: e => u("prepare", e.target.value), rows: 2, style: Object.assign(Object.assign({}, darkInput), { resize: "none" }), placeholder: "e.g. 32 bars of a contemporary musical theatre song, bring sheet music. Dance call to follow." })),
+        React.createElement(CField, { label: "CONTACT / HOW TO SUBMIT" },
+            React.createElement("input", { value: f.contact, onChange: e => u("contact", e.target.value), style: darkInput, placeholder: "e.g. casting@theatre.com or sign up at..." }))));
+}
+
+function AddAuditionModal({ onClose, onSubmit }) {
+    const [f, setF] = useState({ show: "", role: "", company: "", date: "", location: "", prep: "", status: "upcoming" });
+    const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
+    return (React.createElement(CastingModal, { title: "Add Audition", onClose: onClose, onSubmit: () => {
+            if (!f.show.trim()) {
+                alert("Please enter a show title.");
+                return;
+            }
+            if (!f.role.trim()) {
+                alert("Please enter a role name.");
+                return;
+            }
+            onSubmit(f);
+        } },
+        React.createElement(CField, { label: "SHOW TITLE" },
+            React.createElement("input", { value: f.show, onChange: e => u("show", e.target.value), style: Object.assign(Object.assign({}, darkInput), { borderColor: f.show ? "rgba(255,255,255,0.12)" : "rgba(239,68,68,0.5)" }), placeholder: "e.g. Company (required)" })),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } },
+            React.createElement(CField, { label: "ROLE" },
+                React.createElement("input", { value: f.role, onChange: e => u("role", e.target.value), style: darkInput, placeholder: "Bobby" })),
+            React.createElement(CField, { label: "COMPANY" },
+                React.createElement("input", { value: f.company, onChange: e => u("company", e.target.value), style: darkInput, placeholder: "Cygnet Theatre" }))),
+        React.createElement(CField, { label: "DATE & TIME" },
+            React.createElement("input", { value: f.date, onChange: e => u("date", e.target.value), style: darkInput, placeholder: "April 22 \u00B7 2:30 PM" })),
+        React.createElement(CField, { label: "LOCATION" },
+            React.createElement("input", { value: f.location, onChange: e => u("location", e.target.value), style: darkInput, placeholder: "1363 Old Globe Way" })),
+        React.createElement(CField, { label: "WHAT TO PREPARE" },
+            React.createElement("textarea", { value: f.prep, onChange: e => u("prep", e.target.value), rows: 2, style: Object.assign(Object.assign({}, darkInput), { resize: "none" }), placeholder: "16 bars + sides from Act 1" })),
+        React.createElement(CField, { label: "STATUS" },
+            React.createElement("div", { style: { display: "flex", gap: 8 } }, [["upcoming", "Upcoming"], ["callback", "Callback \uD83C\uDF1F"], ["completed", "Done \u2713"]].map(([v, l]) => (React.createElement("button", { key: v, onClick: () => u("status", v), style: { flex: 1, padding: "8px", background: f.status === v ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.5)", border: `1px solid ${f.status === v ? "#c9a84c" : "rgba(255,255,255,0.1)"}`, borderRadius: 10, color: f.status === v ? "#c9a84c" : "rgba(255,255,255,0.5)", fontWeight: f.status === v ? 700 : 400, fontSize: 11, cursor: "pointer" } }, l)))))));
+}
+function NewTapeModal({ onClose, onSubmit }) {
+    const [f, setF] = useState({ show: "", scene: "", deadline: "", submitTo: "" });
+    const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
+    return (React.createElement(CastingModal, { title: "New Self Tape", onClose: onClose, onSubmit: () => {
+            if (!f.show.trim()) {
+                alert("Please enter a show / role.");
+                return;
+            }
+            onSubmit(Object.assign(Object.assign({}, f), { status: "pending" }));
+        } },
+        React.createElement("div", { style: { background: "linear-gradient(160deg,#1a0f1f,#0a050f)", borderRadius: 16, padding: "24px", textAlign: "center", marginBottom: 16 } },
+            React.createElement("div", { style: { width: 64, height: 64, background: "rgba(239,68,68,0.15)", border: "2px solid rgba(239,68,68,0.5)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto 10px", cursor: "pointer" } }, "\u23FA"),
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.7)" } }, "Tap to Record"),
+            React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 4 } }, "Or fill in details below to log a tape")),
+        React.createElement(CField, { label: "SHOW / ROLE" },
+            React.createElement("input", { value: f.show, onChange: e => u("show", e.target.value), style: darkInput, placeholder: "e.g. Hamilton \u2014 Alexander Hamilton" })),
+        React.createElement(CField, { label: "SCENE / SONG" },
+            React.createElement("input", { value: f.scene, onChange: e => u("scene", e.target.value), style: darkInput, placeholder: '"My Shot" + sides from Act 1' })),
+        React.createElement(CField, { label: "DEADLINE" },
+            React.createElement("input", { value: f.deadline, onChange: e => u("deadline", e.target.value), style: darkInput, placeholder: "April 25, 2026" })),
+        React.createElement(CField, { label: "SUBMIT TO" },
+            React.createElement("input", { value: f.submitTo, onChange: e => u("submitTo", e.target.value), style: darkInput, placeholder: "casting@theatre.org" }))));
+}
+function AddCreditModal({ onClose, onSubmit }) {
+    const [f, setF] = useState({ title: "", role: "", company: "", year: "" });
+    const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
+    return (React.createElement(CastingModal, { title: "Add Theatre Credit", onClose: onClose, onSubmit: () => { if (f.title && f.role)
+            onSubmit(f); } },
+        React.createElement(CField, { label: "SHOW TITLE" },
+            React.createElement("input", { value: f.title, onChange: e => u("title", e.target.value), style: darkInput, placeholder: "e.g. Into the Woods" })),
+        React.createElement(CField, { label: "YOUR ROLE" },
+            React.createElement("input", { value: f.role, onChange: e => u("role", e.target.value), style: darkInput, placeholder: "e.g. Rapunzel" })),
+        React.createElement(CField, { label: "THEATRE COMPANY" },
+            React.createElement("input", { value: f.company, onChange: e => u("company", e.target.value), style: darkInput, placeholder: "e.g. SDSU Theatre" })),
+        React.createElement(CField, { label: "YEAR" },
+            React.createElement("input", { value: f.year, onChange: e => u("year", e.target.value), style: darkInput, placeholder: "e.g. 2023" }))));
+}
+// Shared casting modal shell
+function AddTrainingModal({ onClose, onSubmit }) {
+    const [f, setF] = useState({ title: "", sub: "" });
+    const u = (k, v) => setF(p => (Object.assign(Object.assign({}, p), { [k]: v })));
+    return (React.createElement(CastingModal, { title: "Add Training", onClose: onClose, onSubmit: () => { if (f.title.trim()) onSubmit(f); } },
+        React.createElement(CField, { label: "PROGRAM / DEGREE" },
+            React.createElement("input", { value: f.title, onChange: e => u("title", e.target.value), style: darkInput, placeholder: "e.g. B.F.A. Musical Theatre" })),
+        React.createElement(CField, { label: "SCHOOL & YEARS" },
+            React.createElement("input", { value: f.sub, onChange: e => u("sub", e.target.value), style: darkInput, placeholder: "e.g. San Diego State \u00B7 2018" }))));
+}
+function EditSkillsModal({ current, onClose, onSubmit }) {
+    const [val, setVal] = useState(current || "");
+    return (React.createElement(CastingModal, { title: "Skills & Special Abilities", onClose: onClose, onSubmit: () => onSubmit(val) },
+        React.createElement(CField, { label: "SKILLS (COMMA SEPARATED)" },
+            React.createElement("textarea", { value: val, onChange: e => setVal(e.target.value), rows: 4, style: Object.assign(Object.assign({}, darkInput), { resize: "none" }), placeholder: "Piano, Guitar, Mezzo-Soprano, Tap, Stage Combat, Dialects: British" })),
+        React.createElement("div", { style: { fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: -6 } }, "Separate each skill with a comma. They'll show as tags on your r\u00e9sum\u00e9.")));
+}
+
+function CastingModal({ title, onClose, onSubmit, children }) {
+    return (React.createElement("div", { onClick: onClose, style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" } },
+        React.createElement("div", { onClick: e => e.stopPropagation(), className: "overlay-enter", style: { background: "#120920", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "90vh", display: "flex", flexDirection: "column", border: "1px solid rgba(255,255,255,0.1)", borderBottom: "none" } },
+            React.createElement("div", { style: { padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond',serif", fontWeight: 700, fontSize: 20 } }, title),
+                React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.08)", border: "none", borderRadius: 20, width: 30, height: 30, color: "rgba(255,255,255,0.6)", fontSize: 16, cursor: "pointer" } }, "\u00D7")),
+            React.createElement("div", { style: { flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 } }, children),
+            React.createElement("div", { style: { padding: "14px 20px 28px", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", gap: 10 } },
+                React.createElement("button", { onClick: onClose, style: { flex: 1, padding: "13px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer" } }, "Cancel"),
+                React.createElement("button", { onClick: onSubmit, style: { flex: 2, padding: "13px", background: "linear-gradient(90deg,#c9a84c,#e8a87c)", border: "none", borderRadius: 12, color: "#1a0a2e", fontWeight: 700, fontSize: 14, cursor: "pointer" } }, "Save")))));
+}
+const CField = ({ label, children }) => (React.createElement("div", null,
+    React.createElement("div", { style: { fontSize: 9, color: "rgba(255,255,255,0.32)", letterSpacing: "0.12em", marginBottom: 6 } }, label),
+    children));
+const darkInput = { width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none" };
+// ----------------------- REUSABLE COMPONENTS --------------------------------
+function Toggle({ on, onToggle }) {
+    return (React.createElement("button", { onClick: onToggle, style: { width: 46, height: 26, borderRadius: 13, background: on ? "#c9a84c" : "rgba(255,255,255,0.15)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 } },
+        React.createElement("div", { style: { width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: on ? 23 : 3, transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.4)" } })));
+}
+function SliderRow({ label, value, min, max, accent, unit, onChange }) {
+    return (React.createElement("div", { style: { marginBottom: 12 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 } },
+            React.createElement("span", { style: { fontSize: 12, color: "rgba(255,255,255,0.55)" } }, label),
+            React.createElement("span", { style: { fontSize: 12, color: accent, fontWeight: 700 } },
+                value,
+                unit)),
+        React.createElement("div", { style: { position: "relative", height: 20, display: "flex", alignItems: "center" } },
+            React.createElement("div", { style: { position: "absolute", left: 0, right: 0, height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 2 } }),
+            React.createElement("div", { style: { position: "absolute", left: 0, width: `${((value - min) / (max - min)) * 100}%`, height: 4, background: accent, borderRadius: 2 } }),
+            React.createElement("input", { type: "range", min: min, max: max, value: value, onChange: e => onChange(Number(e.target.value)), style: { position: "absolute", width: "100%", opacity: 0, height: 20, cursor: "pointer" } }),
+            React.createElement("div", { style: { position: "absolute", left: `${((value - min) / (max - min)) * 100}%`, transform: "translateX(-50%)", width: 14, height: 14, background: accent, borderRadius: "50%", border: "2px solid #08080f", pointerEvents: "none" } }))));
+}
+const Label = ({ children }) => React.createElement("div", { style: { fontSize: 9, fontWeight: 700, letterSpacing: "0.13em", color: "rgba(255,255,255,0.35)", marginBottom: 8, marginTop: 16 } }, children);
+const Toast = ({ msg }) => React.createElement("div", { style: { position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "rgba(201,168,76,0.95)", color: "#1a0a2e", padding: "10px 20px", borderRadius: 24, fontWeight: 700, fontSize: 13, zIndex: 999, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.5)" } }, msg);
+// Style helpers
+const inputSt = { width: "100%", padding: "11px 14px", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, color: "#fff", fontSize: 13, outline: "none", marginBottom: 0 };
+const primaryBtn = (accent, disabled = false) => ({ width: "100%", padding: "14px", background: disabled ? "rgba(255,255,255,0.1)" : accent, border: "none", borderRadius: 14, color: disabled ? "rgba(255,255,255,0.3)" : "#1a0a2e", fontWeight: 700, fontSize: 14, cursor: disabled ? "not-allowed" : "pointer", marginBottom: 10 });
+const ghostBtn = { width: "100%", padding: "12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 14, cursor: "pointer", marginBottom: 10 };
+// Utility
+const clamp = (text) => text.length > 20 ? 22 : text.length > 14 ? 26 : 32;
+
+
+export default StageLab;

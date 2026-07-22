@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@keyframes slpulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#08080f;overscroll-behavior:none;}
+::-webkit-scrollbar{width:0;}
+@keyframes barPulse{0%,100%{transform:scaleY(0.55);opacity:0.65;}50%{transform:scaleY(1);opacity:1;}}
+.bar{animation:barPulse 1.2s ease-in-out infinite;}
+@keyframes liveDot{0%,100%{opacity:1;}50%{opacity:0.2;}}
+@keyframes speaking{0%{transform:scale(1);box-shadow:0 0 20px var(--sa,#c9a84c)44;}100%{transform:scale(1.7);box-shadow:0 0 40px var(--sa,#c9a84c)88;}}
+@keyframes spotlight{0%,100%{transform:translateX(-50%) translateY(-30%);}50%{transform:translateX(-50%) translateY(-45%);}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes pop{0%{transform:scale(0.8);opacity:0;}60%{transform:scale(1.12);}100%{transform:scale(1);opacity:1;}}
+@keyframes floatUp{0%{transform:translateY(0);opacity:1;}100%{transform:translateY(-120px);opacity:0;}}
+.overlay-enter{animation:slideUp 0.32s cubic-bezier(0.32,0.72,0,1) forwards;}
+.fade-in{animation:fadeIn 0.25s ease forwards;}
+.pop{animation:pop 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.3);}
+input,textarea,button,select{font-family:'DM Sans',sans-serif;}
